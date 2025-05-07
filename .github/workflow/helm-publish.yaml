@@ -5,8 +5,7 @@ on:
     branches:
       - master
     paths:
-      - 'charts/**'
-  workflow_dispatch:  # Manual trigger support
+      - "charts/**"
 
 jobs:
   publish:
@@ -18,7 +17,7 @@ jobs:
         with:
           ref: master
 
-      - name: Install Helm
+      - name: Set up Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
           helm version
@@ -32,6 +31,7 @@ jobs:
 
       - name: Generate index.yaml
         run: |
+          mkdir -p gh-pages/packages # Create the directory before indexing
           helm repo index chart-packages --url https://${{ github.repository_owner }}.github.io/urban-helm-charts/packages
 
       - name: Push to gh-pages
