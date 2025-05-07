@@ -1,0 +1,3 @@
+# Ignore packaged charts and index from master
+*.tgz
+index.yaml
