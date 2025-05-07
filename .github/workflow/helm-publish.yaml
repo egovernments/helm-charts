@@ -1,12 +1,11 @@
-# .github/workflows/helm-publish.yml
-name: Publish Helm Chart to GitHub Pages
+name: Publish Helm Charts to GitHub Pages
 
 on:
   push:
     branches:
       - master
     paths:
-      - 'urban-test/**' # path to your Helm chart
+      - 'charts/**'
 
 jobs:
   publish-helm:
@@ -19,14 +18,16 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v3
 
-      - name: Package Helm chart
+      - name: Package all charts
         run: |
           mkdir -p chart-packages
-          helm package urban-test --destination chart-packages
+          for dir in charts/*/; do
+            helm package "$dir" --destination chart-packages
+          done
 
-      - name: Generate Helm index.yaml
+      - name: Generate index.yaml
         run: |
-          helm repo index chart-packages --url https://${{ github.repository_owner }}.github.io/urban-helm-charts
+          helm repo index chart-packages --url https://${{ github.repository_owner }}.github.io/urban-helm-charts/packages
 
       - name: Checkout gh-pages branch
         uses: actions/checkout@v3
@@ -34,11 +35,11 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      - name: Copy packaged chart and index
+      - name: Copy packaged charts and index to gh-pages
         run: |
           mkdir -p gh-pages/packages
           cp chart-packages/*.tgz gh-pages/packages/
-          cp chart-packages/index.yaml gh-pages/packages/index.yaml
+          cp chart-packages/index.yaml gh-pages/packages/
 
       - name: Commit and push to gh-pages
         run: |
@@ -46,5 +47,6 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add packages
-          git commit -m "Update Helm charts" || echo "No changes to commit"
+          git commit -m "Update Helm chart packages and index" || echo "No changes to commit"
           git push origin gh-pages
+
