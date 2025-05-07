@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - "charts/**"
+  workflow_dispatch:  # Manual trigger support
 
 jobs:
   publish:
@@ -19,34 +20,48 @@ jobs:
 
       - name: Set up Helm
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh
           helm version
 
       - name: Package Helm charts
         run: |
+          echo "Current directory: $(pwd)" # Added for debugging
+          ls -l ./charts # Added for debugging
           mkdir -p chart-packages
           for chart in charts/*/; do
+            echo "Packaging chart: $chart" # Added for debugging
             helm package "$chart" --destination chart-packages
+            ls -l chart-packages # Added for debugging
           done
 
       - name: Generate index.yaml
         run: |
+          echo "Current directory: $(pwd)" # Added for debugging
+          ls -l # Added for debugging
           mkdir -p gh-pages/packages # Create the directory before indexing
-          helm repo index chart-packages --url https://${{ github.repository_owner }}.github.io/urban-helm-charts/packages
+          helm repo index chart-packages --url https://egovernments.github.io/urban-helm-charts/packages
+          ls -l gh-pages/packages # Added for debugging
+          cat gh-pages/packages/index.yaml # Added for debugging
 
       - name: Push to gh-pages
         run: |
+          echo "Current directory: $(pwd)" # Added for debugging
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          git clone --branch gh-pages https://github.com/${{ github.repository }} gh-pages
+          git clone --branch gh-pages https://github.com/egovernments/urban-helm-charts.git gh-pages
+          cd gh-pages # Change to gh-pages directory
+          echo "Cloned gh-pages to: $(pwd)" # Print current directory
+          ls -l # list directory contents
 
-          mkdir -p gh-pages/packages
-          cp chart-packages/*.tgz gh-pages/packages/
-          cp chart-packages/index.yaml gh-pages/packages/
-          touch gh-pages/.nojekyll
+          mkdir -p packages
+          cp ../chart-packages/*.tgz packages/  # Adjusted path
+          cp ../chart-packages/index.yaml packages/ # Adjusted path
+          touch .nojekyll
 
-          cd gh-pages
           git add .nojekyll packages/
           git commit -m "Update Helm charts" || echo "No changes to commit"
           git push origin gh-pages
+          ls -l packages # Added for debugging
