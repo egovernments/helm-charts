@@ -1,4 +1,4 @@
-name: Publish Helm Chart
+name: Publish Helm Charts
 
 on:
   push:
@@ -25,11 +25,19 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Run Helm package
+      - name: Get changed charts
+        id: changed-charts
         run: |
-          CHART_VERSION=$(helm show chart charts/my-chart | grep "version: " | awk '{print $2}') #getting the version from the Chart.yaml file
-          echo "::set-output name=chart_version::$CHART_VERSION"
-          helm package charts/my-chart -d . # Packages the chart into a .tgz archive
+          CHANGED_CHARTS=$(git diff --name-only HEAD^ HEAD | grep '^charts/' | cut -d'/' -f2 | uniq)
+          echo "::set-output name=changed_charts::$CHANGED_CHARTS"
+
+      - name: Package and copy charts
+        run: |
+          mkdir -p packaged_charts
+          for chart in ${{ steps.changed-charts.outputs.changed_charts }}; do
+            echo "Packaging chart: charts/$chart"
+            helm package charts/$chart -d packaged_charts
+          done
 
       - name: Create gh-pages branch if it doesn't exist
         run: |
@@ -49,10 +57,10 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      - name: Copy Helm package to packages directory
+      - name: Copy Helm packages to packages directory
         run: |
           mkdir -p gh-pages/packages
-          cp *.tgz gh-pages/packages/
+          cp packaged_charts/*.tgz gh-pages/packages/
 
       - name: Update index.yaml
         run: |
@@ -62,8 +70,9 @@ jobs:
         run: |
           cd gh-pages
           git add .
-          git commit -m "Update Helm chart package and index"
+          git commit -m "Update Helm chart packages and index"
           git push origin gh-pages
-      - name: Delete the generated tgz file
+
+      - name: Delete the generated tgz files
         run: |
-          rm *.tgz
+          rm packaged_charts/*.tgz
