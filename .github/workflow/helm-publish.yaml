@@ -20,59 +20,67 @@ jobs:
         with:
           version: "3.13.3" # Specify a version or use "latest"
 
-      - name: Set up Git
+      - name: Publish Helm Charts
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          #!/bin/bash
+          set -euxo pipefail
 
-      - name: Get changed charts
-        id: changed-charts
-        run: |
-          CHANGED_CHARTS=$(git diff --name-only HEAD^ HEAD | grep '^charts/' | cut -d'/' -f2 | uniq)
-          echo "::set-output name=changed_charts::$CHANGED_CHARTS"
+          # --- Configuration ---
+          CHART_DIR="charts"          # Directory where your Helm charts are located
+          PACKAGED_CHARTS_DIR="packaged_charts" # Temporary directory for packaged charts
+          GH_PAGES_DIR="gh-pages"       # Directory where the gh-pages branch will be checked out
+          REPO_URL="https://egovernments.github.io/urban-helm-charts/packages/" # Replace with your repo URL
+          # --- End Configuration ---
 
-      - name: Package and copy charts
-        run: |
-          mkdir -p packaged_charts
-          for chart in ${{ steps.changed-charts.outputs.changed_charts }}; do
-            echo "Packaging chart: charts/$chart"
-            helm package charts/$chart -d packaged_charts
+          # --- Helper Functions ---
+          create_gh_pages_if_not_exists() {
+            git fetch origin
+            if [[ $(git ls-remote --heads origin gh-pages) ]]; then
+              echo "gh-pages branch exists"
+            else
+              echo "gh-pages branch does not exist, creating it"
+              git checkout --orphan gh-pages
+              git commit --allow-empty -m "Initial commit for gh-pages"
+              git push origin gh-pages
+            fi
+          }
+          # --- Main Script ---
+
+          # 1. Set up Git
+          git config --global user.name "GitHub Actions" # Or your preferred name
+          git config --global user.email "actions@github.com" # Or your preferred email
+
+          # 2. Get changed charts
+          CHANGED_CHARTS=$(git diff --name-only HEAD^ HEAD | grep "^$CHART_DIR/" | cut -d'/' -f2 | uniq)
+          echo "Changed charts: $CHANGED_CHARTS"
+
+          # 3. Package and copy charts
+          mkdir -p "$PACKAGED_CHARTS_DIR"
+          for chart in $CHANGED_CHARTS; do
+            echo "Packaging chart: $CHART_DIR/$chart"
+            CHART_VERSION=$(helm show chart "$CHART_DIR/$chart" | grep "version: " | awk '{print $2}') #getting the version from the Chart.yaml file
+            echo "Chart Version: $CHART_VERSION"
+            helm package "$CHART_DIR/$chart" -d "$PACKAGED_CHARTS_DIR"
           done
 
-      - name: Create gh-pages branch if it doesn't exist
-        run: |
-          git fetch origin
-          if [[ $(git ls-remote --heads origin gh-pages) ]]; then
-            echo "gh-pages branch exists"
-          else
-            echo "gh-pages branch does not exist, creating it"
-            git checkout --orphan gh-pages
-            git commit --allow-empty -m "Initial commit for gh-pages"
-            git push origin gh-pages
-          fi
+          # 4. Create gh-pages branch if it doesn't exist
+          create_gh_pages_if_not_exists
 
-      - name: Checkout gh-pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
+          # 5. Checkout gh-pages
+          git checkout gh-pages
 
-      - name: Copy Helm packages to packages directory
-        run: |
-          mkdir -p gh-pages/packages
-          cp packaged_charts/*.tgz gh-pages/packages/
+          # 6. Copy Helm packages to packages directory
+          mkdir -p "$GH_PAGES_DIR/packages"
+          cp "$PACKAGED_CHARTS_DIR"/*.tgz "$GH_PAGES_DIR/packages/"
 
-      - name: Update index.yaml
-        run: |
-          helm repo index gh-pages/packages --url https://egovernments.github.io/urban-helm-charts/packages/ # change the repo url
+          # 7. Update index.yaml
+          helm repo index "$GH_PAGES_DIR/packages" --url "$REPO_URL"
 
-      - name: Commit and push changes to gh-pages
-        run: |
-          cd gh-pages
+          # 8. Commit and push changes to gh-pages
+          cd "$GH_PAGES_DIR"
           git add .
           git commit -m "Update Helm chart packages and index"
           git push origin gh-pages
 
-      - name: Delete the generated tgz files
-        run: |
-          rm packaged_charts/*.tgz
+          # 9. Delete the generated tgz files
+          rm "$PACKAGED_CHARTS_DIR"/*.tgz
