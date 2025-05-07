@@ -8,24 +8,24 @@ on:
       - 'charts/**'
 
 jobs:
-  publish-helm:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
 
-      - name: Package all charts
+      - name: Package all Helm charts
         run: |
           mkdir -p chart-packages
           for dir in charts/*/; do
             helm package "$dir" --destination chart-packages
           done
 
-      - name: Generate index.yaml
+      - name: Generate Helm index.yaml
         run: |
           helm repo index chart-packages --url https://${{ github.repository_owner }}.github.io/urban-helm-charts/packages
 
@@ -47,6 +47,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add packages
-          git commit -m "Update Helm chart packages and index" || echo "No changes to commit"
+          git commit -m "Update Helm chart packages" || echo "No changes"
           git push origin gh-pages
-
