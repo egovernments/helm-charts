@@ -3,16 +3,16 @@ entries:
   ws-services:
   - apiVersion: v2
     appVersion: 2.9.4
-    created: "2025-06-03T08:51:17.728743524Z"
+    created: "2025-06-03T11:11:23.112263249Z"
     dependencies:
     - name: common
-      repository: file://../../common
-      version: 0.0.5
+      repository: file://../common
+      version: 0.0.7
     description: A Helm chart for Kubernetes
-    digest: bef46ecc3cad0e2381085507fcd9d4b81a18cb39f91301c420ea1b4bffd957cf
+    digest: 9022ac637c3fa2c91e6e194bc19bebfb43a3c723c1aaac1915a5e753a50f4845
     name: ws-services
     type: application
     urls:
-    - https://helm.digit.org/urban/ws-services/ws-services-0.0.6.tgz
-    version: 0.0.6
-generated: "2025-06-03T08:51:17.727674702Z"
+    - https://helm.digit.org/urban/ws-services/ws-services-0.0.7.tgz
+    version: 0.0.7
+generated: "2025-06-03T11:11:23.111244761Z"

@@ -43,6 +43,20 @@ entries:
       urls:
         - https://helm.digit.org/urban/ws-calculator/ws-calculator-0.0.6.tgz
       version: 0.0.6
+    - apiVersion: v2
+      appVersion: 2.9.4
+      created: "2025-06-03T11:11:22.910149695Z"
+      dependencies:
+        - name: common
+          repository: file://../common
+          version: 0.0.7
+      description: A Helm chart for Kubernetes
+      digest: 8b25d1012cd019495a742d84bfa1734b71ff09995f5007313e92669f45c8963b
+      name: ws-calculator
+      type: application
+      urls:
+        - https://helm.digit.org/urban/ws-calculator/ws-calculator-0.0.7.tgz
+      version: 0.0.7
   ws-services:
     - apiVersion: v2
       appVersion: 2.9.2
@@ -72,4 +86,28 @@ entries:
       urls:
         - https://helm.digit.org/urban/ws-services/ws-services-0.0.6.tgz
       version: 0.0.6
-generated: "2025-06-03T08:51:17.727674702Z"
+    - apiVersion: v2
+      appVersion: 2.9.4
+      created: "2025-06-03T11:11:23.112263249Z"
+      dependencies:
+        - name: common
+          repository: file://../common
+          version: 0.0.7
+      description: A Helm chart for Kubernetes
+      digest: 9022ac637c3fa2c91e6e194bc19bebfb43a3c723c1aaac1915a5e753a50f4845
+      name: ws-services
+      type: application
+      urls:
+        - https://helm.digit.org/urban/ws-services/ws-services-0.0.7.tgz
+      version: 0.0.7
+  common:
+    - apiVersion: v1
+      appVersion: 0.0.5
+      created: "2025-06-03T11:11:22.640799632Z"
+      description: base chartbuilding components and helpers
+      digest: 7c86a61b2531bd99ff45dad46286dd822456729d6b34b436284a037bfc277043
+      name: common
+      urls:
+        - https://helm.digit.org/urban/common/common-0.0.7.tgz
+      version: 0.0.7
+generated: "2025-06-03T11:11:23.111244761Z"
