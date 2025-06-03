@@ -114,18 +114,15 @@ jobs:
             yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
 
             echo "Updating $CHART to use common@$COMMON_VERSION_TO_USE"
-            yq e -i "$(cat <<EOF
-            .dependencies |= map(
-              if .name == "common" then
+            YQ_EXPR=".dependencies |= map(
+              if .name == \"common\" then
                 .version = \"$COMMON_VERSION_TO_USE\"
               else
                 .
               end
-            )
-            EOF
-            )" "$CHART_PATH/Chart.yaml"
+            )"
 
-
+            yq e -i "$YQ_EXPR" "$CHART_PATH/Chart.yaml"
 
             helm repo add urban https://helm.digit.org/urban
             helm dependency update "$CHART_PATH"
