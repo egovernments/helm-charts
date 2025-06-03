@@ -65,7 +65,7 @@ jobs:
 
           # Fetch latest released version of 'common' from chart repo index
           LATEST_COMMON_VERSION=$(curl -s https://helm.digit.org/urban/index.yaml | \
-            yq '.entries.common | sort_by(.version) | last.version')
+            yq -r '.entries.common | sort_by(.version) | .[-1].version')
 
           echo "Latest published common version is: $LATEST_COMMON_VERSION"
 
