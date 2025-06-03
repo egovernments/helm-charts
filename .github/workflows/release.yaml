@@ -1,27 +1,101 @@
-name: Release Charts
+name: Urban Helm Charts Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
 
 jobs:
   release:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Configure Git
+      - name: Install tools (yq + Helm)
         run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Extract current tag
+        id: tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "module=urban" >> $GITHUB_OUTPUT
+
+      - name: Find previous tag
+        id: previous
+        run: |
+          PREV=$(git tag --sort=-creatordate | grep '^v' | grep -v "${GITHUB_REF#refs/tags/}" | head -n 1 || true)
+          echo "prev=$PREV" >> $GITHUB_OUTPUT
+
+      - name: Detect changed charts
+        id: changed
+        run: |
+          CHANGED=""
+          for dir in charts/urban/*/; do
+            CHART=$(basename "$dir")
+            if [[ -z "${{ steps.previous.outputs.prev }}" ]]; then
+              CHANGED+="$CHART "
+              continue
+            fi
+            if git diff --quiet "${{ steps.previous.outputs.prev }}"..HEAD -- "$dir"; then
+              echo "No change in $CHART"
+            else
+              echo "$CHART changed"
+              CHANGED+="$CHART "
+            fi
+          done
+          echo "changed_charts=$CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Package and index changed charts
+        if: steps.changed.outputs.changed_charts != ''
+        run: |
+          mkdir -p repo/urban
+          VERSION="${{ steps.tag.outputs.version }}"
+
+          for CHART in ${{ steps.changed.outputs.changed_charts }}; do
+            CHART_PATH="charts/urban/$CHART"
+            TARGET_DIR="repo/urban/$CHART"
+            mkdir -p "$TARGET_DIR"
+
+            echo "Updating $CHART to version $VERSION"
+            yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
+
+            helm dependency update "$CHART_PATH" || true
+            helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
+
+            helm repo index "$TARGET_DIR" --url "https://helm.digit.org/urban/$CHART"
+          done
+
+      - name: Merge all chart indexes into urban/index.yaml
+        run: |
+          mkdir -p repo/urban
+          MERGED="repo/urban/index.yaml"
+
+          echo "apiVersion: v1" > "$MERGED"
+          echo "entries: {}" >> "$MERGED"
+
+          for CHART_DIR in repo/urban/*/; do
+            if [[ -f "$CHART_DIR/index.yaml" ]]; then
+              echo "Merging $CHART_DIR/index.yaml into $MERGED"
+              yq ea '. as $item ireduce ({}; . * $item )' "$MERGED" "$CHART_DIR/index.yaml" > tmp.yaml && mv tmp.yaml "$MERGED"
+            fi
+          done
+
+      - name: Deploy to GitHub Pages (gh-pages/urban)
+        uses: peaceiris/actions-gh-pages@v4
+        if: steps.changed.outputs.changed_charts != ''
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo/urban
+          publish_branch: gh-pages
+          destination_dir: urban
