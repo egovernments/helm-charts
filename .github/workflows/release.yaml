@@ -73,7 +73,7 @@ jobs:
             # If it's NOT the common chart, update its dependency reference to common
             if [[ "$CHART" != "common" ]]; then
               echo "Updating $CHART to use common@$VERSION"
-              yq e -i '.dependencies[] |= if .name == "common" then .version = "'"$VERSION"'" else . end' "$CHART_PATH/Chart.yaml"
+              yq e -i '.dependencies |= map(if .name == "common" then .version = "'"$VERSION"'" else . end)' "$CHART_PATH/Chart.yaml"
             fi
 
             helm dependency update "$CHART_PATH"
