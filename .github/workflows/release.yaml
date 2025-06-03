@@ -73,7 +73,14 @@ jobs:
             helm dependency update "$CHART_PATH" || true
             helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
 
-            helm repo index "$TARGET_DIR" --url "https://helm.digit.org/urban/$CHART"
+            if [[ -f "$TARGET_DIR/index.yaml" ]]; then
+              helm repo index "$TARGET_DIR" \
+                --url "https://helm.digit.org/urban/$CHART" \
+                --merge "$TARGET_DIR/index.yaml"
+            else
+              helm repo index "$TARGET_DIR" \
+                --url "https://helm.digit.org/urban/$CHART"
+            fi
           done
 
       - name: Merge all chart indexes into urban/index.yaml
@@ -87,7 +94,7 @@ jobs:
           for CHART_DIR in repo/urban/*/; do
             if [[ -f "$CHART_DIR/index.yaml" ]]; then
               echo "Merging $CHART_DIR/index.yaml into $MERGED"
-              yq ea '. as $item ireduce ({}; . * $item )' "$MERGED" "$CHART_DIR/index.yaml" > tmp.yaml && mv tmp.yaml "$MERGED"
+              yq ea '. as $item ireduce ({}; . *+ $item )' "$MERGED" "$CHART_DIR/index.yaml" > tmp.yaml && mv tmp.yaml "$MERGED"
             fi
           done
 
