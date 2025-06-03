@@ -1,0 +1,33 @@
+apiVersion: v1
+entries:
+  ws-calculator:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-06-03T06:48:13.589968006Z"
+      dependencies:
+        - name: common
+          repository: file://../../common
+          version: 0.0.5
+      description: A Helm chart for Kubernetes
+      digest: 64fad2b233be9eb0eab749d984b4298611d68158431414cfde4dc954cad88d75
+      name: ws-calculator
+      type: application
+      urls:
+        - https://helm.digit.org/urban/ws-calculator/ws-calculator-0.0.1.tgz
+      version: 0.0.1
+  ws-services:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-06-03T06:48:13.711699746Z"
+      dependencies:
+        - name: common
+          repository: file://../../common
+          version: 0.0.5
+      description: A Helm chart for Kubernetes
+      digest: 6afb136c8bf3b611478747fd18ccab4d03f056fd2206dc58aab5158f2350eb4e
+      name: ws-services
+      type: application
+      urls:
+        - https://helm.digit.org/urban/ws-services/ws-services-0.0.1.tgz
+      version: 0.0.1
+generated: "2025-06-03T06:48:13.710630093Z"
