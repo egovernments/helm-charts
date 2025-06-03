@@ -61,8 +61,15 @@ jobs:
         run: |
           mkdir -p repo/urban
           VERSION="${{ steps.tag.outputs.version }}"
+          CHANGED="${{ steps.changed.outputs.changed_charts }}"
 
-          for CHART in ${{ steps.changed.outputs.changed_charts }}; do
+          # Fetch latest released version of 'common' from chart repo index
+          LATEST_COMMON_VERSION=$(curl -s https://helm.digit.org/urban/index.yaml | \
+            yq '.entries.common | sort_by(.version) | last.version')
+
+          echo "Latest published common version is: $LATEST_COMMON_VERSION"
+
+          for CHART in $CHANGED; do
             CHART_PATH="charts/urban/$CHART"
             TARGET_DIR="repo/urban/$CHART"
             mkdir -p "$TARGET_DIR"
@@ -70,12 +77,12 @@ jobs:
             echo "Updating $CHART to version $VERSION"
             yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
 
-            # If it's NOT the common chart, update its dependency reference to common
             if [[ "$CHART" != "common" ]]; then
-              echo "Updating $CHART to use common@$VERSION"
-              yq e -i '.dependencies |= map(if .name == "common" then .version = "'"$VERSION"'" else . end)' "$CHART_PATH/Chart.yaml"
+              echo "Updating $CHART to use common@$LATEST_COMMON_VERSION"
+              yq e -i ".dependencies |= map(if .name == \"common\" then .version = \"$LATEST_COMMON_VERSION\" else . end)" "$CHART_PATH/Chart.yaml"
             fi
 
+            helm repo add urban https://helm.digit.org/urban
             helm dependency update "$CHART_PATH"
             helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
 
