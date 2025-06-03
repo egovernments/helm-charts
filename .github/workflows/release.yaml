@@ -64,12 +64,48 @@ jobs:
           CHANGED="${{ steps.changed.outputs.changed_charts }}"
 
           # Fetch latest released version of 'common' from chart repo index
-          LATEST_COMMON_VERSION=$(curl -s https://helm.digit.org/urban/index.yaml | \
-            yq -r '.entries.common | sort_by(.version) | .[-1].version')
+          INDEX=$(curl -s https://helm.digit.org/urban/index.yaml)
+          COMMON_ALREADY_RELEASED=false
+          COMMON_VERSION_FROM_REPO=""
 
-          echo "Latest published common version is: $LATEST_COMMON_VERSION"
+          if echo "$INDEX" | yq -e '.entries.common' > /dev/null 2>&1; then
+            COMMON_ALREADY_RELEASED=true
+            COMMON_VERSION_FROM_REPO=$(echo "$INDEX" | yq -r '.entries.common | sort_by(.version) | .[-1].version')
+            echo "✅ common is already released: $COMMON_VERSION_FROM_REPO"
+          else
+            echo "⚠️ No common release found yet"
+          fi
 
+          # Always package common if not already released
+          # Or if common is part of changed charts
+          PACKAGE_COMMON=false
+          if [[ "$COMMON_ALREADY_RELEASED" == "false" ]]; then
+            PACKAGE_COMMON=true
+          elif echo "$CHANGED" | grep -qw common; then
+            PACKAGE_COMMON=true
+          fi
+
+          if [[ "$PACKAGE_COMMON" == "true" ]]; then
+            echo "📦 Packaging 'common' with version $VERSION"
+            CHART_PATH="charts/urban/common"
+            TARGET_DIR="repo/urban/common"
+            mkdir -p "$TARGET_DIR"
+            yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
+            helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
+            helm repo index "$TARGET_DIR" \
+              --url "https://helm.digit.org/urban/common"
+            COMMON_VERSION_TO_USE="$VERSION"
+          else
+            echo "✅ Reusing existing common version: $COMMON_VERSION_FROM_REPO"
+            COMMON_VERSION_TO_USE="$COMMON_VERSION_FROM_REPO"
+          fi
+
+          # Now package the other changed charts
           for CHART in $CHANGED; do
+            if [[ "$CHART" == "common" && "$PACKAGE_COMMON" == "true" ]]; then
+              continue  # already packaged
+            fi
+
             CHART_PATH="charts/urban/$CHART"
             TARGET_DIR="repo/urban/$CHART"
             mkdir -p "$TARGET_DIR"
@@ -77,10 +113,8 @@ jobs:
             echo "Updating $CHART to version $VERSION"
             yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
 
-            if [[ "$CHART" != "common" ]]; then
-              echo "Updating $CHART to use common@$LATEST_COMMON_VERSION"
-              yq e -i ".dependencies |= map(if .name == \"common\" then .version = \"$LATEST_COMMON_VERSION\" else . end)" "$CHART_PATH/Chart.yaml"
-            fi
+            echo "Updating $CHART to use common@$COMMON_VERSION_TO_USE"
+            yq e -i ".dependencies |= map(if .name == \"common\" then .version = \"$COMMON_VERSION_TO_USE\" else . end)" "$CHART_PATH/Chart.yaml"
 
             helm repo add urban https://helm.digit.org/urban
             helm dependency update "$CHART_PATH"
