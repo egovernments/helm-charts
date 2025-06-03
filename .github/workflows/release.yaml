@@ -70,7 +70,13 @@ jobs:
             echo "Updating $CHART to version $VERSION"
             yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
 
-            helm dependency update "$CHART_PATH" || true
+            # If it's NOT the common chart, update its dependency reference to common
+            if [[ "$CHART" != "common" ]]; then
+              echo "Updating $CHART to use common@$VERSION"
+              yq e -i '.dependencies[] |= if .name == "common" then .version = "'"$VERSION"'" else . end' "$CHART_PATH/Chart.yaml"
+            fi
+
+            helm dependency update "$CHART_PATH"
             helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
 
             if [[ -f "$TARGET_DIR/index.yaml" ]]; then
