@@ -110,19 +110,11 @@ jobs:
             TARGET_DIR="repo/urban/$CHART"
             mkdir -p "$TARGET_DIR"
 
-            echo "Updating $CHART to version $VERSION"
+            echo "🔧 Updating $CHART to version $VERSION"
             yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
 
-            echo "Updating $CHART to use common@$COMMON_VERSION_TO_USE"
-            YQ_EXPR=".dependencies |= map(
-              if .name == \"common\" then
-                .version = \"$COMMON_VERSION_TO_USE\"
-              else
-                .
-              end
-            )"
-
-            yq e -i "$YQ_EXPR" "$CHART_PATH/Chart.yaml"
+            echo "🔧 Updating $CHART to use common@$COMMON_VERSION_TO_USE"
+            yq e -i '(.dependencies[] | select(.name == "common")).version = "'"$COMMON_VERSION_TO_USE"'"' "$CHART_PATH/Chart.yaml"
 
             helm repo add urban https://helm.digit.org/urban
             helm dependency update "$CHART_PATH"
