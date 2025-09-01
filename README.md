@@ -1,2 +1,1 @@
-# urban-helm-charts
-Urban Helm Charts Repository
+Helm Charts Repository
