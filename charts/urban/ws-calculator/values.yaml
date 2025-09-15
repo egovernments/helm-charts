@@ -3,8 +3,11 @@ labels:
   app: "ws-calculator"
   group: "rainmaker"
 
+namespace: staging
+
 # Ingress Configs
 ingress:
+  namespace: egov
   enabled: true
   zuul: true
   context: "ws-calculator"
@@ -16,12 +19,10 @@ initContainers:
     schemaTable: "ws_calculator_schema"
     image:
       repository: "ws-calculator-db"
-      tag: "v1.5.0-27264e8ec9-12"
 
 # Container Configs
 image:
   repository: "ws-calculator"
-  tag: "v1.5.0-27264e8ec9-12"
 replicas: "1"
 healthChecks:
   enabled: true

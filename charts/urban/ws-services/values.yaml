@@ -3,8 +3,11 @@ labels:
   app: "ws-services"
   group: "rainmaker"
 
+namespace: egov
+
 # Ingress Configs
 ingress:
+  namespace: egov
   enabled: true
   zuul: true
   context: "ws-services"
@@ -16,7 +19,6 @@ initContainers:
     schemaTable: "ws_services_schema"
     image:
       repository: "ws-services-db"
-      tag: "v1.8.0-1d0819baa2-21"
     env: |
         {{- if index .Values "water-ismultischema-enabled" }}        
         - name: SCHEMA_NAME
@@ -48,7 +50,6 @@ initContainers:
 # Container Configs
 image:
   repository: "ws-services"
-  tag: "v1.8.0-1d0819baa2-21"
 replicas: "1"
 healthChecks:
   enabled: true
@@ -170,20 +171,6 @@ env: |
   {{- end }}
   - name: IS_EXTERNAL_WORKFLOW_ENABLED
     value: {{ index .Values "is-external-workflow-enabled" | quote }}
-  {{- if index .Values "configmaps" "egov-config" "data" "is-environment-central-instance" }}        
-  - name: IS_ENVIRONMENT_CENTRAL_INSTANCE
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: is-environment-central-instance
-  {{- end }}
-  {{- if index .Values "configmaps" "egov-config" "data" "is-environment-central-instance" }}        
-  - name: STATE_LEVEL_TENANTID_LENGTH
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: state-level-tenantid-length
-  {{- end }}
   - name: EGOV_ENC_HOST
     valueFrom:
       configMapKeyRef:
