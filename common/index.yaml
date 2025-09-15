@@ -1,3 +1,13 @@
 apiVersion: v1
-entries: {}
-generated: "2025-09-15T18:03:00.298100257Z"
+entries:
+  common:
+  - apiVersion: v2
+    created: "2025-09-15T18:07:36.936727389Z"
+    description: Common templates and helpers
+    digest: 5ce3fa855e0704f0a9cb66b82ea5a52d8b441f98fa16682a61db73d70643962a
+    name: common
+    type: library
+    urls:
+    - https://helm.digit.org/common/common-0.0.1.tgz
+    version: 0.0.1
+generated: "2025-09-15T18:07:36.935566554Z"
