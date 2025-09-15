@@ -1,4 +1,4 @@
-name: Release Helm Charts
+name: Release Helm charts (module or service tag → gh-pages)
 
 on:
   push:
@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_PAGES_HOST: helm.digit.org
+      CHARTS_DIR: charts             # <-- base directory for all modules/charts
     steps:
       - name: Checkout (full history)
         uses: actions/checkout@v4
@@ -70,18 +71,12 @@ jobs:
           REF='${{ steps.parse.outputs.ref }}'
           BASE=""
           if [[ "$MODE" == "module" ]]; then
-            # previous module tag e.g., core/0.0.1
             BASE=$(git tag -l | grep -E "^${MOD}/[0-9]+\.[0-9]+\.[0-9]+$" \
                    | grep -v "^${REF}$" | sort -V | tail -1 || true)
           else
-            # previous service tag e.g., core/egov-user/0.0.2
             BASE=$(git tag -l | grep -E "^${MOD}/${SRV}/[0-9]+\.[0-9]+\.[0-9]+$" \
                    | grep -v "^${REF}$" | sort -V | tail -1 || true)
-            # fallback to latest module tag if service has no tag yet
-            if [[ -z "$BASE" ]]; then
-              BASE=$(git tag -l | grep -E "^${MOD}/[0-9]+\.[0-9]+\.[0-9]+$" \
-                     | sort -V | tail -1 || true)
-            fi
+            [[ -n "$BASE" ]] || BASE=$(git tag -l | grep -E "^${MOD}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
           fi
           echo "base=$BASE" >> $GITHUB_OUTPUT
 
@@ -94,22 +89,23 @@ jobs:
           MOD='${{ steps.parse.outputs.module }}'
           SRV='${{ steps.parse.outputs.service }}'
           BASE='${{ steps.base.outputs.base }}'
+          ROOT="${CHARTS_DIR}/${MOD}"
 
           if [[ "$MOD" == "common" ]]; then
             printf "common\n" > /tmp/charts.txt
           elif [[ "$MODE" == "service" ]]; then
-            ROOT="$MOD/$SRV"
-            if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$ROOT" | grep -q .; then
+            SRV_DIR="${ROOT}/${SRV}"
+            if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$SRV_DIR" | grep -q .; then
               printf "%s\n" "$SRV" > /tmp/charts.txt
             else
               : > /tmp/charts.txt
               echo "unchanged=true" >> $GITHUB_OUTPUT
-              echo "No changes detected for $ROOT since $BASE"
+              echo "No changes detected for $SRV_DIR since $BASE"
             fi
           else
-            ROOT="$MOD"
-            mapfile -t ALL < <(find "$ROOT" -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | sort)
             : > /tmp/charts.txt
+            # list direct child dirs in module that contain a Chart.yaml
+            mapfile -t ALL < <(find "$ROOT" -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | sort)
             for d in "${ALL[@]}"; do
               [[ -f "$ROOT/$d/Chart.yaml" ]] || continue
               if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$ROOT/$d" | grep -q .; then
@@ -117,7 +113,6 @@ jobs:
               fi
             done
           fi
-
           COUNT=$(wc -l < /tmp/charts.txt | tr -d ' ')
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           echo "charts=$(paste -sd, /tmp/charts.txt)" >> $GITHUB_OUTPUT
@@ -133,23 +128,24 @@ jobs:
           set -euo pipefail
           MOD='${{ steps.parse.outputs.module }}'
           VER='${{ steps.parse.outputs.version }}'
+          ROOT="${CHARTS_DIR}/${MOD}"
 
           if [[ "$MOD" == "common" ]]; then
-            # common is a single library chart at repo root: keep only .version, drop .appVersion
-            yq -i '.version = strenv(VER) | del(.appVersion)' common/Chart.yaml
-            helm dependency update common || true
+            # common is a single library chart under charts/common
+            yq -i '.version = strenv(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
+            helm dependency update "${CHARTS_DIR}/common" || true
             mkdir -p packaged/common
-            helm package common --destination packaged/common
+            helm package "${CHARTS_DIR}/common" --destination packaged/common
           else
             mkdir -p "packaged/$MOD"
             tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
               [[ -n "$CHART" ]] || continue
-              echo "==> $MOD/$CHART"
-              # overwrite placeholder a.b.c with tag version; set appVersion too
-              yq -i '.version = strenv(VER) | .appVersion = strenv(VER)' "$MOD/$CHART/Chart.yaml"
-              helm dependency update "$MOD/$CHART" || true
-              mkdir -p "packaged/$MOD/$CHART"
-              helm package "$MOD/$CHART" --destination "packaged/$MOD/$CHART"
+              CHART_DIR="${ROOT}/${CHART}"
+              echo "==> ${CHART_DIR}"
+              yq -i '.version = strenv(VER) | .appVersion = strenv(VER)' "${CHART_DIR}/Chart.yaml"
+              helm dependency update "${CHART_DIR}" || true
+              mkdir -p "packaged/${MOD}/${CHART}"
+              helm package "${CHART_DIR}" --destination "packaged/${MOD}/${CHART}"
             done
           fi
 
