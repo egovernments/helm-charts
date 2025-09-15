@@ -1,4 +1,4 @@
-name: Release Helm charts (module or service tag → gh-pages)
+name: Release Helm charts
 
 on:
   push:
