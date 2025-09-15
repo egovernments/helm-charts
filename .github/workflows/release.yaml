@@ -91,31 +91,51 @@ jobs:
           BASE='${{ steps.base.outputs.base }}'
           ROOT="${CHARTS_DIR}/${MOD}"
 
+          echo "Mode: $MODE  Module: $MOD  Service: ${SRV:-<none>}  Base: ${BASE:-<none>}"
+          echo "Module root: $ROOT"
+          test -d "$ROOT" || { echo "::error::Module directory not found: $ROOT"; exit 1; }
+
+          # files we produce:
+          #  - /tmp/names.txt -> chart names (e.g., egov-user)
+          #  - /tmp/dirs.txt  -> full dirs (e.g., charts/core/egov-user)
+          : > /tmp/names.txt
+          : > /tmp/dirs.txt
+
           if [[ "$MOD" == "common" ]]; then
-            printf "common\n" > /tmp/charts.txt
+            echo "common" > /tmp/names.txt
+            echo "${CHARTS_DIR}/common" > /tmp/dirs.txt
+
           elif [[ "$MODE" == "service" ]]; then
             SRV_DIR="${ROOT}/${SRV}"
             if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$SRV_DIR" | grep -q .; then
-              printf "%s\n" "$SRV" > /tmp/charts.txt
+              echo "$SRV"         >> /tmp/names.txt
+              echo "$SRV_DIR"     >> /tmp/dirs.txt
             else
-              : > /tmp/charts.txt
               echo "unchanged=true" >> $GITHUB_OUTPUT
-              echo "No changes detected for $SRV_DIR since $BASE"
+              echo "No changes detected for $SRV_DIR since ${BASE:-<none>}."
             fi
+
           else
-            : > /tmp/charts.txt
-            # list direct child dirs in module that contain a Chart.yaml
-            mapfile -t ALL < <(find "$ROOT" -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | sort)
-            for d in "${ALL[@]}"; do
-              [[ -f "$ROOT/$d/Chart.yaml" ]] || continue
-              if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$ROOT/$d" | grep -q .; then
-                echo "$d" >> /tmp/charts.txt
+            # first look up to one level deep for Chart.yaml (supports charts nested one subfolder deep)
+            mapfile -t DIRS < <(find "$ROOT" -mindepth 1 -maxdepth 2 -type f -name Chart.yaml -printf "%h\n" | sort)
+            echo "Found candidate chart dirs:"
+            printf ' - %s\n' "${DIRS[@]:-<none>}"
+
+            for CHDIR in "${DIRS[@]}"; do
+              NAME="$(basename "$CHDIR")"
+              if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$CHDIR" | grep -q .; then
+                echo "$NAME"  >> /tmp/names.txt
+                echo "$CHDIR" >> /tmp/dirs.txt
               fi
             done
           fi
-          COUNT=$(wc -l < /tmp/charts.txt | tr -d ' ')
+
+          echo "Selected charts:"
+          cat /tmp/names.txt || true
+
+          COUNT=$(wc -l < /tmp/names.txt | tr -d ' ')
           echo "count=$COUNT" >> $GITHUB_OUTPUT
-          echo "charts=$(paste -sd, /tmp/charts.txt)" >> $GITHUB_OUTPUT
+          echo "names=$(paste -sd, /tmp/names.txt)" >> $GITHUB_OUTPUT
 
       - name: Stop if unchanged service
         if: steps.select.outputs.unchanged == 'true'
@@ -128,11 +148,10 @@ jobs:
           set -euo pipefail
           MOD='${{ steps.parse.outputs.module }}'
           VER='${{ steps.parse.outputs.version }}'
-          ROOT="${CHARTS_DIR}/${MOD}"
-          export VER   # <-- make VER visible to yq's env()
+          export VER   # for yq env(VER)
 
           if [[ "$MOD" == "common" ]]; then
-            # common is a single library chart under charts/common
+            # charts/common is a single library chart
             test -f "${CHARTS_DIR}/common/Chart.yaml"
             yq -i '.version = env(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
             helm dependency update "${CHARTS_DIR}/common" || true
@@ -140,18 +159,17 @@ jobs:
             helm package "${CHARTS_DIR}/common" --destination packaged/common
           else
             mkdir -p "packaged/$MOD"
-            tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
-              [[ -n "$CHART" ]] || continue
-              CHART_DIR="${ROOT}/${CHART}"
-              echo "==> ${CHART_DIR}"
-              test -f "${CHART_DIR}/Chart.yaml"
-              # overwrite placeholder a.b.c and set appVersion too
-              yq -i '.version = env(VER) | .appVersion = env(VER)' "${CHART_DIR}/Chart.yaml"
-              helm dependency update "${CHART_DIR}" || true
-              mkdir -p "packaged/${MOD}/${CHART}"
-              helm package "${CHART_DIR}" --destination "packaged/${MOD}/${CHART}"
-            done
+            while read -r CHDIR; do
+              NAME="$(basename "$CHDIR")"
+              echo "==> Packaging $CHDIR  (name: $NAME)"
+              test -f "${CHDIR}/Chart.yaml"
+              yq -i '.version = env(VER) | .appVersion = env(VER)' "${CHDIR}/Chart.yaml"
+              helm dependency update "${CHDIR}" || true
+              mkdir -p "packaged/${MOD}/${NAME}"
+              helm package "${CHDIR}" --destination "packaged/${MOD}/${NAME}"
+            done < /tmp/dirs.txt
           fi
+
 
       - name: Publish to gh-pages (module repos; per-chart subfolders)
         if: steps.select.outputs.count != '0' && steps.select.outputs.unchanged != 'true'
