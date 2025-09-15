@@ -1,115 +1,213 @@
-name: Urban Helm Charts Release
+name: Release Helm charts (module or service tag → gh-pages)
 
 on:
   push:
     tags:
-      - "v*"
+      - 'common/*'           # e.g., common/1.0.0
+      - 'core/*'             # e.g., core/1.0.0
+      - 'urban/*'            # e.g., urban/1.0.0
+      - 'health/*'           # e.g., health/1.0.0
+      - 'frontend/*'         # e.g., frontend/1.0.0
+      - 'core/*/*'           # e.g., core/egov-user/1.0.1
+      - 'urban/*/*'          # e.g., urban/ws-service/2.3.4
+      - 'health/*/*'         # e.g., health/expense/0.0.9
+      - 'frontend/*/*'       # e.g., frontend/digit-ui/1.0.5
+
+permissions:
+  contents: write
+
+concurrency:
+  group: helm-release-gh-pages
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-
+    env:
+      GH_PAGES_HOST: helm.digit.org
     steps:
-      - name: Checkout
+      - name: Checkout (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install tools (yq + Helm)
+      - name: Setup Helm & yq
         run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          set -e
+          curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64
+          curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Extract current tag
-        id: tag
+      - name: Parse tag → mode/module/service/version
+        id: parse
+        shell: bash
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "module=urban" >> $GITHUB_OUTPUT
+          REF="${GITHUB_REF_NAME}"   # core/1.0.0 OR core/egov-user/1.0.1, etc.
+          IFS='/' read -r P1 P2 P3 <<< "$REF"
+          if [[ -n "${P3:-}" ]]; then
+            echo "mode=service" >> $GITHUB_OUTPUT
+            echo "module=$P1"   >> $GITHUB_OUTPUT
+            echo "service=$P2"  >> $GITHUB_OUTPUT
+            echo "version=$P3"  >> $GITHUB_OUTPUT
+          else
+            echo "mode=module"  >> $GITHUB_OUTPUT
+            echo "module=$P1"   >> $GITHUB_OUTPUT
+            echo "service="     >> $GITHUB_OUTPUT
+            echo "version=$P2"  >> $GITHUB_OUTPUT
+          fi
+          echo "ref=$REF" >> $GITHUB_OUTPUT
 
-      - name: Find previous tag
-        id: previous
+      - name: Find base tag (compare against correct scope)
+        id: base
+        shell: bash
         run: |
-          PREV=$(git tag --sort=-creatordate | grep '^v' | grep -v "${GITHUB_REF#refs/tags/}" | head -n 1 || true)
-          echo "prev=$PREV" >> $GITHUB_OUTPUT
-
-      - name: Detect changed charts
-        id: changed
-        run: |
-          CHANGED=""
-          for dir in charts/urban/*/; do
-            CHART=$(basename "$dir")
-            if [[ -z "${{ steps.previous.outputs.prev }}" ]]; then
-              CHANGED+="$CHART "
-              continue
+          set -euo pipefail
+          MODE='${{ steps.parse.outputs.mode }}'
+          MOD='${{ steps.parse.outputs.module }}'
+          SRV='${{ steps.parse.outputs.service }}'
+          REF='${{ steps.parse.outputs.ref }}'
+          BASE=""
+          if [[ "$MODE" == "module" ]]; then
+            # previous module tag e.g., core/0.0.1
+            BASE=$(git tag -l | grep -E "^${MOD}/[0-9]+\.[0-9]+\.[0-9]+$" \
+                   | grep -v "^${REF}$" | sort -V | tail -1 || true)
+          else
+            # previous service tag e.g., core/egov-user/0.0.2
+            BASE=$(git tag -l | grep -E "^${MOD}/${SRV}/[0-9]+\.[0-9]+\.[0-9]+$" \
+                   | grep -v "^${REF}$" | sort -V | tail -1 || true)
+            # fallback to latest module tag if service has no tag yet
+            if [[ -z "$BASE" ]]; then
+              BASE=$(git tag -l | grep -E "^${MOD}/[0-9]+\.[0-9]+\.[0-9]+$" \
+                     | sort -V | tail -1 || true)
             fi
-            if git diff --quiet "${{ steps.previous.outputs.prev }}"..HEAD -- "$dir"; then
-              echo "⚠️ No change in $CHART"
+          fi
+          echo "base=$BASE" >> $GITHUB_OUTPUT
+
+      - name: Select charts to package
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODE='${{ steps.parse.outputs.mode }}'
+          MOD='${{ steps.parse.outputs.module }}'
+          SRV='${{ steps.parse.outputs.service }}'
+          BASE='${{ steps.base.outputs.base }}'
+
+          if [[ "$MOD" == "common" ]]; then
+            printf "common\n" > /tmp/charts.txt
+          elif [[ "$MODE" == "service" ]]; then
+            ROOT="$MOD/$SRV"
+            if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$ROOT" | grep -q .; then
+              printf "%s\n" "$SRV" > /tmp/charts.txt
             else
-              echo "✅ $CHART changed"
-              CHANGED+="$CHART "
+              : > /tmp/charts.txt
+              echo "unchanged=true" >> $GITHUB_OUTPUT
+              echo "No changes detected for $ROOT since $BASE"
             fi
-          done
-          echo "changed_charts=$CHANGED" >> $GITHUB_OUTPUT
+          else
+            ROOT="$MOD"
+            mapfile -t ALL < <(find "$ROOT" -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | sort)
+            : > /tmp/charts.txt
+            for d in "${ALL[@]}"; do
+              [[ -f "$ROOT/$d/Chart.yaml" ]] || continue
+              if [[ -z "$BASE" ]] || git diff --name-only "$BASE"..HEAD -- "$ROOT/$d" | grep -q .; then
+                echo "$d" >> /tmp/charts.txt
+              fi
+            done
+          fi
 
-      - name: Package and index changed charts
-        if: steps.changed.outputs.changed_charts != ''
+          COUNT=$(wc -l < /tmp/charts.txt | tr -d ' ')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "charts=$(paste -sd, /tmp/charts.txt)" >> $GITHUB_OUTPUT
+
+      - name: Stop if unchanged service
+        if: steps.select.outputs.unchanged == 'true'
+        run: echo "Nothing to publish."
+
+      - name: Version-stamp and package charts
+        if: steps.select.outputs.count != '0' && steps.select.outputs.unchanged != 'true'
+        shell: bash
         run: |
-          mkdir -p repo/urban
-          VERSION="${{ steps.tag.outputs.version }}"
+          set -euo pipefail
+          MOD='${{ steps.parse.outputs.module }}'
+          VER='${{ steps.parse.outputs.version }}'
 
-          for CHART in ${{ steps.changed.outputs.changed_charts }}; do
-            CHART_PATH="charts/urban/$CHART"
-            TARGET_DIR="repo/urban/$CHART"
-            mkdir -p "$TARGET_DIR"
+          if [[ "$MOD" == "common" ]]; then
+            # common is a single library chart at repo root: keep only .version, drop .appVersion
+            yq -i '.version = strenv(VER) | del(.appVersion)' common/Chart.yaml
+            helm dependency update common || true
+            mkdir -p packaged/common
+            helm package common --destination packaged/common
+          else
+            mkdir -p "packaged/$MOD"
+            tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
+              [[ -n "$CHART" ]] || continue
+              echo "==> $MOD/$CHART"
+              # overwrite placeholder a.b.c with tag version; set appVersion too
+              yq -i '.version = strenv(VER) | .appVersion = strenv(VER)' "$MOD/$CHART/Chart.yaml"
+              helm dependency update "$MOD/$CHART" || true
+              mkdir -p "packaged/$MOD/$CHART"
+              helm package "$MOD/$CHART" --destination "packaged/$MOD/$CHART"
+            done
+          fi
 
-            echo "🔧 Updating $CHART to version $VERSION"
-            yq e -i ".version = \"$VERSION\"" "$CHART_PATH/Chart.yaml"
+      - name: Publish to gh-pages (module repos; per-chart subfolders)
+        if: steps.select.outputs.count != '0' && steps.select.outputs.unchanged != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          MOD='${{ steps.parse.outputs.module }}'
+          VER='${{ steps.parse.outputs.version }}'
+          HOST='${{ env.GH_PAGES_HOST }}'
+          URL="https://${HOST}/${MOD}"
 
-            helm dependency update "$CHART_PATH" || true
-            helm package "$CHART_PATH" --version "$VERSION" --destination "$TARGET_DIR"
+          git fetch origin gh-pages:gh-pages || true
+          git checkout gh-pages || git checkout --orphan gh-pages
 
-            if [[ -f "$TARGET_DIR/index.yaml" ]]; then
-              helm repo index "$TARGET_DIR" \
-                --url "https://helm.digit.org/urban/$CHART" \
-                --merge "$TARGET_DIR/index.yaml"
+          if [[ "$MOD" == "common" ]]; then
+            mkdir -p "$MOD"
+            cp -v packaged/$MOD/*/*.tgz "$MOD/" || true
+          else
+            tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
+              [[ -n "$CHART" ]] || continue
+              mkdir -p "$MOD/$CHART"
+              cp -v "packaged/$MOD/$CHART/"*.tgz "$MOD/$CHART/" || true
+            done
+          fi
+
+          # Build/merge index.yaml with URLs rewritten to subfolders
+          mkdir -p _tmpindex
+          [[ -f "$MOD/index.yaml" ]] && cp "$MOD/index.yaml" "_tmpindex/index-old.yaml" || true
+
+          if [[ "$MOD" == "common" ]]; then
+            cp -v "$MOD/"*.tgz "_tmpindex/" || true
+            helm repo index _tmpindex --url "$URL" \
+              ${MOD:+--merge "_tmpindex/index-old.yaml"} || true
+            mv _tmpindex/index.yaml "$MOD/index.yaml"
+          else
+            find "$MOD" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
+              | while IFS= read -r -d '' f; do ln -sf "../$f" "_tmpindex/$(basename "$f")"; done
+            if [[ -f "_tmpindex/index-old.yaml" ]]; then
+              helm repo index _tmpindex --url "$URL" --merge "_tmpindex/index-old.yaml"
             else
-              helm repo index "$TARGET_DIR" \
-                --url "https://helm.digit.org/urban/$CHART"
+              helm repo index _tmpindex --url "$URL"
             fi
-          done
+            export URL
+            yq -i '
+              .entries |= with_entries(
+                .value |= map(
+                  .urls = [ (.urls[0] | sub(env(URL) + "/", env(URL) + "/" + .name + "/")) ]
+                )
+              )
+            ' _tmpindex/index.yaml
+            mv _tmpindex/index.yaml "$MOD/index.yaml"
+          fi
+          rm -rf _tmpindex
 
-      - name: Merge new chart indexes into existing index.yaml
-        run: |
-          mkdir -p repo/urban
-          MERGED="repo/urban/index.yaml"
-          EXISTING_INDEX_URL="https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/urban/index.yaml"
-
-          # Download existing index.yaml from gh-pages if it exists
-          curl -sfL "$EXISTING_INDEX_URL" -o "$MERGED" || {
-            echo "⚠️ No existing index.yaml found. Creating a new one."
-            echo "apiVersion: v1" > "$MERGED"
-            echo "entries: {}" >> "$MERGED"
-          }
-
-          # Merge new chart indexes into the existing one
-          for CHART_DIR in repo/urban/*/; do
-            if [[ -f "$CHART_DIR/index.yaml" ]]; then
-              echo "✅ Merging $CHART_DIR/index.yaml into $MERGED"
-              yq ea '. as $item ireduce ({}; . *+ $item )' "$MERGED" "$CHART_DIR/index.yaml" > tmp.yaml && mv tmp.yaml "$MERGED"
-            fi
-          done
-
-      - name: Deploy to GitHub Pages (gh-pages/urban)
-        uses: peaceiris/actions-gh-pages@v4
-        if: steps.changed.outputs.changed_charts != ''
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./repo/urban
-          publish_branch: gh-pages
-          destination_dir: urban
-          keep_files: true
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$MOD"
+          git commit -m "release(${MOD}): update index and packages for ${VER}" || echo "nothing to commit"
+          git push origin gh-pages
