@@ -129,10 +129,12 @@ jobs:
           MOD='${{ steps.parse.outputs.module }}'
           VER='${{ steps.parse.outputs.version }}'
           ROOT="${CHARTS_DIR}/${MOD}"
+          export VER   # <-- make VER visible to yq's env()
 
           if [[ "$MOD" == "common" ]]; then
             # common is a single library chart under charts/common
-            yq -i '.version = strenv(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
+            test -f "${CHARTS_DIR}/common/Chart.yaml"
+            yq -i '.version = env(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
             helm dependency update "${CHARTS_DIR}/common" || true
             mkdir -p packaged/common
             helm package "${CHARTS_DIR}/common" --destination packaged/common
@@ -142,7 +144,9 @@ jobs:
               [[ -n "$CHART" ]] || continue
               CHART_DIR="${ROOT}/${CHART}"
               echo "==> ${CHART_DIR}"
-              yq -i '.version = strenv(VER) | .appVersion = strenv(VER)' "${CHART_DIR}/Chart.yaml"
+              test -f "${CHART_DIR}/Chart.yaml"
+              # overwrite placeholder a.b.c and set appVersion too
+              yq -i '.version = env(VER) | .appVersion = env(VER)' "${CHART_DIR}/Chart.yaml"
               helm dependency update "${CHART_DIR}" || true
               mkdir -p "packaged/${MOD}/${CHART}"
               helm package "${CHART_DIR}" --destination "packaged/${MOD}/${CHART}"
