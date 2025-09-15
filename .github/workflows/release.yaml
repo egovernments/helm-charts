@@ -170,7 +170,6 @@ jobs:
             done < /tmp/dirs.txt
           fi
 
-
       - name: Publish to gh-pages (module repos; per-chart subfolders)
         if: steps.select.outputs.count != '0' && steps.select.outputs.unchanged != 'true'
         shell: bash
@@ -185,33 +184,45 @@ jobs:
           git checkout gh-pages || git checkout --orphan gh-pages
 
           if [[ "$MOD" == "common" ]]; then
+            # COPY: packaged/common/*.tgz → gh-pages/common/
             mkdir -p "$MOD"
-            cp -v packaged/$MOD/*/*.tgz "$MOD/" || true
-          else
-            tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
-              [[ -n "$CHART" ]] || continue
-              mkdir -p "$MOD/$CHART"
-              cp -v "packaged/$MOD/$CHART/"*.tgz "$MOD/$CHART/" || true
-            done
-          fi
+            cp -v "packaged/$MOD/"*.tgz "$MOD/"   # <-- fixed path
 
-          # Build/merge index.yaml with URLs rewritten to subfolders
-          mkdir -p _tmpindex
-          [[ -f "$MOD/index.yaml" ]] && cp "$MOD/index.yaml" "_tmpindex/index-old.yaml" || true
-
-          if [[ "$MOD" == "common" ]]; then
+            # Build/merge index.yaml at module root
+            mkdir -p _tmpindex
+            if [[ -f "$MOD/index.yaml" ]]; then
+              cp "$MOD/index.yaml" "_tmpindex/index-old.yaml"
+            fi
             cp -v "$MOD/"*.tgz "_tmpindex/" || true
-            helm repo index _tmpindex --url "$URL" \
-              ${MOD:+--merge "_tmpindex/index-old.yaml"} || true
-            mv _tmpindex/index.yaml "$MOD/index.yaml"
-          else
-            find "$MOD" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
-              | while IFS= read -r -d '' f; do ln -sf "../$f" "_tmpindex/$(basename "$f")"; done
             if [[ -f "_tmpindex/index-old.yaml" ]]; then
               helm repo index _tmpindex --url "$URL" --merge "_tmpindex/index-old.yaml"
             else
               helm repo index _tmpindex --url "$URL"
             fi
+            mv _tmpindex/index.yaml "$MOD/index.yaml"
+          else
+            # Other modules: keep packages under per-chart subfolders
+            tr ',' '\n' <<< '${{ steps.select.outputs.charts }}' | while read CHART; do
+              [[ -n "$CHART" ]] || continue
+              mkdir -p "$MOD/$CHART"
+              cp -v "packaged/$MOD/$CHART/"*.tgz "$MOD/$CHART/" || true
+            done
+
+            # Build/merge index.yaml with URLs rewritten to /<chart>/<tgz>
+            mkdir -p _tmpindex
+            if [[ -f "$MOD/index.yaml" ]]; then
+              cp "$MOD/index.yaml" "_tmpindex/index-old.yaml"
+            fi
+            # symlink all packages to temp root so helm can index them
+            find "$MOD" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
+              | while IFS= read -r -d '' f; do ln -sf "../$f" "_tmpindex/$(basename "$f")"; done
+
+            if [[ -f "_tmpindex/index-old.yaml" ]]; then
+              helm repo index _tmpindex --url "$URL" --merge "_tmpindex/index-old.yaml"
+            else
+              helm repo index _tmpindex --url "$URL"
+            fi
+
             export URL
             yq -i '
               .entries |= with_entries(
@@ -222,6 +233,7 @@ jobs:
             ' _tmpindex/index.yaml
             mv _tmpindex/index.yaml "$MOD/index.yaml"
           fi
+
           rm -rf _tmpindex
 
           git config user.name "github-actions"
