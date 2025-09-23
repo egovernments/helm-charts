@@ -207,43 +207,69 @@ jobs:
           fi
 
       - name: Publish to gh-pages (module repos; per-chart subfolders)
+        if: steps.select.outputs.count != '0' && steps.select.outputs.unchanged != 'true'
         shell: bash
         run: |
           set -euo pipefail
           MODULE='${{ steps.parse.outputs.module }}'
           HOST='${{ env.GH_PAGES_HOST }}'
           URL="https://${HOST}/${MODULE}"
+          GHP_DIR="_gh_pages"     # isolated folder for gh-pages branch
 
-          git fetch origin gh-pages:gh-pages || true
-          git checkout gh-pages || git checkout --orphan gh-pages
+          # Clean any stale worktree from previous runs (CI workspaces can be cached)
+          git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
+          rm -rf "${GHP_DIR}"
+
+          # Prepare gh-pages worktree safely, regardless of branch existence
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            # branch exists on remote
+            git fetch origin gh-pages:gh-pages
+            git worktree add --force "${GHP_DIR}" gh-pages
+          else
+            # first time: create orphan gh-pages worktree
+            git worktree add --force -b gh-pages "${GHP_DIR}" HEAD
+            rm -rf "${GHP_DIR:?}/"* || true
+          fi
+
+          echo "Publishing into ${GHP_DIR}/${MODULE} (URL base: ${URL})"
 
           if [[ "$MODULE" == "common" ]]; then
-            mkdir -p common
-            cp -v packaged/common/*.tgz common/ || true
-            mkdir -p _tmpindex
-            [[ -f "common/index.yaml" ]] && cp common/index.yaml _tmpindex/index-old.yaml || true
-            cp -v common/*.tgz _tmpindex/ || true
-            if [[ -f _tmpindex/index-old.yaml ]]; then
-              helm repo index _tmpindex --url "$URL" --merge _tmpindex/index-old.yaml
+            mkdir -p "${GHP_DIR}/common"
+            cp -v packaged/common/*.tgz "${GHP_DIR}/common/" || true
+
+            # Build/merge index.yaml at module root
+            mkdir -p "${GHP_DIR}/_tmpindex"
+            [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
+            cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
+            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
-              helm repo index _tmpindex --url "$URL"
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
-            mv _tmpindex/index.yaml common/index.yaml
+            mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
+            rm -rf "${GHP_DIR}/_tmpindex"
           else
-            tr ',' '\n' <<< '${{ steps.changed.outputs.services }}' | while read SVC; do
-              mkdir -p "${MODULE}/${SVC}"
-              cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${MODULE}/${SVC}/" || true
+            # Copy packages into per-chart subfolders
+            tr ',' '\n' <<< '${{ steps.select.outputs.names }}' | while read CHART; do
+              [[ -n "$CHART" ]] || continue
+              mkdir -p "${GHP_DIR}/${MODULE}/${CHART}"
+              cp -v "packaged/${MODULE}/${CHART}/"*.tgz "${GHP_DIR}/${MODULE}/${CHART}/" || true
             done
 
-            mkdir -p _tmpindex
-            [[ -f "${MODULE}/index.yaml" ]] && cp "${MODULE}/index.yaml" _tmpindex/index-old.yaml || true
-            find "${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
-              | while IFS= read -r -d '' f; do ln -sf "../$f" "_tmpindex/$(basename "$f")"; done
-            if [[ -f _tmpindex/index-old.yaml ]]; then
-              helm repo index _tmpindex --url "$URL" --merge _tmpindex/index-old.yaml
+            # Build/merge module index with URLs pointing to /<chart>/<tgz>
+            mkdir -p "${GHP_DIR}/_tmpindex"
+            [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
+
+            # Symlink all artifacts so helm can index from a flat dir
+            find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
+              | while IFS= read -r -d '' f; do ln -sf "../$f" "${GHP_DIR}/_tmpindex/$(basename "$f")"; done
+
+            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
-              helm repo index _tmpindex --url "$URL"
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
+
             export URL
             yq -i '
               .entries |= with_entries(
@@ -251,13 +277,14 @@ jobs:
                   .urls = [ (.urls[0] | sub(env(URL) + "/", env(URL) + "/" + .name + "/")) ]
                 )
               )
-            ' _tmpindex/index.yaml
-            mv _tmpindex/index.yaml "${MODULE}/index.yaml"
+            ' "${GHP_DIR}/_tmpindex/index.yaml"
+
+            mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
+            rm -rf "${GHP_DIR}/_tmpindex"
           fi
 
-          rm -rf _tmpindex
-          git config user.name "github-actions"
-          git config user.email "actions@users.noreply.github.com"
-          git add common core urban health frontend || true
-          git commit -m "gh-pages: publish ${MODULE} charts from PR #${{ github.event.pull_request.number }}" || echo "nothing to commit"
-          git push origin gh-pages
+          # Commit & push from the gh-pages worktree
+          git -C "${GHP_DIR}" add .
+          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
+          git -C "${GHP_DIR}" push origin gh-pages
+
