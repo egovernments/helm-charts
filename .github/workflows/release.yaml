@@ -1,27 +1,263 @@
-name: Release Charts
+name: Release Helm charts (service tags on PR merge → gh-pages)
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - main
+      - master          # adjust if your release branch is different (e.g., release/*)
+
+permissions:
+  contents: write        # needed to push tags & gh-pages
+  pull-requests: read
+
+concurrency:
+  group: helm-release-gh-pages
+  cancel-in-progress: false
 
 jobs:
   release:
-    permissions:
-      contents: write
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    env:
+      GH_PAGES_HOST: helm.digit.org
+      CHARTS_DIR: charts
+
     steps:
-      - name: Checkout
+      - name: Checkout repository at merged commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Configure Git
+      - name: Setup Helm & yq
         run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          set -e
+          curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64
+          curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+      - name: Parse PR body → module + release type
+        id: parse
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="${{ github.event.pull_request.body }}"
+
+          MODULE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*module[[:space:]]*:/ {print $2}' | tr -d '[:space:]')
+          RELEASE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*release[[:space:]]*:/ {print $2}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+
+          case "$RELEASE" in
+            major|minor|patch) : ;;
+            *) echo "::error::release must be one of major|minor|patch (found: '$RELEASE')"; exit 1 ;;
+          esac
+
+          if [[ -z "$MODULE" ]]; then
+            echo "::error::module: <core|urban|health|frontend|common> must be provided in PR body"; exit 1
+          fi
+
+          echo "module=$MODULE"   >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "body<<EOF"        >> "$GITHUB_OUTPUT"
+          echo "$BODY"            >> "$GITHUB_OUTPUT"
+          echo "EOF"              >> "$GITHUB_OUTPUT"
+
+      - name: Detect changed charts under module
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE='${{ steps.parse.outputs.module }}'
+          BASE='${{ github.event.pull_request.base.sha }}'
+          HEAD='${{ github.event.pull_request.merge_commit_sha }}'
+          ROOT="${CHARTS_DIR}/${MODULE}"
+
+          if [[ "$MODULE" == "common" ]]; then
+            printf "common\n" > /tmp/services.txt
+          else
+            test -d "$ROOT" || { echo "::error::Module directory not found: $ROOT"; exit 1; }
+
+            # list unique service names that changed paths like charts/<module>/<service>/...
+            git diff --name-only "$BASE" "$HEAD" -- "$ROOT" \
+              | awk -F/ -v m="$MODULE" -v c="$CHARTS_DIR" '
+                  $1==c && $2==m && NF>=3 {print $3}
+                ' \
+              | sort -u > /tmp/services.txt
+
+            # keep only those that have a Chart.yaml
+            awk -v r="$ROOT" '{
+              if (system("[ -f \"" r "/" $0 "/Chart.yaml\" ]")==0) print $0
+            }' /tmp/services.txt > /tmp/services.filtered
+            mv /tmp/services.filtered /tmp/services.txt
+          fi
+
+          echo "Changed services:"
+          cat /tmp/services.txt || true
+
+          COUNT=$(wc -l < /tmp/services.txt | tr -d ' ')
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::No chart changes detected; exiting."
+          else
+            echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+            echo "services=$(paste -sd, /tmp/services.txt)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next versions and create service tags
+        if: steps.changed.outputs.count != '0'
+        id: versioning
+        shell: bash
         env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: actions@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: actions@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          MODULE='${{ steps.parse.outputs.module }}'
+          RELEASE='${{ steps.parse.outputs.release }}'
+          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
+
+          bump() { # bump MAJOR.MINOR.PATCH by type
+            local v="$1" t="$2"
+            local IFS=.
+            read -r MA MI PA <<< "${v:-0.0.0}"
+            case "$t" in
+              major) echo "$((MA+1)).0.0" ;;
+              minor) echo "$MA.$((MI+1)).0" ;;
+              patch) echo "$MA.$MI.$((PA+1))" ;;
+            esac
+          }
+
+          : > /tmp/taglist.txt
+          IFS=',' read -r -a SVCS <<< '${{ steps.changed.outputs.services }}'
+          for SVC in "${SVCS[@]}"; do
+            if [[ "$MODULE" == "common" ]]; then
+              # common is single chart → tag common/<ver>
+              PATTERN="^common/[0-9]+\\.[0-9]+\\.[0-9]+$"
+              PREV=$(git tag -l | grep -E "$PATTERN" | sort -V | tail -1 || true)
+              PREV_VER="${PREV#*/}"
+              NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
+              TAG="common/${NEXT_VER}"
+            else
+              PATTERN="^${MODULE}/${SVC}/[0-9]+\\.[0-9]+\\.[0-9]+$"
+              PREV=$(git tag -l | grep -E "$PATTERN" | sort -V | tail -1 || true)
+              PREV_VER="${PREV##*/}"  # last segment
+              if [[ -z "$PREV_VER" || "$PREV_VER" == "$PREV" ]]; then PREV_VER="0.0.0"; fi
+              NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
+              TAG="${MODULE}/${SVC}/${NEXT_VER}"
+            fi
+
+            echo "Service: ${MODULE}/${SVC}  prev=${PREV_VER:-none}  next=${NEXT_VER}"
+            if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+              echo "::warning::Tag already exists: ${TAG} (skipping)"; continue
+            fi
+            git tag -a "${TAG}" -m "Auto release (${RELEASE}) via PR merge" "${MERGE_SHA}"
+            echo "${TAG}" >> /tmp/taglist.txt
+          done
+
+          if [[ -s /tmp/taglist.txt ]]; then
+            git push origin --tags
+            echo "tags=$(paste -sd, /tmp/taglist.txt)" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No new tags created."
+            echo "tags=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package updated charts (using computed versions)
+        if: steps.changed.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE='${{ steps.parse.outputs.module }}'
+          RELEASE='${{ steps.parse.outputs.release }}'
+          ROOT="${CHARTS_DIR}/${MODULE}"
+
+          mkdir -p packaged
+
+          bump() { local v="$1" t="$2"; IFS=. read -r MA MI PA <<< "${v:-0.0.0}"; case "$t" in major) echo "$((MA+1)).0.0";; minor) echo "$MA.$((MI+1)).0";; patch) echo "$MA.$MI.$((PA+1))";; esac; }
+
+          if [[ "$MODULE" == "common" ]]; then
+            # compute new version again deterministically
+            PREV=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
+            PREV_VER="${PREV#*/}"
+            NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
+            export VER="$NEXT_VER"
+            yq -i '.version = env(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
+            helm dependency update "${CHARTS_DIR}/common" || true
+            mkdir -p packaged/common
+            helm package "${CHARTS_DIR}/common" --destination packaged/common
+            echo "services=common" >> $GITHUB_OUTPUT
+          else
+            : > /tmp/dirs.txt
+            while read -r SVC; do
+              CHDIR="${ROOT}/${SVC}"
+              # compute next version for this service from tags
+              PREV=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
+              PREV_VER="${PREV##*/}"; [[ "$PREV_VER" == "$PREV" || -z "$PREV_VER" ]] && PREV_VER="0.0.0"
+              export VER=$(bump "$PREV_VER" "$RELEASE")
+              yq -i '.version = env(VER) | .appVersion = env(VER)' "${CHDIR}/Chart.yaml"
+              helm dependency update "${CHDIR}" || true
+              mkdir -p "packaged/${MODULE}/${SVC}"
+              helm package "${CHDIR}" --destination "packaged/${MODULE}/${SVC}"
+              echo "$SVC" >> /tmp/dirs.txt
+            done < <(tr ',' '\n' <<< '${{ steps.changed.outputs.services }}')
+            echo "services=$(paste -sd, /tmp/dirs.txt)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to gh-pages (module repos; per-chart subfolders)
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE='${{ steps.parse.outputs.module }}'
+          HOST='${{ env.GH_PAGES_HOST }}'
+          URL="https://${HOST}/${MODULE}"
+
+          git fetch origin gh-pages:gh-pages || true
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          if [[ "$MODULE" == "common" ]]; then
+            mkdir -p common
+            cp -v packaged/common/*.tgz common/ || true
+            mkdir -p _tmpindex
+            [[ -f "common/index.yaml" ]] && cp common/index.yaml _tmpindex/index-old.yaml || true
+            cp -v common/*.tgz _tmpindex/ || true
+            if [[ -f _tmpindex/index-old.yaml ]]; then
+              helm repo index _tmpindex --url "$URL" --merge _tmpindex/index-old.yaml
+            else
+              helm repo index _tmpindex --url "$URL"
+            fi
+            mv _tmpindex/index.yaml common/index.yaml
+          else
+            tr ',' '\n' <<< '${{ steps.changed.outputs.services }}' | while read SVC; do
+              mkdir -p "${MODULE}/${SVC}"
+              cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${MODULE}/${SVC}/" || true
+            done
+
+            mkdir -p _tmpindex
+            [[ -f "${MODULE}/index.yaml" ]] && cp "${MODULE}/index.yaml" _tmpindex/index-old.yaml || true
+            find "${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
+              | while IFS= read -r -d '' f; do ln -sf "../$f" "_tmpindex/$(basename "$f")"; done
+            if [[ -f _tmpindex/index-old.yaml ]]; then
+              helm repo index _tmpindex --url "$URL" --merge _tmpindex/index-old.yaml
+            else
+              helm repo index _tmpindex --url "$URL"
+            fi
+            export URL
+            yq -i '
+              .entries |= with_entries(
+                .value |= map(
+                  .urls = [ (.urls[0] | sub(env(URL) + "/", env(URL) + "/" + .name + "/")) ]
+                )
+              )
+            ' _tmpindex/index.yaml
+            mv _tmpindex/index.yaml "${MODULE}/index.yaml"
+          fi
+
+          rm -rf _tmpindex
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add common core urban health frontend || true
+          git commit -m "gh-pages: publish ${MODULE} charts from PR #${{ github.event.pull_request.number }}" || echo "nothing to commit"
+          git push origin gh-pages
