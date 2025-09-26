@@ -187,8 +187,11 @@ jobs:
           URL="https://${HOST}/${MODULE}"
           GHP_DIR="_gh_pages"
       
+          # Clean any stale worktree from previous runs
           git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
           rm -rf "${GHP_DIR}"
+      
+          # Prepare gh-pages worktree safely
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:gh-pages
             git worktree add --force "${GHP_DIR}" gh-pages
@@ -197,11 +200,20 @@ jobs:
             rm -rf "${GHP_DIR:?}/"* || true
           fi
       
+          # Configure identity for commits in the worktree (required)
+          git -C "${GHP_DIR}" config user.name  "github-actions[bot]"
+          git -C "${GHP_DIR}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_AUTHOR_NAME="github-actions[bot]"
+          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+          export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+      
           echo "Publishing into ${GHP_DIR}/${MODULE} (URL base: ${URL})"
       
           if [[ "$MODULE" == "common" ]]; then
             mkdir -p "${GHP_DIR}/common"
             cp -v packaged/common/*.tgz "${GHP_DIR}/common/" || true
+      
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
@@ -213,12 +225,14 @@ jobs:
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           else
+            # Copy packages into per-chart subfolders
             tr ',' '\n' <<< '${{ steps.changed.outputs.services }}' | while read -r CHART; do
               [[ -n "$CHART" ]] || continue
               mkdir -p "${GHP_DIR}/${MODULE}/${CHART}"
               cp -v "packaged/${MODULE}/${CHART}/"*.tgz "${GHP_DIR}/${MODULE}/${CHART}/" || true
             done
       
+            # Build/merge module index with URLs pointing to /<chart>/<tgz>
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
@@ -229,7 +243,7 @@ jobs:
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
       
-            # Write YQ program using printf (no heredoc; YAML-safe)
+            # Write YQ program using printf (YAML-safe)
             YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
             printf "%s\n" \
               ".entries |= with_entries(" \
@@ -245,6 +259,7 @@ jobs:
             rm -rf "${GHP_DIR}/_tmpindex"
           fi
       
+          # Commit & push from the gh-pages worktree
           git -C "${GHP_DIR}" add .
           git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
           git -C "${GHP_DIR}" push origin gh-pages
