@@ -186,11 +186,11 @@ jobs:
           HOST='${{ env.GH_PAGES_HOST }}'
           URL="https://${HOST}/${MODULE}"
           GHP_DIR="_gh_pages"     # isolated folder for gh-pages branch
-
+      
           # Clean any stale worktree from previous runs
           git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
           rm -rf "${GHP_DIR}"
-
+      
           # Prepare gh-pages worktree safely
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:gh-pages
@@ -199,13 +199,13 @@ jobs:
             git worktree add --force -b gh-pages "${GHP_DIR}" HEAD
             rm -rf "${GHP_DIR:?}/"* || true
           fi
-
+      
           echo "Publishing into ${GHP_DIR}/${MODULE} (URL base: ${URL})"
-
+      
           if [[ "$MODULE" == "common" ]]; then
             mkdir -p "${GHP_DIR}/common"
             cp -v packaged/common/*.tgz "${GHP_DIR}/common/" || true
-
+      
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
@@ -216,17 +216,47 @@ jobs:
             fi
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
+      
           else
             # Copy packages into per-chart subfolders
-            tr ',' '\n' <<< '${{ steps.changed.outputs.services }}' | while read CHART; do
+            tr ',' '\n' <<< '${{ steps.changed.outputs.services }}' | while read -r CHART; do
               [[ -n "$CHART" ]] || continue
               mkdir -p "${GHP_DIR}/${MODULE}/${CHART}"
               cp -v "packaged/${MODULE}/${CHART}/"*.tgz "${GHP_DIR}/${MODULE}/${CHART}/" || true
             done
-
+      
             # Build/merge module index with URLs pointing to /<chart>/<tgz>
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
-
+      
+            # Symlink artifacts so helm can index from a flat dir
             find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
-              | while IFS=
+              | while IFS= read -r -d '' f; do ln -sf "../$f" "${GHP_DIR}/_tmpindex/$(basename "$f")"; done
+      
+            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
+            else
+              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
+            fi
+      
+            # Rewrite URLs in index so entries point to /<chart>/<tgz>
+            cat > "${GHP_DIR}/_tmpindex/rewrite.yq" <<'YQ'
+      .entries |= with_entries(
+        .value |= map(
+          .urls = [ (.urls[0] | sub(env(URL) + "/", env(URL) + "/" + .name + "/")) ]
+        )
+      )
+      YQ
+            export URL
+            yq -i -f "${GHP_DIR}/_tmpindex/rewrite.yq" "${GHP_DIR}/_tmpindex/index.yaml"
+      
+            mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
+            rm -rf "${GHP_DIR}/_tmpindex"
+          fi
+      
+          # Commit & push from the gh-pages worktree
+          git -C "${GHP_DIR}" add .
+          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
+          git -C "${GHP_DIR}" push origin gh-pages
+
+
