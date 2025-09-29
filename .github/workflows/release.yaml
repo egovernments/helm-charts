@@ -96,10 +96,8 @@ jobs:
           ROOT="${CHARTS_DIR}/${MODULE}"
 
           bump() { local v="$1" t="$2"; local IFS=.; read -r MA MI PA <<< "${v:-0.0.0}"; case "$t" in major) echo "$((MA+1)).0.0";; minor) echo "$MA.$((MI+1)).0";; patch) echo "$MA.$MI.$((PA+1))";; esac; }
-
           : > /tmp/versions.txt
 
-          # prepare a detached work branch at the merge commit
           git checkout -B release-tmp "$MERGE_SHA"
           git config user.name  "$GIT_AUTHOR_NAME"
           git config user.email "$GIT_AUTHOR_EMAIL"
@@ -108,7 +106,7 @@ jobs:
             PREV=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
             PREV_VER="${PREV#*/}"
             NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-            yq -i '.version = "'"${NEXT_VER}"'"' "${CHARTS_DIR}/common/Chart.yaml"   # ONLY .version
+            yq -i '.version = "'"${NEXT_VER}"'"' "${CHARTS_DIR}/common/Chart.yaml"
             git add "${CHARTS_DIR}/common/Chart.yaml"
             git commit -m "chore(common): bump chart version to ${NEXT_VER}" || true
             git tag -a "common/${NEXT_VER}" -m "Auto(${RELEASE}) via PR merge"
@@ -121,42 +119,36 @@ jobs:
               PREV=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
               PREV_VER="${PREV##*/}"; [[ -z "$PREV_VER" || "$PREV_VER" == "$PREV" ]] && PREV_VER="0.0.0"
               NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-              # bump ONLY .version (keep .appVersion as-is)
               yq -i '.version = "'"${NEXT_VER}"'"' "${CHDIR}/Chart.yaml"
               git add "${CHDIR}/Chart.yaml"
               echo "${SVC}=${NEXT_VER}" >> /tmp/versions.txt
             done
             git commit -m "chore(${MODULE}): bump chart versions after PR merge (${RELEASE})" || true
-
-            # create tags on the commit that contains bumped Chart.yaml
             while IFS='=' read -r SVC VER; do
               [[ -n "$SVC" && -n "$VER" ]] || continue
               git tag -a "${MODULE}/${SVC}/${VER}" -m "Auto(${RELEASE}) via PR merge"
             done < /tmp/versions.txt
           fi
 
-          # push tags (commit will be shipped along with the tag objects)
           git push origin --tags
-
-          # expose mapping "svc=ver,svc=ver"
           echo "versions=$(paste -sd, /tmp/versions.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Package updated charts (using computed versions)
+      - name: Package updated charts
         if: steps.changed.outputs.count != '0'
         shell: bash
         run: |
           set -euo pipefail
           MODULE='${{ steps.parse.outputs.module }}'
           ROOT="${CHARTS_DIR}/${MODULE}"
-          VERS='${{ steps.versioning.outputs.versions }}'   # "svc=1.2.3,svc=0.0.2,..."
-
+          VERS='${{ steps.versioning.outputs.versions }}'
           mkdir -p packaged
 
           if [[ "$MODULE" == "common" ]]; then
             VER="$(awk -F= 'BEGIN{RS=","} $1=="common"{print $2}' <<<"$VERS")"; export VER
-            # ONLY set .version (common typically has no appVersion anyway)
             yq -i '.version = env(VER)' "${CHARTS_DIR}/common/Chart.yaml"
-            helm dependency update "${CHARTS_DIR}/common" || true
+            rm -f  "${CHARTS_DIR}/common/Chart.lock"
+            rm -rf "${CHARTS_DIR}/common/charts"
+            helm dependency build "${CHARTS_DIR}/common"
             mkdir -p packaged/common
             helm package "${CHARTS_DIR}/common" --destination packaged/common
           else
@@ -168,15 +160,18 @@ jobs:
               export VER
               CHDIR="${ROOT}/${SVC}"
               test -f "${CHDIR}/Chart.yaml" || { echo "::error::Missing Chart.yaml at ${CHDIR}"; exit 1; }
-              # ONLY .version (LEAVE .appVersion unchanged)
+
               yq -i '.version = env(VER)' "${CHDIR}/Chart.yaml"
-              helm dependency update "${CHDIR}" || true
+              rm -f  "${CHDIR}/Chart.lock"
+              rm -rf "${CHDIR}/charts"
+              helm dependency build "${CHDIR}"
+
               mkdir -p "packaged/${MODULE}/${SVC}"
               helm package "${CHDIR}" --destination "packaged/${MODULE}/${SVC}"
             done
           fi
 
-      - name: Publish to gh-pages (module repos; per-chart subfolders)
+      - name: Publish to gh-pages
         if: steps.changed.outputs.count != '0'
         shell: bash
         run: |
@@ -187,11 +182,9 @@ jobs:
           VERS='${{ steps.versioning.outputs.versions }}'
           GHP_DIR="_gh_pages"
 
-          # clean any stale worktree
           git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
           rm -rf "${GHP_DIR}"
 
-          # prepare gh-pages worktree
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:gh-pages
             git worktree add --force "${GHP_DIR}" gh-pages
@@ -200,7 +193,6 @@ jobs:
             rm -rf "${GHP_DIR:?}/"* || true
           fi
 
-          # identity
           git -C "${GHP_DIR}" config user.name  "github-actions[bot]"
           git -C "${GHP_DIR}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           export GIT_AUTHOR_NAME="github-actions[bot]"
@@ -217,15 +209,16 @@ jobs:
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
-            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
+
+            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]] ; then
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
+
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           else
-            # copy only newly packaged charts; DO NOT delete old .tgz (keep history)
             IFS=',' read -r -a PAIRS <<< "$VERS"
             for pair in "${PAIRS[@]}"; do
               SVC="${pair%%=*}"
@@ -234,26 +227,29 @@ jobs:
               cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${GHP_DIR}/${MODULE}/${SVC}/" || true
             done
 
-            # build/merge index from flat temp dir (copy, no symlinks)
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
               | while IFS= read -r -d '' f; do cp -v "$f" "${GHP_DIR}/_tmpindex/"; done
+
             if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
-            # rewrite URLs to /<chart>/<tgz>
-            YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
-            printf "%s\n" \
-              ".entries |= with_entries(" \
-              "  .value |= map(" \
-              "    .urls = [ (.urls[0] | sub(env(URL) + \"/\", env(URL) + \"/\" + .name + \"/\")) ]" \
-              "  )" \
-              ")" > "${YQ_FILE}"
+
             export URL
-            yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
+            cat > "${GHP_DIR}/_tmpindex/rewrite.yq" <<'YQ'
+            .entries |= with_entries(
+              . as $e
+              | .value |= map(
+                  .urls = [ ( .urls[0] | sub(env(URL) + "/", env(URL) + "/" + $e.key + "/") ) ]
+                )
+            )
+            YQ
+            
+            yq -i -f "${GHP_DIR}/_tmpindex/rewrite.yq" "${GHP_DIR}/_tmpindex/index.yaml"
+      
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           fi
