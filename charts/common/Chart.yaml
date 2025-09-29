@@ -2,4 +2,4 @@ apiVersion: v2
 name: common
 type: library
 description: Common templates and helpers
-version: 0.0.1
+version: 0.0.2
