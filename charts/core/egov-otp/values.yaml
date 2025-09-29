@@ -16,12 +16,10 @@ initContainers:
     schemaTable: "egov_otp_schema"
     image:
       repository: "egov-otp-db"
-      tag: v2.9.2-4a60f20
 
 # Container Configs
 image:
   repository: "egov-otp"
-  tag: v2.9.2-4a60f20
 replicas: "1"
 healthChecks:
   enabled: true
