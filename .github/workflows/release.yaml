@@ -238,17 +238,16 @@ jobs:
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
 
+            YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
+            printf "%s\n" \
+              ".entries |= with_entries(" \
+              "  .value |= map(" \
+              "    .urls = [ (.urls[0] | sub(env(URL) + \"/\", env(URL) + \"/\" + .name + \"/\")) ]" \
+              "  )" \
+              ")" > "${YQ_FILE}"
+
             export URL
-            cat > "${GHP_DIR}/_tmpindex/rewrite.yq" <<'YQ'
-            .entries |= with_entries(
-              . as $e
-              | .value |= map(
-                  .urls = [ ( .urls[0] | sub(env(URL) + "/", env(URL) + "/" + $e.key + "/") ) ]
-                )
-            )
-            YQ
-            
-            yq -i -f "${GHP_DIR}/_tmpindex/rewrite.yq" "${GHP_DIR}/_tmpindex/index.yaml"
+            yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
       
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
