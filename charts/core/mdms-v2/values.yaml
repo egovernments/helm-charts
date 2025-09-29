@@ -15,12 +15,10 @@ initContainers:
     schemaTable: "mdms_v2_schema"
     image:
       repository: "mdms-v2-db"
-      tag: "v2.9.2-4a60f20"
 
 # Container Configs
 image:
   repository: "mdms-v2"
-  tag: "v2.9.2-4a60f20"
 replicas: "1"
 healthChecks:
   enabled: true
