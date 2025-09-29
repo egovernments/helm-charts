@@ -239,16 +239,18 @@ jobs:
             fi
 
             YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
-            printf "%s\n" \
-              ".entries |= with_entries(" \
-              "  .value |= map(" \
-              "    .urls = [ (.urls[0] | sub(env(URL) + \"/\", env(URL) + \"/\" + .name + \"/\")) ]" \
-              "  )" \
-              ")" > "${YQ_FILE}"
+            # write a yq program that inserts the entry key (chart name) into each URL
+            printf '%s\n' \
+              '.entries |= with_entries(' \
+              '  . as $e |' \
+              '  .value |= map(' \
+              '    .urls = [ (.urls[0] | sub(env(URL) + "/", (env(URL) + "/" + $e.key + "/"))) ]' \
+              '  )' \
+              ')' > "${YQ_FILE}"
 
             export URL
             yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
-      
+
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           fi
