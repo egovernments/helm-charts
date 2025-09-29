@@ -24,4 +24,3 @@ dependencies:
 - name: common
   version: "0.0.2"
   repository: "https://helm.digit.org/common"
-  repository: file://../../common
