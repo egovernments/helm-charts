@@ -16,12 +16,10 @@ initContainers:
     schemaTable: "audit_service_schema"
     image:
       repository: "audit-service-db"
-      tag: v2.9.2-4a60f20
 
 # Container Configs
 image:
   repository: "audit-service"
-  tag: v2.9.2-4a60f20
 replicas: "1"
 healthChecks:
   enabled: true
