@@ -18,9 +18,9 @@ group: {{ .Values.labels.group }}
 {{- end }}
 
 {{- define "common.image" -}}
-{{- if contains "/" .repository -}}      
-{{- printf "%s:%s" .repository  ( required "Tag is mandatory" .tag ) -}}
+{{- if contains "/" .repository -}}
+{{- printf "%s:%s" .repository (required "Tag is mandatory (or Chart.appVersion)" (default .Chart.AppVersion .tag)) -}}
 {{- else -}}
-{{- printf "%s/%s:%s" $.Values.global.containerRegistry .repository ( required "Tag is mandatory" .tag ) -}}
+{{- printf "%s/%s:%s" .Values.global.containerRegistry .repository (required "Tag is mandatory (or Chart.appVersion)" (default .Chart.AppVersion .tag)) -}}
 {{- end -}}
 {{- end -}}
