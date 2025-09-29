@@ -41,7 +41,7 @@ jobs:
       - name: Register Helm repos (common) & refresh index
         run: |
           set -e
-          helm repo add digit-common https://helm.digit.org/common || true
+          helm repo add common https://helm.digit.org/common || true
           helm repo update
 
       - name: Parse PR body → module + release type
