@@ -38,12 +38,6 @@ jobs:
           curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Register Helm repos (common) & refresh index
-        run: |
-          set -e
-          helm repo add common https://helm.digit.org/common || true
-          helm repo update
-
       - name: Parse PR body → module + release type
         id: parse
         shell: bash
@@ -100,6 +94,7 @@ jobs:
           RELEASE='${{ steps.parse.outputs.release }}'
           MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
           ROOT="${CHARTS_DIR}/${MODULE}"
+
           bump() { local v="$1" t="$2"; local IFS=.; read -r MA MI PA <<< "${v:-0.0.0}"; case "$t" in major) echo "$((MA+1)).0.0";; minor) echo "$MA.$((MI+1)).0";; patch) echo "$MA.$MI.$((PA+1))";; esac; }
           : > /tmp/versions.txt
 
@@ -124,7 +119,7 @@ jobs:
               PREV=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
               PREV_VER="${PREV##*/}"; [[ -z "$PREV_VER" || "$PREV_VER" == "$PREV" ]] && PREV_VER="0.0.0"
               NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-              yq -i '.version = "'"${NEXT_VER}"'"' "${CHDIR}/Chart.yaml"   # ONLY .version
+              yq -i '.version = "'"${NEXT_VER}"'"' "${CHDIR}/Chart.yaml"
               git add "${CHDIR}/Chart.yaml"
               echo "${SVC}=${NEXT_VER}" >> /tmp/versions.txt
             done
@@ -138,7 +133,7 @@ jobs:
           git push origin --tags
           echo "versions=$(paste -sd, /tmp/versions.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Package updated charts (using computed versions)
+      - name: Package updated charts
         if: steps.changed.outputs.count != '0'
         shell: bash
         run: |
@@ -148,14 +143,12 @@ jobs:
           VERS='${{ steps.versioning.outputs.versions }}'
           mkdir -p packaged
 
-          # Safety net: ensure repo is present (CI steps can be reordered by mistake)
-          helm repo add common https://helm.digit.org/common || true
-          helm repo update
-
           if [[ "$MODULE" == "common" ]]; then
             VER="$(awk -F= 'BEGIN{RS=","} $1=="common"{print $2}' <<<"$VERS")"; export VER
             yq -i '.version = env(VER)' "${CHARTS_DIR}/common/Chart.yaml"
-            helm dependency update "${CHARTS_DIR}/common" || true
+            rm -f  "${CHARTS_DIR}/common/Chart.lock"
+            rm -rf "${CHARTS_DIR}/common/charts"
+            helm dependency build "${CHARTS_DIR}/common"
             mkdir -p packaged/common
             helm package "${CHARTS_DIR}/common" --destination packaged/common
           else
@@ -167,14 +160,18 @@ jobs:
               export VER
               CHDIR="${ROOT}/${SVC}"
               test -f "${CHDIR}/Chart.yaml" || { echo "::error::Missing Chart.yaml at ${CHDIR}"; exit 1; }
-              yq -i '.version = env(VER)' "${CHDIR}/Chart.yaml"  # ONLY .version
-              helm dependency update "${CHDIR}" || true
+
+              yq -i '.version = env(VER)' "${CHDIR}/Chart.yaml"
+              rm -f  "${CHDIR}/Chart.lock"
+              rm -rf "${CHDIR}/charts"
+              helm dependency build "${CHDIR}"
+
               mkdir -p "packaged/${MODULE}/${SVC}"
               helm package "${CHDIR}" --destination "packaged/${MODULE}/${SVC}"
             done
           fi
 
-      - name: Publish to gh-pages (module repos; per-chart subfolders)
+      - name: Publish to gh-pages
         if: steps.changed.outputs.count != '0'
         shell: bash
         run: |
@@ -212,11 +209,13 @@ jobs:
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
+
             if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]] ; then
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
+
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           else
@@ -230,8 +229,10 @@ jobs:
 
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
+
             find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
               | while IFS= read -r -d '' f; do cp -v "$f" "${GHP_DIR}/_tmpindex/"; done
+
             if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
             else
