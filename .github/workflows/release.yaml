@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [closed]
     branches:
-      - master   # adjust if your release branch is different
+      - master
 
 permissions:
   contents: write
@@ -44,19 +44,10 @@ jobs:
         run: |
           set -euo pipefail
           BODY="${{ github.event.pull_request.body }}"
-
           MODULE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*module[[:space:]]*:/ {print $2}' | tr -d '[:space:]')
           RELEASE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*release[[:space:]]*:/ {print $2}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-
-          case "$RELEASE" in
-            major|minor|patch) : ;;
-            *) echo "::error::release must be one of major|minor|patch (found: '$RELEASE')"; exit 1 ;;
-          esac
-
-          if [[ -z "$MODULE" ]]; then
-            echo "::error::module: <core|urban|health|frontend|common> must be provided in PR body"; exit 1
-          fi
-
+          case "$RELEASE" in major|minor|patch) : ;; *) echo "::error::release must be one of major|minor|patch (found: '$RELEASE')"; exit 1 ;; esac
+          if [[ -z "$MODULE" ]]; then echo "::error::module: <core|urban|health|frontend|common> must be provided in PR body"; exit 1; fi
           echo "module=$MODULE"   >> "$GITHUB_OUTPUT"
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
 
@@ -69,20 +60,16 @@ jobs:
           BASE='${{ github.event.pull_request.base.sha }}'
           HEAD='${{ github.event.pull_request.merge_commit_sha }}'
           ROOT="${CHARTS_DIR}/${MODULE}"
-
           if [[ "$MODULE" == "common" ]]; then
             printf "common\n" > /tmp/services.txt
           else
             test -d "$ROOT" || { echo "::error::Module directory not found: $ROOT"; exit 1; }
-
             git diff --name-only "$BASE" "$HEAD" -- "$ROOT" \
               | awk -F/ -v m="$MODULE" -v c="$CHARTS_DIR" '$1==c && $2==m && NF>=3 {print $3}' \
               | sort -u > /tmp/services.txt
-
             awk -v r="$ROOT" '{ if (system("[ -f \"" r "/" $0 "/Chart.yaml\" ]")==0) print $0 }' /tmp/services.txt > /tmp/services.filtered
             mv /tmp/services.filtered /tmp/services.txt
           fi
-
           COUNT=$(wc -l < /tmp/services.txt | tr -d ' ')
           if [[ "$COUNT" -eq 0 ]]; then
             echo "count=0" >> "$GITHUB_OUTPUT"
@@ -92,51 +79,66 @@ jobs:
             echo "services=$(paste -sd, /tmp/services.txt)" >> "$GITHUB_OUTPUT"
           fi
 
-      # === FIX 1: compute versions ONCE and expose a svc=ver mapping ===
-      - name: Compute next versions and create service tags
+      - name: Compute next versions, bump Chart.yaml, and create tags
         if: steps.changed.outputs.count != '0'
         id: versioning
         shell: bash
         env:
-          GIT_AUTHOR_NAME: github-actions
-          GIT_AUTHOR_EMAIL: actions@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions
-          GIT_COMMITTER_EMAIL: actions@users.noreply.github.com
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
           set -euo pipefail
           MODULE='${{ steps.parse.outputs.module }}'
           RELEASE='${{ steps.parse.outputs.release }}'
           MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
+          ROOT="${CHARTS_DIR}/${MODULE}"
 
           bump() { local v="$1" t="$2"; local IFS=.; read -r MA MI PA <<< "${v:-0.0.0}"; case "$t" in major) echo "$((MA+1)).0.0";; minor) echo "$MA.$((MI+1)).0";; patch) echo "$MA.$MI.$((PA+1))";; esac; }
 
-          : > /tmp/taglist.txt
           : > /tmp/versions.txt
+
+          # prepare a detached work branch at the merge commit
+          git checkout -B release-tmp "$MERGE_SHA"
+          git config user.name  "$GIT_AUTHOR_NAME"
+          git config user.email "$GIT_AUTHOR_EMAIL"
 
           if [[ "$MODULE" == "common" ]]; then
             PREV=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
             PREV_VER="${PREV#*/}"
             NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-            TAG="common/${NEXT_VER}"
-            git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null || git tag -a "${TAG}" -m "Auto(${RELEASE}) via PR merge" "${MERGE_SHA}"
-            echo "${TAG}" >> /tmp/taglist.txt
+            yq -i '.version = "'"${NEXT_VER}"'"' "${CHARTS_DIR}/common/Chart.yaml"   # ONLY .version
+            git add "${CHARTS_DIR}/common/Chart.yaml"
+            git commit -m "chore(common): bump chart version to ${NEXT_VER}" || true
+            git tag -a "common/${NEXT_VER}" -m "Auto(${RELEASE}) via PR merge"
             echo "common=${NEXT_VER}" >> /tmp/versions.txt
           else
             IFS=',' read -r -a SVCS <<< '${{ steps.changed.outputs.services }}'
             for SVC in "${SVCS[@]}"; do
+              CHDIR="${ROOT}/${SVC}"
+              test -f "${CHDIR}/Chart.yaml" || continue
               PREV=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
               PREV_VER="${PREV##*/}"; [[ -z "$PREV_VER" || "$PREV_VER" == "$PREV" ]] && PREV_VER="0.0.0"
               NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-              TAG="${MODULE}/${SVC}/${NEXT_VER}"
-              git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null || git tag -a "${TAG}" -m "Auto(${RELEASE}) via PR merge" "${MERGE_SHA}"
-              echo "${TAG}" >> /tmp/taglist.txt
+              # bump ONLY .version (keep .appVersion as-is)
+              yq -i '.version = "'"${NEXT_VER}"'"' "${CHDIR}/Chart.yaml"
+              git add "${CHDIR}/Chart.yaml"
               echo "${SVC}=${NEXT_VER}" >> /tmp/versions.txt
             done
+            git commit -m "chore(${MODULE}): bump chart versions after PR merge (${RELEASE})" || true
+
+            # create tags on the commit that contains bumped Chart.yaml
+            while IFS='=' read -r SVC VER; do
+              [[ -n "$SVC" && -n "$VER" ]] || continue
+              git tag -a "${MODULE}/${SVC}/${VER}" -m "Auto(${RELEASE}) via PR merge"
+            done < /tmp/versions.txt
           fi
 
+          # push tags (commit will be shipped along with the tag objects)
           git push origin --tags
 
-          # expose "svc=ver,svc=ver" as a single output "versions"
+          # expose mapping "svc=ver,svc=ver"
           echo "versions=$(paste -sd, /tmp/versions.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Package updated charts (using computed versions)
@@ -146,23 +148,18 @@ jobs:
           set -euo pipefail
           MODULE='${{ steps.parse.outputs.module }}'
           ROOT="${CHARTS_DIR}/${MODULE}"
-          VERS='${{ steps.versioning.outputs.versions }}'   # "svcA=1.2.3,svcB=0.0.2,..."
+          VERS='${{ steps.versioning.outputs.versions }}'   # "svc=1.2.3,svc=0.0.2,..."
 
           mkdir -p packaged
 
-          ver_for() {  # lookup ver for service in "svc=ver,svc=ver"
-            local name="$1"
-            awk -F= -v n="$name" 'BEGIN{RS=","} $1==n{print $2}' <<<"$VERS"
-          }
-
           if [[ "$MODULE" == "common" ]]; then
-            VER="$(ver_for common)"; export VER
-            yq -i '.version = env(VER) | del(.appVersion)' "${CHARTS_DIR}/common/Chart.yaml"
+            VER="$(awk -F= 'BEGIN{RS=","} $1=="common"{print $2}' <<<"$VERS")"; export VER
+            # ONLY set .version (common typically has no appVersion anyway)
+            yq -i '.version = env(VER)' "${CHARTS_DIR}/common/Chart.yaml"
             helm dependency update "${CHARTS_DIR}/common" || true
             mkdir -p packaged/common
             helm package "${CHARTS_DIR}/common" --destination packaged/common
           else
-            # Iterate the comma-separated pairs correctly
             IFS=',' read -r -a PAIRS <<< "$VERS"
             for pair in "${PAIRS[@]}"; do
               SVC="${pair%%=*}"
@@ -171,7 +168,8 @@ jobs:
               export VER
               CHDIR="${ROOT}/${SVC}"
               test -f "${CHDIR}/Chart.yaml" || { echo "::error::Missing Chart.yaml at ${CHDIR}"; exit 1; }
-              yq -i '.version = env(VER) | .appVersion = env(VER)' "${CHDIR}/Chart.yaml"
+              # ONLY .version (LEAVE .appVersion unchanged)
+              yq -i '.version = env(VER)' "${CHDIR}/Chart.yaml"
               helm dependency update "${CHDIR}" || true
               mkdir -p "packaged/${MODULE}/${SVC}"
               helm package "${CHDIR}" --destination "packaged/${MODULE}/${SVC}"
@@ -186,12 +184,14 @@ jobs:
           MODULE='${{ steps.parse.outputs.module }}'
           HOST='${{ env.GH_PAGES_HOST }}'
           URL="https://${HOST}/${MODULE}"
-          VERS='${{ steps.versioning.outputs.versions }}'   # authoritative list of packaged charts
+          VERS='${{ steps.versioning.outputs.versions }}'
           GHP_DIR="_gh_pages"
 
-          # Worktree prep
+          # clean any stale worktree
           git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
           rm -rf "${GHP_DIR}"
+
+          # prepare gh-pages worktree
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:gh-pages
             git worktree add --force "${GHP_DIR}" gh-pages
@@ -200,7 +200,7 @@ jobs:
             rm -rf "${GHP_DIR:?}/"* || true
           fi
 
-          # Identity
+          # identity
           git -C "${GHP_DIR}" config user.name  "github-actions[bot]"
           git -C "${GHP_DIR}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           export GIT_AUTHOR_NAME="github-actions[bot]"
@@ -225,17 +225,16 @@ jobs:
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           else
-            # Copy only the charts we actually packaged (from versions list)
+            # copy only newly packaged charts; DO NOT delete old .tgz (keep history)
             IFS=',' read -r -a PAIRS <<< "$VERS"
             for pair in "${PAIRS[@]}"; do
               SVC="${pair%%=*}"
               [[ -n "$SVC" ]] || continue
               mkdir -p "${GHP_DIR}/${MODULE}/${SVC}"
-              # keep history: do not delete old .tgz
               cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${GHP_DIR}/${MODULE}/${SVC}/" || true
             done
 
-            # Build/merge index from a flat temp dir (copy, no symlinks)
+            # build/merge index from flat temp dir (copy, no symlinks)
             mkdir -p "${GHP_DIR}/_tmpindex"
             [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
             find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
@@ -245,8 +244,7 @@ jobs:
             else
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
-
-            # Rewrite URLs: /module/<chart>/<tgz>
+            # rewrite URLs to /<chart>/<tgz>
             YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
             printf "%s\n" \
               ".entries |= with_entries(" \
@@ -254,7 +252,6 @@ jobs:
               "    .urls = [ (.urls[0] | sub(env(URL) + \"/\", env(URL) + \"/\" + .name + \"/\")) ]" \
               "  )" \
               ")" > "${YQ_FILE}"
-
             export URL
             yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
