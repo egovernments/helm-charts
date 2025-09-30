@@ -262,14 +262,14 @@ jobs:
             while IFS= read -r NAME; do
               export NAME
               yq -i '
-                .entries[env(NAME)] |= map(
-                  .urls = [(
-                    if (.urls[0] | startswith(env(URL) + "/"))
-                    then env(URL) + "/" + env(NAME) + "/" + ((.urls[0] | sub("^" + env(URL) + "/"; "")))
-                    else .urls[0]
-                    end
-                  )]
-                )
+                .entries[env(NAME)][] |=
+                  ( .urls =
+                      ( if (.urls[0] | startswith(env(URL) + "/"))
+                        then [ env(URL) + "/" + env(NAME) + "/" + ( (.urls[0] | sub("^" + env(URL) + "/"; "")) ) ]
+                        else .urls
+                        end
+                      )
+                  )
               ' "$IDX"
             done < <(yq -r '.entries | keys[]' "$IDX")
 
