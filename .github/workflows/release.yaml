@@ -242,18 +242,19 @@ jobs:
             IDX="${GHP_DIR}/_tmpindex/index.yaml"
 
             while IFS= read -r NAME; do
-              # For each version object in .entries[NAME], set:
-              #   urls = [ URL + "/" + NAME + "/" + (original url with the flat prefix trimmed) ]
-              yq -i --arg url "$URL" --arg name "$NAME" '
-                .entries[$name] |= map(
-                  .urls = [(
-                    if (.urls[0] | startswith($url + "/"))
-                    then $url + "/" + $name + "/" + ((.urls[0] | sub("^" + $url + "/"; "")))
+              # escape any double quotes in the key (paranoid-safe)
+              NAME_ESC=$(printf '%s' "$NAME" | sed 's/"/\\"/g')
+            
+              yq -i "
+                .entries[\"$NAME_ESC\"] |= map(
+                  .urls = [ (
+                    if (.urls[0] | startswith(env(URL) + \"/\"))
+                    then env(URL) + \"/$NAME_ESC/\" + ((.urls[0] | sub(\"^\" + env(URL) + \"/\"; \"\")))
                     else .urls[0]
                     end
-                  )]
+                  ) ]
                 )
-              ' "$IDX"
+              " \"$IDX\"
             done < <(yq -r '.entries | keys[]' "$IDX")
 
             mv "$IDX" "${GHP_DIR}/${MODULE}/index.yaml"
