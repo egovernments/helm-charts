@@ -16,13 +16,11 @@ initContainers:
     schemaTable: "boundary_bulk_bff_schema"
     image:
       repository: "boundary-bulk-bff-db"
-      tag: "boundary-bulk-bff-b1a02d94-43"
 
 # Container Configs
 image:
   repository: "boundary-bulk-bff"
-  tag: "boundary-bulk-bff-b1a02d94-43"
-  
+
 replicas: "1"
 resources: |
   limits:
