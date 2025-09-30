@@ -15,12 +15,10 @@ initContainers:
     schemaTable: "boundary_service_schema"
     image:
       repository: "boundary-service-db"
-      tag: "v2.9.2-4a60f20"
 
 # Container Configs
 image:
   repository: "boundary-service"
-  tag: "v2.9.2-4a60f20"
 replicas: "1"
 healthChecks:
   enabled: true
