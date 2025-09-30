@@ -254,9 +254,6 @@ jobs:
 
             yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
 
-            echo "Rewritten URLs preview:"
-            yq '.entries | to_entries[0:3][] | {chart: .key, url: .value[0].urls[0]}' "${GHP_DIR}/_tmpindex/index.yaml"
-
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           fi
