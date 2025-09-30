@@ -16,7 +16,6 @@ initContainers:
     schemaTable: "pdf_service_schema"
     image:
       repository: "pdf-service-db"
-      tag: "indexer-bpa-fix-vinoth-c1bb0a940f-46"
   gitSync:
     enabled: true
     repo: "git@github.com:egovernments/configs"
@@ -25,7 +24,6 @@ initContainers:
 # Container Configs
 image:
   repository: "pdf-service"
-  tag: "indexer-bpa-fix-vinoth-c1bb0a940f-46"
 replicas: "1"
 appType: "java-spring"
 tracing-enabled: true
