@@ -16,12 +16,10 @@ initContainers:
     schemaTable: "egov-url-shortening_schema"
     image:
       repository: "egov-url-shortening-db"
-      tag: v2.9.2-4a60f20
 
 # Container Configs
 image:
   repository: "egov-url-shortening"
-  tag: v2.9.2-4a60f20
 replicas: "1"
 healthChecks:
   enabled: true
