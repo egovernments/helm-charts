@@ -238,27 +238,25 @@ jobs:
               helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
             fi
 
-            YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
-            printf '%s\n' \
-              'def prefix: (env(URL) + "/");' \
-              '.entries |= with_entries(' \
-              '  . as $e |' \
-              '  .value |= map(' \
-              '    .urls = [ (' \
-              '      if (.urls[0] | startswith(prefix))' \
-              '      then env(URL) + "/" + $e.key + "/" + (.urls[0] | ltrimstr(prefix))' \
-              '      else .urls[0]' \
-              '      end' \
-              '    ) ]' \
-              '  )' \
-              ')' > "${YQ_FILE}"
-
             export URL
-            TMP_OUT="${GHP_DIR}/_tmpindex/index.rewritten.yaml"
-            yq -o=yaml -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml" > "${TMP_OUT}"
-            mv "${TMP_OUT}" "${GHP_DIR}/_tmpindex/index.yaml"
+            IDX="${GHP_DIR}/_tmpindex/index.yaml"
 
-            mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
+            while IFS= read -r NAME; do
+              # For each version object in .entries[NAME], set:
+              #   urls = [ URL + "/" + NAME + "/" + (original url with the flat prefix trimmed) ]
+              yq -i --arg url "$URL" --arg name "$NAME" '
+                .entries[$name] |= map(
+                  .urls = [(
+                    if (.urls[0] | startswith($url + "/"))
+                    then $url + "/" + $name + "/" + ((.urls[0] | sub("^" + $url + "/"; "")))
+                    else .urls[0]
+                    end
+                  )]
+                )
+              ' "$IDX"
+            done < <(yq -r '.entries | keys[]' "$IDX")
+
+            mv "$IDX" "${GHP_DIR}/${MODULE}/index.yaml"
             rm -rf "${GHP_DIR}/_tmpindex"
           fi
 
