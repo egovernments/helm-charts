@@ -250,8 +250,7 @@ jobs:
               '  )' \
               ')' > "${YQ_FILE}"
 
-            export URL  # URL is like: https://${HOST}/${MODULE}
-
+            export URL
             yq -i -f "${YQ_FILE}" "${GHP_DIR}/_tmpindex/index.yaml"
 
             mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/${MODULE}/index.yaml"
