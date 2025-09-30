@@ -206,18 +206,21 @@ jobs:
             mkdir -p "${GHP_DIR}/common"
             cp -v packaged/common/*.tgz "${GHP_DIR}/common/" || true
 
-            mkdir -p "${GHP_DIR}/_tmpindex"
-            [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
-            cp -v "${GHP_DIR}/common/"*.tgz "${GHP_DIR}/_tmpindex/" || true
+            TMP="${GHP_DIR}/_tmpindex"
+            mkdir -p "$TMP"
+            [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${TMP}/index-old.yaml" || true
+            cp -v "${GHP_DIR}/common/"*.tgz "${TMP}/" || true
 
-            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]] ; then
-              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
+            if [[ -f "${TMP}/index-old.yaml" ]]; then
+              helm repo index "${TMP}" --url "$URL" --merge "${TMP}/index-old.yaml"
             else
-              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
+              helm repo index "${TMP}" --url "$URL"
             fi
 
-            mv "${GHP_DIR}/_tmpindex/index.yaml" "${GHP_DIR}/common/index.yaml"
-            rm -rf "${GHP_DIR}/_tmpindex"
+            [[ -f "${TMP}/index.yaml" ]] || { echo "::error::common index.yaml not created"; ls -la "$TMP"; exit 1; }
+            mv "${TMP}/index.yaml" "${GHP_DIR}/common/index.yaml"
+            rm -rf "$TMP"
+
           else
             IFS=',' read -r -a PAIRS <<< "$VERS"
             for pair in "${PAIRS[@]}"; do
@@ -227,38 +230,52 @@ jobs:
               cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${GHP_DIR}/${MODULE}/${SVC}/" || true
             done
 
-            mkdir -p "${GHP_DIR}/_tmpindex"
-            [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${GHP_DIR}/_tmpindex/index-old.yaml" || true
-            find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0 \
-              | while IFS= read -r -d '' f; do cp -v "$f" "${GHP_DIR}/_tmpindex/"; done
+            TMP="${GHP_DIR}/_tmpindex"
+            mkdir -p "$TMP"
+            [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${TMP}/index-old.yaml" || true
 
-            if [[ -f "${GHP_DIR}/_tmpindex/index-old.yaml" ]]; then
-              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL" --merge "${GHP_DIR}/_tmpindex/index-old.yaml"
-            else
-              helm repo index "${GHP_DIR}/_tmpindex" --url "$URL"
+            TGZ_COUNT=0
+            while IFS= read -r -d '' f; do
+              cp -v "$f" "${TMP}/" && TGZ_COUNT=$((TGZ_COUNT+1))
+            done < <(find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0)
+
+            MERGE_FLAG=()
+            if [[ -f "${TMP}/index-old.yaml" ]] && yq 'type == "!!map"' "${TMP}/index-old.yaml" >/dev/null 2>&1; then
+              MERGE_FLAG=(--merge "${TMP}/index-old.yaml")
             fi
 
+            if [[ "$TGZ_COUNT" -eq 0 && ${#MERGE_FLAG[@]} -eq 0 ]]; then
+              echo "::warning::No charts found and no existing index; skipping index rebuild."
+            else
+              if ! helm repo index "${TMP}" --url "$URL" "${MERGE_FLAG[@]}"; then
+                echo "::warning::helm repo index failed; retrying without --merge"
+                rm -f "${TMP}/index.yaml"
+                helm repo index "${TMP}" --url "$URL"
+              fi
+            fi
+
+            [[ -f "${TMP}/index.yaml" ]] || { echo "::error::index.yaml was not created in ${TMP}"; ls -la "${TMP}"; exit 1; }
+
             export URL
-            IDX="${GHP_DIR}/_tmpindex/index.yaml"
+            IDX="${TMP}/index.yaml"
 
             while IFS= read -r NAME; do
-              # escape any double quotes in the key (paranoid-safe)
-              NAME_ESC=$(printf '%s' "$NAME" | sed 's/"/\\"/g')
-            
-              yq -i "
-                .entries[\"$NAME_ESC\"] |= map(
-                  .urls = [ (
-                    if (.urls[0] | startswith(env(URL) + \"/\"))
-                    then env(URL) + \"/$NAME_ESC/\" + ((.urls[0] | sub(\"^\" + env(URL) + \"/\"; \"\")))
+              export NAME
+              yq -i '
+                .entries[env(NAME)] |= map(
+                  .urls = [(
+                    if (.urls[0] | startswith(env(URL) + "/"))
+                    then env(URL) + "/" + env(NAME) + "/" + ((.urls[0] | sub("^" + env(URL) + "/"; "")))
                     else .urls[0]
                     end
-                  ) ]
+                  )]
                 )
-              " \"$IDX\"
+              ' "$IDX"
             done < <(yq -r '.entries | keys[]' "$IDX")
 
+            mkdir -p "${GHP_DIR}/${MODULE}"
             mv "$IDX" "${GHP_DIR}/${MODULE}/index.yaml"
-            rm -rf "${GHP_DIR}/_tmpindex"
+            rm -rf "$TMP"
           fi
 
           git -C "${GHP_DIR}" add .
