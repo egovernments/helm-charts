@@ -240,12 +240,15 @@ jobs:
 
             YQ_FILE="${GHP_DIR}/_tmpindex/rewrite.yq"
             printf '%s\n' \
+              'def prefix: (env(URL) + "/");' \
               '.entries |= with_entries(' \
               '  . as $e |' \
               '  .value |= map(' \
               '    .urls = [ (' \
-              '      .urls[0]' \
-              '      | sub("^" + env(URL) + "(/)?", env(URL) + "/" + $e.key + "/")' \
+              '      if (.urls[0] | startswith(prefix))' \
+              '      then env(URL) + "/" + $e.key + "/" + (.urls[0] | ltrimstr(prefix))' \
+              '      else .urls[0]' \
+              '      end' \
               '    ) ]' \
               '  )' \
               ')' > "${YQ_FILE}"
