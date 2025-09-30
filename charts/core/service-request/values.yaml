@@ -10,7 +10,6 @@ initContainers:
     schemaTable: "service_request_schema"
     image:
       repository: "service-request-db"
-      tag: v2.9.2-4a60f20
 
 # Ingress Configs
 ingress:
@@ -21,7 +20,6 @@ ingress:
 # Container Configs
 image:
   repository: "service-request"
-  tag: v2.9.2-4a60f20
 replicas: "1"
 appType: "java-spring"
 tracing-enabled: true
