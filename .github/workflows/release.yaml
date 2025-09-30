@@ -263,13 +263,7 @@ jobs:
               export NAME
               yq -i '
                 .entries[env(NAME)][] |=
-                  ( .urls =
-                      ( if (.urls[0] | startswith(env(URL) + "/"))
-                        then [ env(URL) + "/" + env(NAME) + "/" + ( (.urls[0] | sub("^" + env(URL) + "/"; "")) ) ]
-                        else .urls
-                        end
-                      )
-                  )
+                  ( .urls = [ (.urls[0] | sub("^" + env(URL) + "/"; env(URL) + "/" + env(NAME) + "/")) ] )
               ' "$IDX"
             done < <(yq -r '.entries | keys[]' "$IDX")
 
