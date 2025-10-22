@@ -3,7 +3,7 @@ repositories:
   url: https://helm.digit.org/core
 
 templates:
-  default: &default
+  core: &core
     chart: core/{{`{{ .Release.Name }}`}}
     version: 0.1.0
     namespace: playground
@@ -12,9 +12,14 @@ templates:
     # Use "Debug" to make missing files errors invisible at the default log level(--log-level=INFO)
     missingFileHandler: Warn
     values:
-    - {{ env "ENV_FILE" }}
-    secrets:
-    - {{ env "SECRET_FILE" }}
+      - {{ .Values | toYaml | nindent 8 }}
+    # secrets:
+    #   - ../../env-templates/env-secrets.yaml  
+
+values:
+- {{ env "ENV_FILE" }} 
+- {{ env "SECRET_FILE" }} 
+ 
 
 releases:
   # - name: egov-accesscontrol # Replace with your desired namespace
@@ -97,9 +102,9 @@ releases:
   #   installed: true
   #   <<: *default
 
-  - name: configmaps # Replace with your desired namespace
-    installed: true
-    <<: *default
+- name: configmaps # Replace with your desired namespace
+  installed: true
+  <<: *core
 
   # - name: citizen # Replace with your desired namespace
   #   installed: true

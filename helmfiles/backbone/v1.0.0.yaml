@@ -8,8 +8,8 @@ templates:
     missingFileHandler: Warn
 
 values:
-  - ../environments/env-secrets.yaml
-  - ../environments/env.yaml
+- {{ env "ENV_FILE" }} 
+- {{ env "SECRET_FILE" }} 
 
 releases:
 - name: cert-manager
