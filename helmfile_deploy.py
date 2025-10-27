@@ -347,6 +347,9 @@ def main():
     parser.add_argument("--github-token", default=None, help="GitHub token (for private repos)")
     parser.add_argument("--dry-run", action="store_true", help="Run helmfile diff instead of apply")
     parser.add_argument("--debug", action="store_true", help="Enable verbose error traceback output")
+    parser.add_argument("--modules", nargs="+", help="List of module names to deploy (e.g. backbone core)")
+    parser.add_argument("--versions", nargs="+", help="Helmfile versions corresponding to selected modules")
+
     args = parser.parse_args()
     DEBUG_MODE = args.debug
 
@@ -355,24 +358,41 @@ def main():
         print("No modules found.")
         return
 
-    selected_module_indices = prompt_choose("Select modules:", modules, allow_multiple=True)
-    if not selected_module_indices:
-        print("No modules selected. Exiting.")
-        return
-    selected_modules = [modules[i - 1] for i in selected_module_indices]
-    print("Selected modules:", selected_modules)
+    # If modules passed via CLI, skip prompts
+    if args.modules:
+        selected_modules = args.modules
+        print("✅ Using preselected modules:", selected_modules)
+    else:
+        selected_module_indices = prompt_choose("Select modules:", modules, allow_multiple=True)
+        if not selected_module_indices:
+            print("No modules selected. Exiting.")
+            return
+        selected_modules = [modules[i - 1] for i in selected_module_indices]
 
     selected_map = {}
-    for module in selected_modules:
+    for idx, module in enumerate(selected_modules):
         helmfiles = list_helmfiles(module, args.github_token, branch=args.branch)
         if not helmfiles:
             print(f"No helmfiles found for module '{module}', skipping.")
             continue
-        sel_idx = prompt_choose(f"Select helmfile version for module '{module}':", [f["name"] for f in helmfiles], allow_multiple=False, single_selection=True)
-        if not sel_idx:
-            continue
-        sel_file = helmfiles[sel_idx[0] - 1]
-        selected_map[module] = [sel_file]
+        
+        if args.versions and len(args.versions) > idx:
+            version_name = args.versions[idx]
+            sel_file = next((f for f in helmfiles if f["name"] == version_name), None)
+            if not sel_file:
+                print(f"⚠️ Version '{version_name}' not found for module '{module}', skipping.")
+                continue
+            selected_map[module] = [sel_file]
+            print(f"✅ Using version '{version_name}' for module '{module}'")
+        else:
+            sel_idx = prompt_choose(f"Select helmfile version for module '{module}':",
+                                    [f["name"] for f in helmfiles],
+                                    allow_multiple=False,
+                                    single_selection=True)
+            if not sel_idx:
+                continue
+            sel_file = helmfiles[sel_idx[0] - 1]
+            selected_map[module] = [sel_file]
 
     if not selected_map:
         print("No helmfiles selected. Exiting.")
