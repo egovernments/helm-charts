@@ -17,7 +17,7 @@ entries:
         licenses: Apache-2.0
       apiVersion: v2
       appVersion: 3.6.0
-      created: "2025-11-03T11:46:57.000173027Z"
+      created: "2025-11-03T12:24:14.205679621Z"
       description: Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
       digest: 4f4d228e50adce9577b894fdd6b67b7078718cf61b1fe24896e1019093d8adc7
       home: https://bitnami.com
@@ -37,4 +37,19 @@ entries:
       urls:
         - https://helm.digit.org/backbone/kafka/kafka-0.0.1.tgz
       version: 0.0.1
-generated: "2025-11-03T11:46:56.994622127Z"
+  redis:
+    - apiVersion: v2
+      appVersion: 7.2.4
+      created: "2025-11-03T12:24:14.206464377Z"
+      dependencies:
+        - name: common
+          repository: file://../../common
+          version: 0.0.1
+      description: A Helm chart for Kubernetes
+      digest: f73381dab17f32227f96a601b871ab60d9f44a08064d3e314be437f4503f8577
+      name: redis
+      type: application
+      urls:
+        - https://helm.digit.org/backbone/redis/redis-3.0.0.tgz
+      version: 3.0.0
+generated: "2025-11-03T12:24:14.200323257Z"
