@@ -79,10 +79,10 @@ releases:
 #             hosts:
 #               - {{ .Values.global.domain }}
 
-- name: kafka
+- name: kafka-kraft
   installed: true
   chart: backbone/{{`{{ .Release.Name }}`}}
-  version: 0.0.1
+  version: 1.0.0
   <<: *default
 
 # - name: ingress-nginx
