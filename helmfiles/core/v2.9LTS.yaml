@@ -24,83 +24,83 @@ values:
 releases:
 - name: egov-accesscontrol # Replace with your desired namespace
   installed: true # Replace with the version of your chart, if needed
-  <<: *default
+  <<: *core
 
 - name: audit-service # Replace with your desired namespace
   installed: true # Replace with the version of your chart, if needed
-  <<: *default
+  <<: *core
 
 - name: egov-enc-service # Replace with your desired namespace
   installed: true
   needs:
   - egov-mdms-service
-  <<: *default
+  <<: *core
 
 - name: egov-filestore # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-idgen # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-localization # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-location # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-mdms-service # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-hrms # Replace with your desired namespace
   installed: true
   needs:
   - egov-user
-  <<: *default
+  <<: *core
 
 - name: egov-indexer # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-notification-mail # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-notification-sms # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-user # Replace with your desired namespace
   installed: true
   needs:
   - egov-enc-service
-  <<: *default
+  <<: *core
 
 - name: egov-otp # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-persister # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-url-shortening # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-workflow-v2 # Replace with your desired namespace
   installed: true
   needs:
   - egov-mdms-service
-  <<: *default
+  <<: *core
 
 - name: user-otp # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: configmaps # Replace with your desired namespace
   installed: true
@@ -108,26 +108,26 @@ releases:
 
 - name: citizen # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: digit-ui # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: service-request # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: egov-pg-service # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
   
 - name: egov-user-event # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 - name: gateway # Replace with your desired namespace
   installed: true
-  <<: *default
+  <<: *core
 
 
