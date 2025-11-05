@@ -3,7 +3,21 @@ entries:
   citizen:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2025-11-05T05:37:34.516587087Z"
+      created: "2025-11-05T06:06:28.238738271Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/common
+          version: 0.0.2
+      description: A Helm chart for Kubernetes
+      digest: 5e4a7e2118e0848ee249ce418a46167bdb15a5c8d59e290b5ef71054c71f1e39
+      name: citizen
+      type: application
+      urls:
+        - https://helm.digit.org/frontend/citizen/citizen-1.1.0.tgz
+      version: 1.1.0
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-11-05T06:06:28.237049644Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/common
@@ -15,4 +29,19 @@ entries:
       urls:
         - https://helm.digit.org/frontend/citizen/citizen-1.0.0.tgz
       version: 1.0.0
-generated: "2025-11-05T05:37:34.51561727Z"
+  digit-ui:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-11-05T06:06:28.240098894Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/common
+          version: 0.0.2
+      description: A Helm chart for Kubernetes
+      digest: d56152c81532d69ed62418da45fefa370633bca9d15262ab9e11f80eea60dbed
+      name: digit-ui
+      type: application
+      urls:
+        - https://helm.digit.org/frontend/digit-ui/digit-ui-0.1.0.tgz
+      version: 0.1.0
+generated: "2025-11-05T06:06:28.235730169Z"
