@@ -6,7 +6,7 @@ labels:
 # Init Containers Configs
 initContainers:
   gitSync:
-    enabled: true
+    enabled: false
     repo: "git@github.com:egovernments/configs"
     branch: "UAT"
 
