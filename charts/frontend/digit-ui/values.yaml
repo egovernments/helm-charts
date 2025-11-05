@@ -12,7 +12,7 @@ ingress:
 # Init Containers Configs
 initContainers: {}
 
-# Container Configs
+# Container Configs 
 image:
   repository: "digit-ui"
 replicas: "1"
