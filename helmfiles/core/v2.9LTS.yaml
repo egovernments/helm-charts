@@ -71,7 +71,7 @@ releases:
 
 - name: egov-mdms-service # Replace with your desired namespace
   installed: true
-  version: 0.1.0
+  version: 0.2.0
   <<: *core
 
 - name: egov-hrms # Replace with your desired namespace
@@ -83,7 +83,7 @@ releases:
 
 - name: egov-indexer # Replace with your desired namespace
   installed: true
-  version: 0.3.0
+  version: 0.4.0
   <<: *core
 
 - name: egov-notification-mail # Replace with your desired namespace
@@ -110,7 +110,7 @@ releases:
 
 - name: egov-persister # Replace with your desired namespace
   installed: true
-  version: 1.1.0
+  version: 1.2.0
   <<: *core
 
 - name: egov-url-shortening # Replace with your desired namespace
