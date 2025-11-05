@@ -1,12 +1,12 @@
 repositories:
-- name: core
+- name: digit-core
   url: https://helm.digit.org/core
-- name: frontend
+- name: digit-frontend
   url: https://helm.digit.org/frontend
 
 templates:
   core: &core
-    chart: core/{{`{{ .Release.Name }}`}}
+    chart: digit-core/{{`{{ .Release.Name }}`}}
     namespace: playground
     # This prevents helmfile exiting when it encounters a missing file
     # Valid values are "Error", "Warn", "Info", "Debug". The default is "Error"
@@ -15,7 +15,7 @@ templates:
     values:
       - {{ .Values | toYaml | nindent 8 }}
   frontend: &frontend
-    chart: frontend/{{`{{ .Release.Name }}`}}
+    chart: digit-frontend/{{`{{ .Release.Name }}`}}
     namespace: playground
     # This prevents helmfile exiting when it encounters a missing file
     # Valid values are "Error", "Warn", "Info", "Debug". The default is "Error"

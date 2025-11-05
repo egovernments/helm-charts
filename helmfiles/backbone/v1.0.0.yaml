@@ -1,5 +1,5 @@
 repositories:
-- name: backbone
+- name: digit-backbone
   url: https://helm.digit.org/backbone
 
 templates: 
@@ -13,7 +13,7 @@ values:
 
 releases:
 - name: cert-manager
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   namespace: egov
   installed: true
   version: 1.0.0
@@ -38,14 +38,15 @@ releases:
 #         postgresql:
 #           auth:
 #             postgresPassword: {{ .Values.secrets.db.password | quote }}
+
 - name: redis
   installed: true
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 3.0.0
   <<: *backbone
 
 - name: elasticsearch-master
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   <<: *backbone
   values:
@@ -53,13 +54,13 @@ releases:
         password: {{ .Values.secrets.elasticsearch.password }}
 
 - name: elasticsearch-data
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   <<: *backbone
 
 - name: kibana
-  chart: backbone/{{`{{ .Release.Name }}`}}
-  version: 1.0.0
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
+  version: 1.0.1
   force: true
   <<: *backbone
   values:
@@ -75,13 +76,13 @@ releases:
 
 - name: kafka-kraft
   installed: true
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   <<: *backbone
 
 - name: ingress-nginx
   installed: true
-  chart: backbone/{{`{{ .Release.Name }}`}}
+  chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   <<: *backbone
   values:
