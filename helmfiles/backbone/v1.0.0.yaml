@@ -23,7 +23,7 @@ releases:
 #   installed: true
 #   chart: ./minio
 #   version: 13.3.1
-#   <<: *default
+#   <<: *backbone
 #   values:
 #     - ./minio/values.yaml
 
@@ -31,7 +31,7 @@ releases:
 #   installed: true
 #   chart: ./postgresql
 #   version: 11.9.13
-#   <<: *default
+#   <<: *backbone
 #   values:
 #     - ./postgresql/values.yaml
 #     - global:
@@ -42,12 +42,12 @@ releases:
   installed: true
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 3.0.0
-  <<: *default
+  <<: *backbone
 
 - name: elasticsearch-master
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
-  <<: *default
+  <<: *backbone
   values:
     - secret:
         password: {{ .Values.secrets.elasticsearch.password }}
@@ -55,13 +55,13 @@ releases:
 - name: elasticsearch-data
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
-  <<: *default
+  <<: *backbone
 
 - name: kibana
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   force: true
-  <<: *default
+  <<: *backbone
   values:
     - ingress:
         hosts:
@@ -77,13 +77,13 @@ releases:
   installed: true
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
-  <<: *default
+  <<: *backbone
 
 - name: ingress-nginx
   installed: true
   chart: backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
-  <<: *default
+  <<: *backbone
   values:
     - domain: {{ .Values.global.domain }}
 
@@ -91,6 +91,6 @@ releases:
 #   installed: true
 #   chart: ./playground
 #   version: 0.1.0
-#   <<: *default
+#   <<: *backbone
 #   values:
 #     - ./playground/values.yaml
