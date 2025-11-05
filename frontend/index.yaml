@@ -3,7 +3,21 @@ entries:
   citizen:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2025-11-05T06:06:28.238738271Z"
+      created: "2025-11-05T07:08:15.27291601Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/common
+          version: 0.1.0
+      description: A Helm chart for Kubernetes
+      digest: 00ece6b0f186bfd0de2f274e3cafaee0c4e12d5c6a60193db7e1ec9ae7343950
+      name: citizen
+      type: application
+      urls:
+        - https://helm.digit.org/frontend/citizen/citizen-1.2.0.tgz
+      version: 1.2.0
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-11-05T07:08:15.271535497Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/common
@@ -17,7 +31,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2025-11-05T06:06:28.237049644Z"
+      created: "2025-11-05T07:08:15.270113477Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/common
@@ -32,7 +46,21 @@ entries:
   digit-ui:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2025-11-05T06:06:28.240098894Z"
+      created: "2025-11-05T07:08:15.275756475Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/common
+          version: 0.1.0
+      description: A Helm chart for Kubernetes
+      digest: c752439d15f95b665ab8dbbdc18882fc50cc616f46be22078ffe0df33641beaa
+      name: digit-ui
+      type: application
+      urls:
+        - https://helm.digit.org/frontend/digit-ui/digit-ui-0.2.0.tgz
+      version: 0.2.0
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2025-11-05T07:08:15.274362737Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/common
@@ -44,4 +72,4 @@ entries:
       urls:
         - https://helm.digit.org/frontend/digit-ui/digit-ui-0.1.0.tgz
       version: 0.1.0
-generated: "2025-11-05T06:06:28.235730169Z"
+generated: "2025-11-05T07:08:15.268341014Z"
