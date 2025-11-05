@@ -3,7 +3,7 @@ repositories:
   url: https://helm.digit.org/backbone
 
 templates: 
-  default: &default
+  backbone: &backbone
     namespace: backbone
     missingFileHandler: Warn
 
@@ -12,14 +12,12 @@ values:
 - {{ env "SECRET_FILE" }} 
 
 releases:
-# - name: cert-manager
-#   chart: ./cert-manager
-#   namespace: egov
-#   installed: true
-#   version: v1.13.3
-#   disableValidation: true
-#   values:
-#     - ./cert-manager/values.yaml
+- name: cert-manager
+  chart: backbone/{{`{{ .Release.Name }}`}}
+  namespace: egov
+  installed: true
+  version: 1.0.0
+  disableValidation: true
 
 # - name: minio
 #   installed: true
@@ -46,38 +44,34 @@ releases:
   version: 3.0.0
   <<: *default
 
-# - name: elasticsearch
-#   chart: ./elasticsearch
-#   version: 8.11.3
-#   <<: *default
-#   values:
-#     - ./elasticsearch/values.yaml
-#     - secret:
-#         password: {{ .Values.secrets.elasticsearch.password }}
+- name: elasticsearch-master
+  chart: backbone/{{`{{ .Release.Name }}`}}
+  version: 1.0.0
+  <<: *default
+  values:
+    - secret:
+        password: {{ .Values.secrets.elasticsearch.password }}
 
-# - name: elasticsearch-data
-#   chart: ./elasticsearch-data
-#   version: 8.11.3
-#   <<: *default
-#   values:
-#     - ./elasticsearch-data/values.yaml
+- name: elasticsearch-data
+  chart: backbone/{{`{{ .Release.Name }}`}}
+  version: 1.0.0
+  <<: *default
 
-# - name: kibana
-#   chart: ./kibana
-#   version: 8.11.3
-#   force: true
-#   <<: *default
-#   values:
-#     - ./kibana/values.yaml
-#     - ingress:
-#         hosts:
-#           - host: {{ .Values.global.domain }}
-#             paths:
-#               - path: /kibana
-#         tls: 
-#           - secretName: {{ .Values.global.domain }}-tls-certs
-#             hosts:
-#               - {{ .Values.global.domain }}
+- name: kibana
+  chart: backbone/{{`{{ .Release.Name }}`}}
+  version: 1.0.0
+  force: true
+  <<: *default
+  values:
+    - ingress:
+        hosts:
+          - host: {{ .Values.global.domain }}
+            paths:
+              - path: /kibana
+        tls: 
+          - secretName: {{ .Values.global.domain }}-tls-certs
+            hosts:
+              - {{ .Values.global.domain }}
 
 - name: kafka-kraft
   installed: true
@@ -85,14 +79,13 @@ releases:
   version: 1.0.0
   <<: *default
 
-# - name: ingress-nginx
-#   installed: true
-#   chart: ./ingress-nginx
-#   version: 4.10.0
-#   <<: *default
-#   values:
-#     - ./ingress-nginx/values.yaml
-#     - domain: {{ .Values.global.domain }}
+- name: ingress-nginx
+  installed: true
+  chart: backbone/{{`{{ .Release.Name }}`}}
+  version: 1.0.0
+  <<: *default
+  values:
+    - domain: {{ .Values.global.domain }}
 
 # - name: playground
 #   installed: true
