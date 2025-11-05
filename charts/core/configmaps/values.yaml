@@ -179,8 +179,8 @@ secrets:
     name: oauth2-proxy
     namespace: egov
   elasticsearch:
-    name: elasticsearch-credentials
-    namespace: egov
+    name: elasticsearch-master-credentials
+    namespace: [ backbone, egov ]
   egov-pg-service:
     name: egov-pg-service
     namespace: egov
