@@ -7,7 +7,7 @@ repositories:
 templates:
   core: &core
     chart: digit-core/{{`{{ .Release.Name }}`}}
-    namespace: playground
+    namespace: egov
     # This prevents helmfile exiting when it encounters a missing file
     # Valid values are "Error", "Warn", "Info", "Debug". The default is "Error"
     # Use "Debug" to make missing files errors invisible at the default log level(--log-level=INFO)
@@ -16,7 +16,7 @@ templates:
       - {{ .Values | toYaml | nindent 8 }}
   frontend: &frontend
     chart: digit-frontend/{{`{{ .Release.Name }}`}}
-    namespace: playground
+    namespace: egov
     # This prevents helmfile exiting when it encounters a missing file
     # Valid values are "Error", "Warn", "Info", "Debug". The default is "Error"
     # Use "Debug" to make missing files errors invisible at the default log level(--log-level=INFO)
