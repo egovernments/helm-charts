@@ -69,7 +69,7 @@ releases:
           - host: {{ .Values.global.domain }}
             paths:
               - path: /kibana
-            pathtype: Prefix
+        pathtype: Prefix
         tls: 
           - secretName: {{ .Values.global.domain }}-tls-certs
             hosts:
