@@ -17,7 +17,7 @@ initContainers:
     image:
       repository: "egov-indexer-db"
   gitSync:
-    enabled: false
+    enabled: true
     repo: "git@github.com:egovernments/configs"
     branch: "master"
 
