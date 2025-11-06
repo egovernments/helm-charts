@@ -80,6 +80,9 @@ releases:
   chart: digit-backbone/{{`{{ .Release.Name }}`}}
   version: 1.0.0
   <<: *backbone
+  set:
+    - name: kraft.clusterId
+      value: {{ .Values.secrets.kafka.clusterID }}
 
 - name: ingress-nginx
   installed: true
