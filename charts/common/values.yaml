@@ -126,7 +126,7 @@ extraEnv:
         valueFrom:
           configMapKeyRef:
             name: egov-config
-            key: db-url
+            key: db-otel-url
       - name: FLYWAY_ENABLED
         value: "false"      
       - name: SPRING_FLYWAY_ENABLED
