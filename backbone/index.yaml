@@ -6,7 +6,7 @@ entries:
         artifacthub.io/prerelease: '{{IS_PRERELEASE}}'
       apiVersion: v1
       appVersion: v1.13.3
-      created: "2025-11-06T11:01:13.831619138Z"
+      created: "2025-11-06T12:01:41.347680148Z"
       description: A Helm chart for cert-manager
       digest: 3368612e7f48103140a55bd13f215e895768a66b4f05a81dcbcdc99f3920f411
       home: https://github.com/cert-manager/cert-manager
@@ -30,7 +30,7 @@ entries:
   elasticsearch-data:
     - apiVersion: v1
       appVersion: "1.0"
-      created: "2025-11-06T11:01:13.832343671Z"
+      created: "2025-11-06T12:01:41.348415174Z"
       description: A Helm chart for Confluent Kafka on Kubernetes
       digest: d56d9174d9cd22474f5ce70d1c21dccbe1f7c8b8eecf8c581fe3d6b546e7dcfe
       name: elasticsearch-data
@@ -40,7 +40,7 @@ entries:
   elasticsearch-master:
     - apiVersion: v1
       appVersion: "1.0"
-      created: "2025-11-06T11:01:13.833244854Z"
+      created: "2025-11-06T12:01:41.349106717Z"
       description: A Helm chart for Confluent Kafka on Kubernetes
       digest: 4b222e8aaac6b43596585ef7d138a8c49b391a27f5a7358a320e1c5e567bd803
       name: elasticsearch-master
@@ -54,7 +54,7 @@ entries:
         artifacthub.io/prerelease: "false"
       apiVersion: v2
       appVersion: 1.12.1
-      created: "2025-11-06T11:01:13.836315034Z"
+      created: "2025-11-06T12:01:41.351614861Z"
       description: Ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer
       digest: 88d9a0e78986b2410f61d2d91559438ca56a31b6efb8a24e82d06c84132b7b3a
       home: https://github.com/kubernetes/ingress-nginx
@@ -91,7 +91,7 @@ entries:
         licenses: Apache-2.0
       apiVersion: v2
       appVersion: 3.6.0
-      created: "2025-11-06T11:01:13.841555183Z"
+      created: "2025-11-06T12:01:41.356450609Z"
       description: Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
       digest: 4f4d228e50adce9577b894fdd6b67b7078718cf61b1fe24896e1019093d8adc7
       home: https://bitnami.com
@@ -128,7 +128,7 @@ entries:
         licenses: Apache-2.0
       apiVersion: v2
       appVersion: 3.6.0
-      created: "2025-11-06T11:01:13.846563222Z"
+      created: "2025-11-06T12:01:41.361708967Z"
       description: Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
       digest: 3a20d8485fcf86127fff622484fabf5c6a870ee12bea390255870c84c8f0061d
       home: https://bitnami.com
@@ -151,7 +151,23 @@ entries:
   kibana:
     - apiVersion: v1
       appVersion: 8.5.1
-      created: "2025-11-06T11:01:13.84857597Z"
+      created: "2025-11-06T12:01:41.364317197Z"
+      description: Official Elastic helm chart for Kibana
+      digest: 0a11217167ae47df31b726baf99e75f5d8232a9a7c2c0da62516833299efa505
+      home: https://github.com/elastic/helm-charts
+      icon: https://helm.elastic.co/icons/kibana.png
+      maintainers:
+        - email: helm-charts@elastic.co
+          name: Elastic
+      name: kibana
+      sources:
+        - https://github.com/elastic/kibana
+      urls:
+        - https://helm.digit.org/backbone/kibana/kibana-1.0.3.tgz
+      version: 1.0.3
+    - apiVersion: v1
+      appVersion: 8.5.1
+      created: "2025-11-06T12:01:41.363668744Z"
       description: Official Elastic helm chart for Kibana
       digest: 6ebe3e9220fd107a5f96339ceb5a30aa090450f42ac470318b68ffa6fb171832
       home: https://github.com/elastic/helm-charts
@@ -167,7 +183,7 @@ entries:
       version: 1.0.2
     - apiVersion: v1
       appVersion: 8.5.1
-      created: "2025-11-06T11:01:13.847876414Z"
+      created: "2025-11-06T12:01:41.363017095Z"
       description: Official Elastic helm chart for Kibana
       digest: c628def642d55a9d92da27f6e83a6dcbe0a2be8615ccc644c0d0ef493a58c733
       home: https://github.com/elastic/helm-charts
@@ -183,7 +199,7 @@ entries:
       version: 1.0.1
     - apiVersion: v1
       appVersion: 8.5.1
-      created: "2025-11-06T11:01:13.847213386Z"
+      created: "2025-11-06T12:01:41.362381887Z"
       description: Official Elastic helm chart for Kibana
       digest: 71105d1cef5e7c049bf47184bfa99ff8b042a8b6f8d8d97e4d68189364d2b202
       home: https://github.com/elastic/helm-charts
@@ -200,7 +216,7 @@ entries:
   redis:
     - apiVersion: v2
       appVersion: 7.2.4
-      created: "2025-11-06T11:01:13.849390642Z"
+      created: "2025-11-06T12:01:41.365025673Z"
       dependencies:
         - name: common
           repository: file://../../common
@@ -212,4 +228,4 @@ entries:
       urls:
         - https://helm.digit.org/backbone/redis/redis-3.0.0.tgz
       version: 3.0.0
-generated: "2025-11-06T11:01:13.828682354Z"
+generated: "2025-11-06T12:01:41.344070351Z"
