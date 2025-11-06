@@ -1,2 +1,2 @@
-# urban-helm-charts
-Urban Helm Charts Repository
+# helm-charts
+Helm Charts Repository for all DIGIT services
