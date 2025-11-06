@@ -46,7 +46,7 @@ releases:
   installed: true
   version: 0.3.1
   needs:
-  - egov-mdms-service
+  - mdms-v2
   <<: *core
 
 - name: egov-filestore # Replace with your desired namespace
@@ -66,12 +66,12 @@ releases:
 
 - name: egov-location # Replace with your desired namespace
   installed: true
-  version: 0.1.1
+  version: 0.1.0
   <<: *core
 
-- name: egov-mdms-service # Replace with your desired namespace
+- name: mdms-v2 # Replace with your desired namespace
   installed: true
-  version: 0.2.1
+  version: 0.3.1
   <<: *core
 
 - name: egov-hrms # Replace with your desired namespace
@@ -100,7 +100,7 @@ releases:
   installed: true
   needs:
   - egov-enc-service
-  version: 0.3.1
+  version: 0.3.0
   <<: *core
 
 - name: egov-otp # Replace with your desired namespace
@@ -122,7 +122,7 @@ releases:
   installed: true
   version: 0.3.1
   needs:
-  - egov-mdms-service
+  - mdms-v2
   <<: *core
 
 - name: user-otp # Replace with your desired namespace
