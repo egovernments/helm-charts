@@ -60,7 +60,7 @@ releases:
 
 - name: kibana
   chart: digit-backbone/{{`{{ .Release.Name }}`}}
-  version: 1.0.1
+  version: 1.0.2
   force: true
   <<: *backbone
   values:
