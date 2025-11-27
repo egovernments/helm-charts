@@ -189,13 +189,17 @@ def prompt_choose(prompt, items, allow_multiple=True, single_selection=False):
 # ---------------------------
 # Merge logic
 # ---------------------------
-def merge_helmfiles_from_texts(file_contents_list, env_file, secrets_file):
+def merge_helmfiles_from_texts(file_contents_list, env_file, secrets_file, custom_helmfile_text=None):
     """
     High-level plan:
     - For each raw content: mask non-env templates, replace env placeholders in text,
       parse YAML via ruamel, collect sections deduping by sensible keys.
     - After merging produce a CommentedMap, dump to string, unmask templates, return final string.
     """
+    if custom_helmfile_text:
+        file_contents_list = list(file_contents_list)  # ensure mutable copy
+        file_contents_list.append(custom_helmfile_text)
+
     merged = CommentedMap()
     merged["repositories"] = CommentedSeq()
     merged["templates"] = CommentedMap()
@@ -250,10 +254,28 @@ def merge_helmfiles_from_texts(file_contents_list, env_file, secrets_file):
         for rel in data.get("releases", []):
             if not isinstance(rel, dict):
                 continue
-            rname = rel.get("name")
-            if rname and rname not in seen_releases:
+
+            # Generate a uniqueness key based on full structure (namespace, template, chart, set, etc.)
+            # Remove volatile fields that shouldn't participate in dedupe (e.g., installed: true)
+            rel_copy = dict(rel)
+
+            # Convert to YAML string to compute stable fingerprint
+            tmp = StringIO()
+            yaml.dump(rel_copy, tmp)
+            rel_key = tmp.getvalue()
+
+            if rel_key not in seen_releases:
                 merged["releases"].append(rel)
-                seen_releases.add(rname)
+                seen_releases.add(rel_key)
+
+        # Merge releases (dedupe by release name)
+        # for rel in data.get("releases", []):
+        #     if not isinstance(rel, dict):
+        #         continue
+        #     rname = rel.get("name")
+        #     if rname and rname not in seen_releases:
+        #         merged["releases"].append(rel)
+        #         seen_releases.add(rname)
 
     # Build final map removing empty sections
     final = CommentedMap()
@@ -282,7 +304,7 @@ def _seq_item_key(item):
 # ---------------------------
 # Build dynamic helmfile (fetch from GitHub -> merge -> write)
 # ---------------------------
-def build_dynamic_helmfile(selected_files_map, out_filename, env_file_path, secrets_file_path, token=None, branch=None):
+def build_dynamic_helmfile(selected_files_map, out_filename, env_file_path, secrets_file_path, token=None, branch=None, custom_helmfile_content=None):
     try:
         file_contents_list = []
         for module, files in selected_files_map.items():
@@ -302,7 +324,13 @@ def build_dynamic_helmfile(selected_files_map, out_filename, env_file_path, secr
                 except Exception as e:
                     error_exit(f"Downloading helmfile '{file_item['name']}' for module '{module}'", e, debug=DEBUG_MODE)
         try:
-            final_text = merge_helmfiles_from_texts(file_contents_list, env_file_path, secrets_file_path)
+            if custom_helmfile_content and not selected_files_map:
+                print("⚠️ No GitHub helmfiles selected. Using only custom helmfile...")
+                final_text = custom_helmfile_content
+            elif custom_helmfile_content:
+                final_text = merge_helmfiles_from_texts(file_contents_list, env_file_path, secrets_file_path, custom_helmfile_content)
+            else:
+                final_text = merge_helmfiles_from_texts(file_contents_list, env_file_path, secrets_file_path) 
         except Exception as e:
             error_exit("Merging helmfiles", e, debug=DEBUG_MODE)
 
@@ -349,6 +377,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable verbose error traceback output")
     parser.add_argument("--modules", nargs="+", help="List of module names to deploy (e.g. backbone core)")
     parser.add_argument("--versions", nargs="+", help="Helmfile versions corresponding to selected modules")
+    parser.add_argument("--custom-helmfile", default=None, help="Path to a local custom helmfile that can be deployed alone or merged with fetched helmfiles")
 
     args = parser.parse_args()
     DEBUG_MODE = args.debug
@@ -394,6 +423,16 @@ def main():
             sel_file = helmfiles[sel_idx[0] - 1]
             selected_map[module] = [sel_file]
 
+    custom_helmfile_content = None
+    if args.custom_helmfile:
+        if not Path(args.custom_helmfile).exists():
+            print(f"❌ Custom helmfile '{args.custom_helmfile}' not found.")
+            return
+        with open(args.custom_helmfile, "r", encoding="utf-8") as f:
+            custom_helmfile_content = f.read()
+        print(f"✅ Loaded custom helmfile: {args.custom_helmfile}")
+
+
     if not selected_map:
         print("No helmfiles selected. Exiting.")
         return
@@ -402,7 +441,7 @@ def main():
     out_fname = args.out or f"dynamic-helmfile-{ts}.yaml"
     out_path = Path.cwd() / out_fname
 
-    build_dynamic_helmfile(selected_map, out_path, args.env_file, args.secrets_file, token=args.github_token, branch=args.branch)
+    build_dynamic_helmfile(selected_map, out_path, args.env_file, args.secrets_file, token=args.github_token, branch=args.branch, custom_helmfile_content=custom_helmfile_content)
     print(f"\nDynamic helmfile created: {out_path}")
 
     if args.no_apply:
