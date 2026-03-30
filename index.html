@@ -176,9 +176,7 @@
       font-size: 18px;
     }
 
-    .icon-backbone { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-    .icon-common { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
-    .icon-core { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .icon-default { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 
     .category-count {
       font-size: 14px;
@@ -386,45 +384,32 @@
           <span class="label">Total Charts</span>
           <span class="value orange" id="badge-total">...</span>
         </div>
+        <div class="badge">
+          <span class="label">Modules</span>
+          <span class="value purple" id="badge-modules">...</span>
+        </div>
       </div>
 
       <p>
-        Production-ready Helm charts for the DIGIT platform, organized into infrastructure backbone services,
-        shared libraries, and core platform microservices. Each chart is independently versioned and can be deployed
-        standalone or as part of the full DIGIT stack.
+        Production-ready Helm charts for the DIGIT platform, organized into independently versioned modules.
+        Each chart can be deployed standalone or as part of the full DIGIT stack.
       </p>
 
-      <!-- Stats -->
+      <!-- Dynamic stats -->
       <div class="stats" id="stats-bar">
-        <div class="stat">
-          <div class="stat-num" id="stat-backbone">-</div>
-          <div class="stat-label">Backbone Charts</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="stat-common">-</div>
-          <div class="stat-label">Shared Libraries</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="stat-core">-</div>
-          <div class="stat-label">Core Charts</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="stat-total">-</div>
-          <div class="stat-label">Total Charts</div>
-        </div>
+        <div class="loader"><div class="spinner"></div> Loading modules...</div>
       </div>
 
-      <!-- Quick Navigation -->
+      <!-- Dynamic quick nav -->
       <h3>Quick Navigation</h3>
-      <div class="toc">
-        <a href="#backbone">Backbone <span class="toc-count" id="toc-backbone"></span></a>
-        <a href="#common">Common <span class="toc-count" id="toc-common"></span></a>
-        <a href="#core">Core <span class="toc-count" id="toc-core"></span></a>
-        <a href="#usage">Usage Guide</a>
+      <div class="toc" id="toc-bar">
+        <div class="loader"><div class="spinner"></div> Loading...</div>
       </div>
 
-      <!-- Dynamic chart sections rendered here -->
-      <div id="charts-container"></div>
+      <!-- Dynamic chart sections -->
+      <div id="charts-container">
+        <div class="loader"><div class="spinner"></div> Loading charts...</div>
+      </div>
 
       <!-- ==================== USAGE ==================== -->
       <h2 id="usage">Usage</h2>
@@ -432,28 +417,26 @@
 
       <p><a href="https://helm.sh">Helm</a> must be installed to use the charts. Please refer to Helm's <a href="https://helm.sh/docs/">documentation</a> to get started.</p>
 
-      <p>Once Helm is set up properly, add the repo as follows:</p>
+      <p>Once Helm is set up properly, add the repos as follows:</p>
 
       <div class="codeblock">
-        <code>helm repo add digit-backbone https://helm.digit.org/backbone
-helm repo add digit-core https://helm.digit.org/core
-helm repo add digit-common https://helm.digit.org/common</code>
+        <code id="repo-add-code">Loading...</code>
       </div>
 
-      <p>You can then run <span class="inline">helm search repo digit-backbone</span> to see the available charts.</p>
+      <p>You can then run <span class="inline">helm search repo digit-&lt;module&gt;</span> to see the available charts.</p>
 
       <h3>Installing a chart</h3>
 
       <div class="codeblock">
-        <code>helm install my-release digit-backbone/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml</code>
+        <code>helm install my-release digit-&lt;module&gt;/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml</code>
       </div>
 
       <h3>Updating dependencies</h3>
 
-      <p>Most core charts depend on the <span class="inline">common</span> library chart. Build dependencies before installing:</p>
+      <p>Most service charts depend on the <span class="inline">common</span> library chart. Build dependencies before installing:</p>
 
       <div class="codeblock">
-        <code>cd charts/core/&lt;chart-name&gt;
+        <code>cd charts/&lt;module&gt;/&lt;chart-name&gt;
 helm dependency build</code>
       </div>
 
@@ -468,40 +451,40 @@ helm dependency build</code>
   </div>
 
   <script>
-    // Module definitions with metadata
-    const MODULES = [
-      {
-        id: 'backbone',
-        name: 'backbone/',
-        icon: 'icon-backbone',
-        description: 'Infrastructure and platform-level services: ingress controllers, message brokers, databases, caching, search engines, certificate management, and notification services.',
-        indexUrl: './backbone/index.yaml'
-      },
-      {
-        id: 'common',
-        name: 'common/',
-        icon: 'icon-common',
-        description: 'Shared Helm library chart providing reusable templates and helpers consumed by most core service charts. Not deployed directly \u2014 included as a dependency.',
-        indexUrl: './common/index.yaml'
-      },
-      {
-        id: 'core',
-        name: 'core/',
-        icon: 'icon-core',
-        description: 'Platform microservices powering the DIGIT ecosystem: authentication, authorization, API gateway, persistence, notifications, workflows, master data management, file storage, payment gateway integration, and more.',
-        indexUrl: './core/index.yaml'
-      }
+    const GH_PAGES_HOST = 'helm.digit.org';
+
+    // Color palette for module icons (cycles for unknown modules)
+    const ICON_COLORS = [
+      'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+      'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+      'linear-gradient(135deg, #f59e0b, #d97706)',
+      'linear-gradient(135deg, #10b981, #059669)',
+      'linear-gradient(135deg, #ef4444, #dc2626)',
+      'linear-gradient(135deg, #ec4899, #db2777)',
+      'linear-gradient(135deg, #06b6d4, #0891b2)',
+      'linear-gradient(135deg, #f97316, #ea580c)'
     ];
 
-    // Extract the latest version entry for each chart from the Helm index.yaml
+    // Known module descriptions (optional enrichment, falls back to generic)
+    const MODULE_HINTS = {
+      backbone: 'Infrastructure and platform-level services: ingress controllers, message brokers, databases, caching, search engines, certificate management, and notification services.',
+      common: 'Shared Helm library chart providing reusable templates and helpers consumed by service charts. Not deployed directly \u2014 included as a dependency.',
+      core: 'Core platform microservices: authentication, authorization, API gateway, persistence, notifications, workflows, master data management, file storage, and more.',
+      frontend: 'Frontend applications and UI services for the DIGIT platform.',
+      urban: 'Urban governance modules for property tax, trade license, water & sewerage, and municipal services.',
+      health: 'Health domain services for campaign management, service delivery, and health program modules.'
+    };
+
+    function getModuleDesc(id) {
+      return MODULE_HINTS[id] || `Helm charts for the ${id} module.`;
+    }
+
     function parseIndex(yamlText) {
       const doc = jsyaml.load(yamlText);
       if (!doc || !doc.entries) return [];
-
       const charts = [];
       for (const [name, versions] of Object.entries(doc.entries)) {
         if (!Array.isArray(versions) || versions.length === 0) continue;
-        // versions are sorted newest-first in helm index.yaml
         const latest = versions[0];
         charts.push({
           name: latest.name || name,
@@ -559,10 +542,12 @@ helm dependency build</code>
         </div>`;
     }
 
-    function renderCategory(module, charts) {
+    function renderCategory(moduleId, colorIdx, charts) {
       const countLabel = charts.length === 1
         ? (charts[0] && charts[0].type === 'library' ? '1 library chart' : '1 chart')
         : `${charts.length} charts`;
+
+      const color = ICON_COLORS[colorIdx % ICON_COLORS.length];
 
       let gridHtml;
       if (charts.length === 0) {
@@ -572,50 +557,67 @@ helm dependency build</code>
       }
 
       return `
-        <div class="category" id="${module.id}">
+        <div class="category" id="${moduleId}">
           <div class="category-header">
             <div class="category-title">
-              <div class="icon ${module.icon}">&#9881;</div>
-              <a href="./${module.id}/" style="color:var(--text);text-decoration:none">${module.name}</a>
+              <div class="icon" style="background:${color}">&#9881;</div>
+              <a href="./${moduleId}/" style="color:var(--text);text-decoration:none">${moduleId}/</a>
             </div>
             <div style="display:flex;align-items:center;gap:12px">
               <div class="category-count">${countLabel}</div>
-              <a href="./${module.id}/" style="font-size:14px;color:var(--link);text-decoration:none">View details &rarr;</a>
+              <a href="./${moduleId}/" style="font-size:14px;color:var(--link);text-decoration:none">View details &rarr;</a>
             </div>
           </div>
-          <div class="category-desc">${module.description}</div>
+          <div class="category-desc">${getModuleDesc(moduleId)}</div>
           ${gridHtml}
-        </div>`;
-    }
-
-    function renderLoading(module) {
-      return `
-        <div class="category" id="${module.id}">
-          <div class="category-header">
-            <div class="category-title">
-              <div class="icon ${module.icon}">&#9881;</div>
-              ${module.name}
-            </div>
-          </div>
-          <div class="loader">
-            <div class="spinner"></div>
-            Loading charts from index.yaml...
-          </div>
         </div>`;
     }
 
     async function fetchAndRender() {
       const container = document.getElementById('charts-container');
+      const statsBar = document.getElementById('stats-bar');
+      const tocBar = document.getElementById('toc-bar');
+      const repoAddCode = document.getElementById('repo-add-code');
 
-      // Show loading state
-      container.innerHTML = MODULES.map(renderLoading).join('');
+      // Step 1: Fetch module list from modules.json
+      let modules = [];
+      try {
+        const resp = await fetch('./modules.json');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        modules = await resp.json();
+      } catch (e) {
+        container.innerHTML = '<div class="category-error">Could not load modules.json. No modules discovered yet.</div>';
+        statsBar.innerHTML = '';
+        tocBar.innerHTML = '';
+        return;
+      }
 
+      if (!Array.isArray(modules) || modules.length === 0) {
+        container.innerHTML = '<div class="category-error">No modules found.</div>';
+        statsBar.innerHTML = '';
+        tocBar.innerHTML = '';
+        return;
+      }
+
+      // Show loading per module
+      container.innerHTML = modules.map((m, i) => `
+        <div class="category" id="${m}">
+          <div class="category-header">
+            <div class="category-title">
+              <div class="icon" style="background:${ICON_COLORS[i % ICON_COLORS.length]}">&#9881;</div>
+              ${m}/
+            </div>
+          </div>
+          <div class="loader"><div class="spinner"></div> Loading charts...</div>
+        </div>`).join('');
+
+      // Step 2: Fetch all index.yaml in parallel
       const results = await Promise.allSettled(
-        MODULES.map(async (mod) => {
-          const resp = await fetch(mod.indexUrl);
+        modules.map(async (mod) => {
+          const resp = await fetch(`./${mod}/index.yaml`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const text = await resp.text();
-          return { module: mod, charts: parseIndex(text) };
+          return { moduleId: mod, charts: parseIndex(text) };
         })
       );
 
@@ -623,34 +625,50 @@ helm dependency build</code>
       const counts = {};
       const sections = [];
 
-      for (const result of results) {
+      results.forEach((result, idx) => {
+        const moduleId = modules[idx];
         if (result.status === 'fulfilled') {
-          const { module, charts } = result.value;
-          counts[module.id] = charts.length;
+          const { charts } = result.value;
+          counts[moduleId] = charts.length;
           totalCharts += charts.length;
-          sections.push(renderCategory(module, charts));
+          sections.push(renderCategory(moduleId, idx, charts));
         } else {
-          // Find which module failed based on order
-          const idx = results.indexOf(result);
-          const module = MODULES[idx];
-          counts[module.id] = 0;
-          sections.push(renderCategory(module, []));
+          counts[moduleId] = 0;
+          sections.push(renderCategory(moduleId, idx, []));
         }
-      }
+      });
 
       container.innerHTML = sections.join('');
 
-      // Update stats
-      document.getElementById('stat-backbone').textContent = counts.backbone || 0;
-      document.getElementById('stat-common').textContent = counts.common || 0;
-      document.getElementById('stat-core').textContent = counts.core || 0;
-      document.getElementById('stat-total').textContent = totalCharts;
-      document.getElementById('badge-total').textContent = totalCharts;
+      // Update stats bar dynamically
+      let statsHtml = modules.map(m => `
+        <div class="stat">
+          <div class="stat-num">${counts[m] || 0}</div>
+          <div class="stat-label">${m.charAt(0).toUpperCase() + m.slice(1)}</div>
+        </div>`).join('');
+      statsHtml += `
+        <div class="stat">
+          <div class="stat-num">${totalCharts}</div>
+          <div class="stat-label">Total Charts</div>
+        </div>`;
+      statsBar.innerHTML = statsHtml;
 
-      // Update TOC counts
-      document.getElementById('toc-backbone').textContent = `${counts.backbone || 0} charts`;
-      document.getElementById('toc-common').textContent = `${counts.common || 0} charts`;
-      document.getElementById('toc-core').textContent = `${counts.core || 0} charts`;
+      // Update TOC dynamically
+      let tocHtml = modules.map(m =>
+        `<a href="#${m}">${m.charAt(0).toUpperCase() + m.slice(1)} <span class="toc-count">${counts[m] || 0} charts</span></a>`
+      ).join('');
+      tocHtml += '<a href="#usage">Usage Guide</a>';
+      tocBar.innerHTML = tocHtml;
+
+      // Update badges
+      document.getElementById('badge-total').textContent = totalCharts;
+      document.getElementById('badge-modules').textContent = modules.length;
+
+      // Update helm repo add commands dynamically
+      const repoLines = modules.map(m =>
+        `helm repo add digit-${m} https://${GH_PAGES_HOST}/${m}`
+      ).join('\n');
+      repoAddCode.textContent = repoLines;
     }
 
     fetchAndRender();
