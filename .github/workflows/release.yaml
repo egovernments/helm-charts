@@ -5,6 +5,30 @@ on:
     types: [closed]
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module name (e.g. backbone, core, common)'
+        required: true
+        default: 'backbone'
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      versions:
+        description: 'Comma-separated chart=version pairs (e.g. novu=0.1.0)'
+        required: true
+        default: 'novu=0.1.0'
+      dry_run:
+        description: 'Dry run - print generated files without pushing'
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -272,7 +296,30 @@ jobs:
             rm -rf "$TMP"
           fi
 
-          # --- Update per-module changelog.yaml (append new release entry) ---
+          git -C "${GHP_DIR}" add .
+          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
+          git -C "${GHP_DIR}" push origin gh-pages
+
+      - name: Update changelog and index pages on gh-pages
+        if: steps.changed.outputs.count != '0'
+        continue-on-error: false
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE='${{ steps.parse.outputs.module }}'
+          VERS='${{ steps.versioning.outputs.versions }}'
+          GHP_DIR="_gh_pages"
+          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
+
+          export GIT_AUTHOR_NAME="github-actions[bot]"
+          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+          export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+          # Ensure gh-pages worktree is up to date
+          git -C "${GHP_DIR}" pull --rebase origin gh-pages || true
+
+          # --- Update per-module changelog.yaml ---
           CHANGELOG="${GHP_DIR}/${MODULE}/changelog.yaml"
           PR_NUM='${{ github.event.pull_request.number }}'
           PR_TITLE='${{ github.event.pull_request.title }}'
@@ -280,7 +327,6 @@ jobs:
           RELEASE_TYPE='${{ steps.parse.outputs.release }}'
           RELEASE_DATE="$(date -u +%Y-%m-%d)"
 
-          # Build the new release entry into a temp file
           ENTRY_FILE="/tmp/changelog_entry.yaml"
           {
             printf '  - date: "%s"\n' "$RELEASE_DATE"
@@ -309,7 +355,6 @@ jobs:
           done
 
           if [[ -f "$CHANGELOG" ]]; then
-            # Insert new entry at the top of the releases list (after the "releases:" key)
             {
               head -1 "$CHANGELOG"
               cat "$ENTRY_FILE"
@@ -323,7 +368,6 @@ jobs:
           rm -f "$ENTRY_FILE"
 
           # --- Copy index.html from master to gh-pages root ---
-          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
           if git show "${MERGE_SHA}:index.html" > /dev/null 2>&1; then
             git show "${MERGE_SHA}:index.html" > "${GHP_DIR}/index.html"
           fi
@@ -335,5 +379,120 @@ jobs:
           fi
 
           git -C "${GHP_DIR}" add .
-          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
+          git -C "${GHP_DIR}" commit -m "gh-pages: update changelog and index pages for ${MODULE}" || echo "nothing to commit"
           git -C "${GHP_DIR}" push origin gh-pages
+
+  # ---- Test job: only runs on workflow_dispatch, remove after testing ----
+  test-changelog:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test changelog and index page generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULE='${{ github.event.inputs.module }}'
+          VERS='${{ github.event.inputs.versions }}'
+          RELEASE_TYPE='${{ github.event.inputs.release_type }}'
+          DRY_RUN='${{ github.event.inputs.dry_run }}'
+          GHP_DIR="_gh_pages"
+
+          export GIT_AUTHOR_NAME="github-actions[bot]"
+          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+          export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+          # Setup gh-pages worktree
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:gh-pages
+            git worktree add --force "${GHP_DIR}" gh-pages
+          else
+            git worktree add --force -b gh-pages "${GHP_DIR}" HEAD
+            rm -rf "${GHP_DIR:?}/"* || true
+          fi
+
+          git -C "${GHP_DIR}" config user.name  "$GIT_AUTHOR_NAME"
+          git -C "${GHP_DIR}" config user.email "$GIT_AUTHOR_EMAIL"
+
+          # --- Build changelog entry ---
+          CHANGELOG="${GHP_DIR}/${MODULE}/changelog.yaml"
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+
+          ENTRY_FILE="/tmp/changelog_entry.yaml"
+          {
+            printf '  - date: "%s"\n' "$RELEASE_DATE"
+            printf '    pr: %s\n' "0"
+            printf '    pr_title: "%s"\n' "Test changelog generation"
+            printf '    author: "%s"\n' "${{ github.actor }}"
+            printf '    release_type: "%s"\n' "$RELEASE_TYPE"
+            printf '    charts:\n'
+          } > "$ENTRY_FILE"
+
+          IFS=',' read -r -a VER_PAIRS <<< "$VERS"
+          for pair in "${VER_PAIRS[@]}"; do
+            SVC="${pair%%=*}"
+            NEW_VER="${pair##*=}"
+            [[ -n "$SVC" && -n "$NEW_VER" ]] || continue
+            if [[ "$MODULE" == "common" ]]; then
+              PREV_TAG=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
+              OLD_VER="${PREV_TAG#*/}"
+            else
+              PREV_TAG=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
+              OLD_VER="${PREV_TAG##*/}"
+            fi
+            [[ -z "$OLD_VER" || "$OLD_VER" == "$PREV_TAG" ]] && OLD_VER="0.0.0"
+            [[ "$OLD_VER" == "$NEW_VER" ]] && OLD_VER="0.0.0"
+            printf '      - name: "%s"\n        from: "%s"\n        to: "%s"\n' "$SVC" "$OLD_VER" "$NEW_VER" >> "$ENTRY_FILE"
+          done
+
+          echo "=== Generated changelog entry ==="
+          cat "$ENTRY_FILE"
+          echo "================================="
+
+          if [[ -f "$CHANGELOG" ]]; then
+            {
+              head -1 "$CHANGELOG"
+              cat "$ENTRY_FILE"
+              tail -n +2 "$CHANGELOG"
+            } > "${CHANGELOG}.tmp"
+            mv "${CHANGELOG}.tmp" "$CHANGELOG"
+          else
+            mkdir -p "$(dirname "$CHANGELOG")"
+            { printf 'releases:\n'; cat "$ENTRY_FILE"; } > "$CHANGELOG"
+          fi
+          rm -f "$ENTRY_FILE"
+
+          echo "=== Final changelog.yaml ==="
+          cat "$CHANGELOG"
+          echo "============================="
+
+          # --- Copy index.html to gh-pages root ---
+          if [[ -f "index.html" ]]; then
+            cp "index.html" "${GHP_DIR}/index.html"
+            echo "Copied index.html to gh-pages root"
+          fi
+
+          # --- Copy module-index.html as the module's index.html ---
+          if [[ -f "module-index.html" ]]; then
+            mkdir -p "${GHP_DIR}/${MODULE}"
+            cp "module-index.html" "${GHP_DIR}/${MODULE}/index.html"
+            echo "Copied module-index.html to ${MODULE}/index.html"
+          fi
+
+          echo "=== gh-pages file listing ==="
+          find "${GHP_DIR}" -type f \( -name '*.yaml' -o -name '*.html' \) | sort
+          echo "=============================="
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "DRY RUN: skipping push to gh-pages"
+          else
+            git -C "${GHP_DIR}" add .
+            git -C "${GHP_DIR}" commit -m "gh-pages: test changelog and index pages for ${MODULE}" || echo "nothing to commit"
+            git -C "${GHP_DIR}" push origin gh-pages
+            echo "Pushed to gh-pages"
+          fi
