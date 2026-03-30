@@ -367,6 +367,20 @@ jobs:
           fi
           rm -f "$ENTRY_FILE"
 
+          # --- Generate modules.json from all module directories on gh-pages ---
+          MODS_JSON="["
+          FIRST=true
+          for MOD_DIR in "${GHP_DIR}"/*/; do
+            [[ -d "$MOD_DIR" ]] || continue
+            MOD_NAME="$(basename "$MOD_DIR")"
+            [[ "$MOD_NAME" == _* ]] && continue
+            [[ "$FIRST" == "true" ]] && FIRST=false || MODS_JSON="${MODS_JSON},"
+            MODS_JSON="${MODS_JSON}\"${MOD_NAME}\""
+          done
+          MODS_JSON="${MODS_JSON}]"
+          echo "$MODS_JSON" > "${GHP_DIR}/modules.json"
+          echo "Generated modules.json: $MODS_JSON"
+
           # --- Copy index.html from master to gh-pages root ---
           if git show "${MERGE_SHA}:index.html" > /dev/null 2>&1; then
             git show "${MERGE_SHA}:index.html" > "${GHP_DIR}/index.html"
@@ -475,6 +489,20 @@ jobs:
           echo "=== Final changelog.yaml ==="
           cat "$CHANGELOG"
           echo "============================="
+
+          # --- Generate modules.json from all module directories on gh-pages ---
+          MODS_JSON="["
+          FIRST=true
+          for MOD_DIR in "${GHP_DIR}"/*/; do
+            [[ -d "$MOD_DIR" ]] || continue
+            MOD_NAME="$(basename "$MOD_DIR")"
+            [[ "$MOD_NAME" == _* ]] && continue
+            [[ "$FIRST" == "true" ]] && FIRST=false || MODS_JSON="${MODS_JSON},"
+            MODS_JSON="${MODS_JSON}\"${MOD_NAME}\""
+          done
+          MODS_JSON="${MODS_JSON}]"
+          echo "$MODS_JSON" > "${GHP_DIR}/modules.json"
+          echo "Generated modules.json: $MODS_JSON"
 
           # --- Copy index.html to gh-pages root ---
           if [[ -f "index.html" ]]; then
