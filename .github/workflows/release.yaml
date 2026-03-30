@@ -372,10 +372,15 @@ jobs:
             git show "${MERGE_SHA}:index.html" > "${GHP_DIR}/index.html"
           fi
 
-          # --- Copy module-index.html as the module's index.html ---
+          # --- Copy module-index.html to ALL module directories on gh-pages ---
           if git show "${MERGE_SHA}:module-index.html" > /dev/null 2>&1; then
-            mkdir -p "${GHP_DIR}/${MODULE}"
-            git show "${MERGE_SHA}:module-index.html" > "${GHP_DIR}/${MODULE}/index.html"
+            for MOD_DIR in "${GHP_DIR}"/*/; do
+              [[ -d "$MOD_DIR" ]] || continue
+              MOD_NAME="$(basename "$MOD_DIR")"
+              [[ "$MOD_NAME" == _* ]] && continue
+              git show "${MERGE_SHA}:module-index.html" > "${MOD_DIR}/index.html"
+              echo "Copied module-index.html to ${MOD_NAME}/index.html"
+            done
           fi
 
           git -C "${GHP_DIR}" add .
@@ -477,11 +482,15 @@ jobs:
             echo "Copied index.html to gh-pages root"
           fi
 
-          # --- Copy module-index.html as the module's index.html ---
+          # --- Copy module-index.html to ALL module directories on gh-pages ---
           if [[ -f "module-index.html" ]]; then
-            mkdir -p "${GHP_DIR}/${MODULE}"
-            cp "module-index.html" "${GHP_DIR}/${MODULE}/index.html"
-            echo "Copied module-index.html to ${MODULE}/index.html"
+            for MOD_DIR in "${GHP_DIR}"/*/; do
+              [[ -d "$MOD_DIR" ]] || continue
+              MOD_NAME="$(basename "$MOD_DIR")"
+              [[ "$MOD_NAME" == _* ]] && continue
+              cp "module-index.html" "${MOD_DIR}/index.html"
+              echo "Copied module-index.html to ${MOD_NAME}/index.html"
+            done
           fi
 
           echo "=== gh-pages file listing ==="
