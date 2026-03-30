@@ -280,14 +280,22 @@ jobs:
           RELEASE_TYPE='${{ steps.parse.outputs.release }}'
           RELEASE_DATE="$(date -u +%Y-%m-%d)"
 
-          # Build the charts list for the changelog entry
-          CHARTS_YAML=""
+          # Build the new release entry into a temp file
+          ENTRY_FILE="/tmp/changelog_entry.yaml"
+          {
+            printf '  - date: "%s"\n' "$RELEASE_DATE"
+            printf '    pr: %s\n' "$PR_NUM"
+            printf '    pr_title: "%s"\n' "$PR_TITLE"
+            printf '    author: "%s"\n' "$PR_AUTHOR"
+            printf '    release_type: "%s"\n' "$RELEASE_TYPE"
+            printf '    charts:\n'
+          } > "$ENTRY_FILE"
+
           IFS=',' read -r -a VER_PAIRS <<< "$VERS"
           for pair in "${VER_PAIRS[@]}"; do
             SVC="${pair%%=*}"
             NEW_VER="${pair##*=}"
             [[ -n "$SVC" && -n "$NEW_VER" ]] || continue
-            # Determine previous version from tags
             if [[ "$MODULE" == "common" ]]; then
               PREV_TAG=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
               OLD_VER="${PREV_TAG#*/}"
@@ -297,30 +305,22 @@ jobs:
             fi
             [[ -z "$OLD_VER" || "$OLD_VER" == "$PREV_TAG" ]] && OLD_VER="0.0.0"
             [[ "$OLD_VER" == "$NEW_VER" ]] && OLD_VER="0.0.0"
-            CHARTS_YAML="${CHARTS_YAML}
-      - name: \"${SVC}\"
-        from: \"${OLD_VER}\"
-        to: \"${NEW_VER}\""
+            printf '      - name: "%s"\n        from: "%s"\n        to: "%s"\n' "$SVC" "$OLD_VER" "$NEW_VER" >> "$ENTRY_FILE"
           done
-
-          NEW_ENTRY="  - date: \"${RELEASE_DATE}\"
-    pr: ${PR_NUM}
-    pr_title: \"${PR_TITLE}\"
-    author: \"${PR_AUTHOR}\"
-    release_type: \"${RELEASE_TYPE}\"
-    charts:${CHARTS_YAML}"
 
           if [[ -f "$CHANGELOG" ]]; then
             # Insert new entry at the top of the releases list (after the "releases:" key)
-            awk -v entry="$NEW_ENTRY" '
-              /^releases:/ { print; print entry; next }
-              { print }
-            ' "$CHANGELOG" > "${CHANGELOG}.tmp"
+            {
+              head -1 "$CHANGELOG"
+              cat "$ENTRY_FILE"
+              tail -n +2 "$CHANGELOG"
+            } > "${CHANGELOG}.tmp"
             mv "${CHANGELOG}.tmp" "$CHANGELOG"
           else
             mkdir -p "$(dirname "$CHANGELOG")"
-            printf "releases:\n%s\n" "$NEW_ENTRY" > "$CHANGELOG"
+            { printf 'releases:\n'; cat "$ENTRY_FILE"; } > "$CHANGELOG"
           fi
+          rm -f "$ENTRY_FILE"
 
           # --- Copy index.html from master to gh-pages root ---
           MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
