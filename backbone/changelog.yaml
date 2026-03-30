@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-03-30"
+    pr: 58
+    pr_title: "added novu helm charts"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "novu"
+        from: "0.0.0"
+        to: "0.1.0"
