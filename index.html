@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DIGIT Community Kubernetes Helm Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #0a111d;
+      --border: #2a3444;
+      --text: #e8edf5;
+      --muted: #8b95a5;
+      --line: #273243;
+      --link: #4ea1ff;
+      --code: #0f1c2d;
+      --badge-blue: #2c8fe8;
+      --badge-green: #2ea043;
+      --badge-orange: #d18616;
+      --badge-purple: #8b5cf6;
+      --badge-dark: #3f4b5a;
+      --accent: #ff8b6a;
+      --card-bg: #0d1829;
+      --card-border: #1e2d3d;
+      --card-hover: #111f33;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 28px;
+    }
+
+    .frame {
+      width: min(1360px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #08111d 0%, #07101a 100%);
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0,0,0,.28);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 22px 0 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 0 16px 0;
+      font-weight: 700;
+      letter-spacing: .02em;
+      font-size: 18px;
+      color: var(--text);
+      position: relative;
+    }
+
+    .tab::after {
+      content: "";
+      position: absolute;
+      left: -10px;
+      bottom: -1px;
+      width: 116px;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+
+    .book { width: 24px; height: 24px; opacity: .9; }
+
+    .icons { display: flex; align-items: center; gap: 22px; padding-bottom: 12px; }
+    .icons svg { width: 22px; height: 22px; stroke: #d9e0ea; opacity: .88; }
+
+    .content { padding: 48px 48px 56px 48px; }
+
+    h1 { font-size: 56px; line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    h2 { margin: 48px 0 12px 0; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
+    h3 { margin: 32px 0 16px 0; font-size: 22px; font-weight: 700; color: var(--text); }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 20px 0 24px 0; }
+
+    p { margin: 0 0 20px 0; font-size: 18px; line-height: 1.7; color: var(--text); }
+
+    a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 30px 0; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 14px;
+      line-height: 1;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+
+    .badge .label { background: #4c5563; padding: 6px 10px; }
+    .badge .value { padding: 6px 12px; }
+    .badge .value.blue { background: var(--badge-blue); }
+    .badge .value.green { background: var(--badge-green); }
+    .badge .value.orange { background: var(--badge-orange); }
+    .badge .value.purple { background: var(--badge-purple); }
+
+    .codeblock {
+      background: var(--code);
+      padding: 24px 28px;
+      margin: 16px 0 24px 0;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 15px;
+      color: #77b9ff;
+      white-space: pre;
+    }
+
+    .inline {
+      display: inline-block;
+      background: #2b3440;
+      color: #f0f4fa;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 15px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      vertical-align: baseline;
+    }
+
+    /* Category sections */
+    .category {
+      margin: 36px 0 24px 0;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      background: var(--card-bg);
+      overflow: hidden;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px;
+      background: rgba(255,255,255,.02);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .category-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .category-title .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .icon-backbone { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .icon-common { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .icon-core { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+    .category-count {
+      font-size: 14px;
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+
+    .category-desc {
+      padding: 16px 28px;
+      font-size: 15px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .category-error {
+      padding: 20px 28px;
+      font-size: 15px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* Chart cards grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 0;
+    }
+
+    .chart-card {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--card-border);
+      border-right: 1px solid var(--card-border);
+      transition: background .15s;
+    }
+
+    .chart-card:hover { background: var(--card-hover); }
+
+    .chart-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chart-name .type-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.08);
+      color: var(--muted);
+    }
+
+    .chart-desc {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .chart-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .meta-badge .m-label { background: #3a4453; padding: 3px 7px; }
+    .meta-badge .m-value { padding: 3px 8px; }
+    .meta-badge .m-value.v-blue { background: #1e6fbf; }
+    .meta-badge .m-value.v-green { background: #1a7f35; }
+    .meta-badge .m-value.v-purple { background: #6d28d9; }
+
+    .chart-deps {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .chart-deps span { color: #77b9ff; }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin: 24px 0 32px 0;
+      padding: 20px 28px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+    }
+
+    .stat { text-align: center; }
+    .stat-num { font-size: 32px; font-weight: 800; color: var(--link); }
+    .stat-label { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    /* Quick nav */
+    .toc { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px 0; }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all .15s;
+    }
+
+    .toc a:hover {
+      background: rgba(255,255,255,.08);
+      border-color: var(--link);
+      color: var(--link);
+    }
+
+    .toc .toc-count {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* Loading spinner */
+    .loader {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 28px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--card-border);
+      border-top-color: var(--link);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      body { padding: 14px; }
+      .content { padding: 24px 18px 32px; }
+      h1 { font-size: 36px; }
+      h2 { font-size: 26px; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .stats { gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <div class="tab">
+        <svg class="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5v-13A2.5 2.5 0 0 1 6.5 2z"></path>
+          <path d="M12 6.5v11"></path>
+        </svg>
+        <span>Helm Charts Registry</span>
+      </div>
+      <div class="icons">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1>DIGIT Community Kubernetes Helm Charts</h1>
+      <hr>
+
+      <div class="badges">
+        <div class="badge">
+          <span class="label">License</span>
+          <span class="value blue">Apache 2.0</span>
+        </div>
+        <div class="badge">
+          <span class="label">Helm</span>
+          <span class="value green">v3</span>
+        </div>
+        <div class="badge">
+          <span class="label">Total Charts</span>
+          <span class="value orange" id="badge-total">...</span>
+        </div>
+      </div>
+
+      <p>
+        Production-ready Helm charts for the DIGIT platform, organized into infrastructure backbone services,
+        shared libraries, and core platform microservices. Each chart is independently versioned and can be deployed
+        standalone or as part of the full DIGIT stack.
+      </p>
+
+      <!-- Stats -->
+      <div class="stats" id="stats-bar">
+        <div class="stat">
+          <div class="stat-num" id="stat-backbone">-</div>
+          <div class="stat-label">Backbone Charts</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="stat-common">-</div>
+          <div class="stat-label">Shared Libraries</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="stat-core">-</div>
+          <div class="stat-label">Core Charts</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="stat-total">-</div>
+          <div class="stat-label">Total Charts</div>
+        </div>
+      </div>
+
+      <!-- Quick Navigation -->
+      <h3>Quick Navigation</h3>
+      <div class="toc">
+        <a href="#backbone">Backbone <span class="toc-count" id="toc-backbone"></span></a>
+        <a href="#common">Common <span class="toc-count" id="toc-common"></span></a>
+        <a href="#core">Core <span class="toc-count" id="toc-core"></span></a>
+        <a href="#usage">Usage Guide</a>
+      </div>
+
+      <!-- Dynamic chart sections rendered here -->
+      <div id="charts-container"></div>
+
+      <!-- ==================== USAGE ==================== -->
+      <h2 id="usage">Usage</h2>
+      <hr>
+
+      <p><a href="https://helm.sh">Helm</a> must be installed to use the charts. Please refer to Helm's <a href="https://helm.sh/docs/">documentation</a> to get started.</p>
+
+      <p>Once Helm is set up properly, add the repo as follows:</p>
+
+      <div class="codeblock">
+        <code>helm repo add digit-backbone https://helm.digit.org/backbone
+helm repo add digit-core https://helm.digit.org/core
+helm repo add digit-common https://helm.digit.org/common</code>
+      </div>
+
+      <p>You can then run <span class="inline">helm search repo digit-backbone</span> to see the available charts.</p>
+
+      <h3>Installing a chart</h3>
+
+      <div class="codeblock">
+        <code>helm install my-release digit-backbone/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml</code>
+      </div>
+
+      <h3>Updating dependencies</h3>
+
+      <p>Most core charts depend on the <span class="inline">common</span> library chart. Build dependencies before installing:</p>
+
+      <div class="codeblock">
+        <code>cd charts/core/&lt;chart-name&gt;
+helm dependency build</code>
+      </div>
+
+      <h2>Contributing</h2>
+      <hr>
+      <p>We'd love to have you contribute! Please refer to our <a href="https://github.com/egovernments/helm-charts">contribution guidelines</a> for details.</p>
+
+      <h2>License</h2>
+      <hr>
+      <p><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a></p>
+    </div>
+  </div>
+
+  <script>
+    // Module definitions with metadata
+    const MODULES = [
+      {
+        id: 'backbone',
+        name: 'backbone/',
+        icon: 'icon-backbone',
+        description: 'Infrastructure and platform-level services: ingress controllers, message brokers, databases, caching, search engines, certificate management, and notification services.',
+        indexUrl: './backbone/index.yaml'
+      },
+      {
+        id: 'common',
+        name: 'common/',
+        icon: 'icon-common',
+        description: 'Shared Helm library chart providing reusable templates and helpers consumed by most core service charts. Not deployed directly \u2014 included as a dependency.',
+        indexUrl: './common/index.yaml'
+      },
+      {
+        id: 'core',
+        name: 'core/',
+        icon: 'icon-core',
+        description: 'Platform microservices powering the DIGIT ecosystem: authentication, authorization, API gateway, persistence, notifications, workflows, master data management, file storage, payment gateway integration, and more.',
+        indexUrl: './core/index.yaml'
+      }
+    ];
+
+    // Extract the latest version entry for each chart from the Helm index.yaml
+    function parseIndex(yamlText) {
+      const doc = jsyaml.load(yamlText);
+      if (!doc || !doc.entries) return [];
+
+      const charts = [];
+      for (const [name, versions] of Object.entries(doc.entries)) {
+        if (!Array.isArray(versions) || versions.length === 0) continue;
+        // versions are sorted newest-first in helm index.yaml
+        const latest = versions[0];
+        charts.push({
+          name: latest.name || name,
+          version: latest.version || '0.0.0',
+          appVersion: latest.appVersion || '',
+          description: latest.description || '',
+          type: latest.type || 'application',
+          dependencies: latest.dependencies || [],
+          created: latest.created || ''
+        });
+      }
+      return charts.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function renderChartCard(chart) {
+      const isLibrary = chart.type === 'library';
+      const typeTag = isLibrary ? '<span class="type-tag">library</span>' : '';
+
+      let metaHtml = `
+        <div class="meta-badge">
+          <span class="m-label">chart</span>
+          <span class="m-value v-blue">${chart.version}</span>
+        </div>`;
+
+      if (chart.appVersion) {
+        metaHtml += `
+        <div class="meta-badge">
+          <span class="m-label">app</span>
+          <span class="m-value v-green">${chart.appVersion}</span>
+        </div>`;
+      }
+
+      if (isLibrary) {
+        metaHtml += `
+        <div class="meta-badge">
+          <span class="m-label">type</span>
+          <span class="m-value v-purple">library</span>
+        </div>`;
+      }
+
+      let depsHtml = '';
+      if (chart.dependencies && chart.dependencies.length > 0) {
+        const depList = chart.dependencies
+          .map(d => `<span>${d.name || 'unknown'} (${d.version || '?'})</span>`)
+          .join(', ');
+        depsHtml = `<div class="chart-deps">Depends on: ${depList}</div>`;
+      }
+
+      return `
+        <div class="chart-card">
+          <div class="chart-name">${chart.name} ${typeTag}</div>
+          <div class="chart-desc">${chart.description}</div>
+          <div class="chart-meta">${metaHtml}</div>
+          ${depsHtml}
+        </div>`;
+    }
+
+    function renderCategory(module, charts) {
+      const countLabel = charts.length === 1
+        ? (charts[0] && charts[0].type === 'library' ? '1 library chart' : '1 chart')
+        : `${charts.length} charts`;
+
+      let gridHtml;
+      if (charts.length === 0) {
+        gridHtml = '<div class="category-error">No charts published yet for this module.</div>';
+      } else {
+        gridHtml = `<div class="charts-grid">${charts.map(renderChartCard).join('')}</div>`;
+      }
+
+      return `
+        <div class="category" id="${module.id}">
+          <div class="category-header">
+            <div class="category-title">
+              <div class="icon ${module.icon}">&#9881;</div>
+              <a href="./${module.id}/" style="color:var(--text);text-decoration:none">${module.name}</a>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="category-count">${countLabel}</div>
+              <a href="./${module.id}/" style="font-size:14px;color:var(--link);text-decoration:none">View details &rarr;</a>
+            </div>
+          </div>
+          <div class="category-desc">${module.description}</div>
+          ${gridHtml}
+        </div>`;
+    }
+
+    function renderLoading(module) {
+      return `
+        <div class="category" id="${module.id}">
+          <div class="category-header">
+            <div class="category-title">
+              <div class="icon ${module.icon}">&#9881;</div>
+              ${module.name}
+            </div>
+          </div>
+          <div class="loader">
+            <div class="spinner"></div>
+            Loading charts from index.yaml...
+          </div>
+        </div>`;
+    }
+
+    async function fetchAndRender() {
+      const container = document.getElementById('charts-container');
+
+      // Show loading state
+      container.innerHTML = MODULES.map(renderLoading).join('');
+
+      const results = await Promise.allSettled(
+        MODULES.map(async (mod) => {
+          const resp = await fetch(mod.indexUrl);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const text = await resp.text();
+          return { module: mod, charts: parseIndex(text) };
+        })
+      );
+
+      let totalCharts = 0;
+      const counts = {};
+      const sections = [];
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const { module, charts } = result.value;
+          counts[module.id] = charts.length;
+          totalCharts += charts.length;
+          sections.push(renderCategory(module, charts));
+        } else {
+          // Find which module failed based on order
+          const idx = results.indexOf(result);
+          const module = MODULES[idx];
+          counts[module.id] = 0;
+          sections.push(renderCategory(module, []));
+        }
+      }
+
+      container.innerHTML = sections.join('');
+
+      // Update stats
+      document.getElementById('stat-backbone').textContent = counts.backbone || 0;
+      document.getElementById('stat-common').textContent = counts.common || 0;
+      document.getElementById('stat-core').textContent = counts.core || 0;
+      document.getElementById('stat-total').textContent = totalCharts;
+      document.getElementById('badge-total').textContent = totalCharts;
+
+      // Update TOC counts
+      document.getElementById('toc-backbone').textContent = `${counts.backbone || 0} charts`;
+      document.getElementById('toc-common').textContent = `${counts.common || 0} charts`;
+      document.getElementById('toc-core').textContent = `${counts.core || 0} charts`;
+    }
+
+    fetchAndRender();
+  </script>
+</body>
+</html>

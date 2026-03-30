@@ -272,6 +272,68 @@ jobs:
             rm -rf "$TMP"
           fi
 
+          # --- Update per-module changelog.yaml (append new release entry) ---
+          CHANGELOG="${GHP_DIR}/${MODULE}/changelog.yaml"
+          PR_NUM='${{ github.event.pull_request.number }}'
+          PR_TITLE='${{ github.event.pull_request.title }}'
+          PR_AUTHOR='${{ github.event.pull_request.user.login }}'
+          RELEASE_TYPE='${{ steps.parse.outputs.release }}'
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+
+          # Build the charts list for the changelog entry
+          CHARTS_YAML=""
+          IFS=',' read -r -a VER_PAIRS <<< "$VERS"
+          for pair in "${VER_PAIRS[@]}"; do
+            SVC="${pair%%=*}"
+            NEW_VER="${pair##*=}"
+            [[ -n "$SVC" && -n "$NEW_VER" ]] || continue
+            # Determine previous version from tags
+            if [[ "$MODULE" == "common" ]]; then
+              PREV_TAG=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
+              OLD_VER="${PREV_TAG#*/}"
+            else
+              PREV_TAG=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
+              OLD_VER="${PREV_TAG##*/}"
+            fi
+            [[ -z "$OLD_VER" || "$OLD_VER" == "$PREV_TAG" ]] && OLD_VER="0.0.0"
+            [[ "$OLD_VER" == "$NEW_VER" ]] && OLD_VER="0.0.0"
+            CHARTS_YAML="${CHARTS_YAML}
+      - name: \"${SVC}\"
+        from: \"${OLD_VER}\"
+        to: \"${NEW_VER}\""
+          done
+
+          NEW_ENTRY="  - date: \"${RELEASE_DATE}\"
+    pr: ${PR_NUM}
+    pr_title: \"${PR_TITLE}\"
+    author: \"${PR_AUTHOR}\"
+    release_type: \"${RELEASE_TYPE}\"
+    charts:${CHARTS_YAML}"
+
+          if [[ -f "$CHANGELOG" ]]; then
+            # Insert new entry at the top of the releases list (after the "releases:" key)
+            awk -v entry="$NEW_ENTRY" '
+              /^releases:/ { print; print entry; next }
+              { print }
+            ' "$CHANGELOG" > "${CHANGELOG}.tmp"
+            mv "${CHANGELOG}.tmp" "$CHANGELOG"
+          else
+            mkdir -p "$(dirname "$CHANGELOG")"
+            printf "releases:\n%s\n" "$NEW_ENTRY" > "$CHANGELOG"
+          fi
+
+          # --- Copy index.html from master to gh-pages root ---
+          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
+          if git show "${MERGE_SHA}:index.html" > /dev/null 2>&1; then
+            git show "${MERGE_SHA}:index.html" > "${GHP_DIR}/index.html"
+          fi
+
+          # --- Copy module-index.html as the module's index.html ---
+          if git show "${MERGE_SHA}:module-index.html" > /dev/null 2>&1; then
+            mkdir -p "${GHP_DIR}/${MODULE}"
+            git show "${MERGE_SHA}:module-index.html" > "${GHP_DIR}/${MODULE}/index.html"
+          fi
+
           git -C "${GHP_DIR}" add .
           git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
           git -C "${GHP_DIR}" push origin gh-pages
