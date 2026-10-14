@@ -1,0 +1,18 @@
+apiVersion: v1
+entries:
+  localization:
+    - apiVersion: v2
+      appVersion: flyway-branch-18c74fe
+      created: "2026-10-14T08:59:27.402339996Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 1.0.0
+      description: A Helm chart for Kubernetes
+      digest: 37c81cc8adf06c66f5f112eda0aca6af2fabfc09871cb8473c7422b21f5a1d64
+      name: localization
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/localization/localization-1.0.0.tgz
+      version: 1.0.0
+generated: "2026-10-14T08:59:27.401172205Z"
