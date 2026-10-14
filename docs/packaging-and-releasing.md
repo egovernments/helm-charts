@@ -9,7 +9,11 @@ by hand. You open a PR, pick a release type, and merge. This doc explains exactl
 |---------------|---------|-----|--------------|
 | `.github/workflows/pr-release-form.yaml` | PR opened / reopened / synchronize | `form` | Detects the project+module your branch changed and appends a **Release selection** form to the PR description. |
 | `.github/workflows/require-release-label.yaml` | PR opened / reopened / synchronize / edited | `require-label` | The mandatory gate. Blocks merge until the form is valid. **Required status check** on `master`. |
+| `.github/workflows/chart-ci.yaml` | PR opened / reopened / synchronize | `lint-template` | `helm lint` + `helm template` every changed chart. Blocks merge until they render cleanly. **Required status check** on `master`. |
 | `.github/workflows/release.yaml` | PR merged to `master`, or manual `workflow_dispatch` | `release` | Versions, packages, publishes to `gh-pages`, updates changelog/discovery files, and cuts the traceability tag. |
+
+Two checks must be green before a chart PR can merge: **`require-label`** (valid release selection)
+and **`lint-template`** (charts lint and render). Both auto-pass on PRs with no chart changes.
 
 ## Step 1 - the Release selection form (automatic)
 
@@ -102,6 +106,6 @@ dropdowns you must add it to the `workflow_dispatch` `options` in `release.yaml`
 
 ## Branch protection and auto-delete
 
-- `master` requires the `require-label` status check to pass; `enforce_admins` is on.
+- `master` requires the `require-label` and `lint-template` status checks to pass; `enforce_admins` is on.
 - Direct pushes and force-pushes to `master` are blocked; everything goes through a PR.
 - Merged PR branches are auto-deleted (`delete_branch_on_merge`).
