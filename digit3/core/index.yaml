@@ -1,9 +1,24 @@
 apiVersion: v1
 entries:
+  filestore:
+    - apiVersion: v2
+      appVersion: flyway-branch-18c74fe
+      created: "2026-10-14T10:47:15.058687624Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 1.0.0
+      description: A Helm chart for Kubernetes
+      digest: d57fb78d714fdd305a5cd2576bc8d012c8b7a391386d442f53e618266196badb
+      name: filestore
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/filestore/filestore-1.0.0.tgz
+      version: 1.0.0
   localization:
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-10-14T08:59:27.402339996Z"
+      created: "2026-10-14T10:47:15.060152562Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -15,4 +30,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/localization/localization-1.0.0.tgz
       version: 1.0.0
-generated: "2026-10-14T08:59:27.401172205Z"
+generated: "2026-10-14T10:47:15.057096431Z"
