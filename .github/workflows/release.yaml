@@ -271,10 +271,9 @@ jobs:
             [[ -f "${TMP}/index-old.yaml" ]] && MERGE=(--merge "${TMP}/index-old.yaml")
             helm repo index "${TMP}" --url "$URL" "${MERGE[@]}"
 
-            # rewrite flat urls -> nested service dirs (common stays at module root)
+            # rewrite flat urls -> nested chart dirs (every chart, incl. common, lives at <module>/<name>/)
             IDX="${TMP}/index.yaml"; export URL
             while IFS= read -r ENTRY; do
-              [[ "$ENTRY" == "common" ]] && continue
               NAME="$ENTRY" yq -i '
                 .entries[strenv(NAME)][] |=
                   (.urls = [ (.urls[0] | sub("^" + strenv(URL) + "/"; strenv(URL) + "/" + strenv(NAME) + "/")) ])
