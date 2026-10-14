@@ -8,6 +8,6 @@ entries:
     digest: 78f47701ebd9c09988d842c4bea87e9f20b60eb51d89b1912d964770655237ce
     name: common
     urls:
-    - https://helm.digit.org/digit3/common/common-1.0.0.tgz
+    - https://helm.digit.org/digit3/common/common/common-1.0.0.tgz
     version: 1.0.0
 generated: "2026-10-14T07:31:12.416642732Z"
