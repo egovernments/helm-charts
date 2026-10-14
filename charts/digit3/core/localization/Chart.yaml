@@ -14,13 +14,14 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.1.0
+version: 1.0.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 1.16.0
+# appVersion doubles as the default container image tag (see values.yaml image.tag).
+appVersion: "flyway-branch-18c74fe"
 
 dependencies:
 - name: common
-  version: 0.0.5
+  version: 1.0.0
   repository: https://helm.digit.org/digit3/common
