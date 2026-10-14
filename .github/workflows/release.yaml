@@ -120,31 +120,39 @@ jobs:
               printf '%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$SERVICE" >> /tmp/targets.txt
             fi
           else
-            # ----- PR merge path: release type comes from exactly one release:* label -----
-            MATCHED=$(printf '%s\n' "${PR_LABELS//,/$'\n'}" | grep -iE '^release:(major|minor|patch)$' || true)
-            COUNT=$(printf '%s\n' "$MATCHED" | grep -c . || true)
-            if [[ "$COUNT" -ne 1 ]]; then
-              echo "::error::PR must carry exactly one 'release:major|minor|patch' label (found: ${COUNT:-0} -> [$MATCHED]). Nothing released."
-              exit 1
-            fi
-            RELEASE=$(printf '%s' "$MATCHED" | tr '[:upper:]' '[:lower:]' | sed 's/^release://')
+            # ----- PR merge path: project / module / release each from exactly one label -----
+            labels="$(printf '%s\n' "${PR_LABELS//,/$'\n'}")"
+            one() { printf '%s\n' "$labels" | grep -iE "$1" | head -1 | sed "s/^$2://"; }
+            cnt() { printf '%s\n' "$labels" | grep -icE "$1" || true; }
+
+            [[ "$(cnt '^project:[a-z0-9][a-z0-9-]*$')" -eq 1 ]] || { echo "::error::need exactly one project:* label"; exit 1; }
+            [[ "$(cnt '^module:(common|core|health|urban|frontend|backbone)$')" -eq 1 ]] || { echo "::error::need exactly one module:* label"; exit 1; }
+            [[ "$(cnt '^release:(major|minor|patch)$')" -eq 1 ]] || { echo "::error::need exactly one release:* label"; exit 1; }
+
+            PROJECT="$(one '^project:[a-z0-9][a-z0-9-]*$' project)"
+            MODULE="$(one '^module:(common|core|health|urban|frontend|backbone)$' module)"
+            RELEASE="$(one '^release:(major|minor|patch)$' release | tr '[:upper:]' '[:lower:]')"
 
             BASE='${{ github.event.pull_request.base.sha }}'
             HEAD='${{ github.event.pull_request.merge_commit_sha }}'
-            # changed files under charts/<project>/<module>/... ; map to tuples
-            git diff --name-only "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
-              | awk -F/ -v c="${CHARTS_DIR}" '$1==c && NF>=4 {print $2"\t"$3"\t"$4}' \
-              | sort -u > /tmp/raw_tuples.txt || true
+            ROOT="${CHARTS_DIR}/${PROJECT}/${MODULE}"
 
-            while IFS=$'\t' read -r P M S; do
-              [[ -n "$P" && -n "$M" && -n "$S" ]] || continue
-              if [[ "$M" == "common" ]]; then
-                # any change under a project's common library -> release the library once
-                printf '%s\t%s\t\n' "$P" "$M" >> /tmp/targets.txt
-              elif [[ -f "${CHARTS_DIR}/${P}/${M}/${S}/Chart.yaml" ]]; then
-                printf '%s\t%s\t%s\n' "$P" "$M" "$S" >> /tmp/targets.txt
+            if [[ "$MODULE" == "common" ]]; then
+              # release the project's library if it changed at all
+              if git diff --name-only "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
+                printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
               fi
-            done < /tmp/raw_tuples.txt
+            else
+              # services changed under the labelled project/module only
+              git diff --name-only "$BASE" "$HEAD" -- "${ROOT}" \
+                | awk -F/ -v c="${CHARTS_DIR}" -v p="$PROJECT" -v m="$MODULE" \
+                    '$1==c && $2==p && $3==m && NF>=4 {print $4}' \
+                | sort -u > /tmp/svcs.txt || true
+              while IFS= read -r S; do
+                [[ -n "$S" && -f "${ROOT}/${S}/Chart.yaml" ]] || continue
+                printf '%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$S" >> /tmp/targets.txt
+              done < /tmp/svcs.txt
+            fi
             sort -u -o /tmp/targets.txt /tmp/targets.txt
           fi
 
@@ -203,7 +211,7 @@ jobs:
           prev_version() {
             local idx="$1" name="$2"
             [[ -f "$idx" ]] || { echo ""; return; }
-            NAME="$name" yq -r '.entries[strenv(NAME)][].version // empty' "$idx" 2>/dev/null \
+            NAME="$name" yq -r '(.entries[strenv(NAME)] // []) | .[].version' "$idx" 2>/dev/null \
               | sort -V | tail -1
           }
 
@@ -334,8 +342,7 @@ jobs:
 
           # projects.json (root) and <project>/modules.json
           PROJS="$(ls -d "${GHP_DIR}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_' | grep -vE '\.' || true)"
-          printf '%s' "$PROJS" | yq -R -o=json 'split("\n") | map(select(length>0))' - > "${GHP_DIR}/projects.json" 2>/dev/null \
-            || echo "[$(printf '%s' "$PROJS" | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/projects.json"
+          echo "[$(printf '%s\n' $PROJS | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/projects.json"
           for P in $PROJS; do
             MODS="$(ls -d "${GHP_DIR}/${P}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_' || true)"
             echo "[$(printf '%s\n' $MODS | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/${P}/modules.json"
