@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-14"
+    ref: "PR-61"
+    title: "feat(common): publish digit3 common library v1.0.0"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "common"
+        from: "0.0.0"
+        to: "1.0.0"

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DIGIT Helm Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --border: #2a3444;
+      --text: #e8edf5;
+      --muted: #8b95a5;
+      --line: #273243;
+      --link: #4ea1ff;
+      --code: #0f1c2d;
+      --badge-blue: #2c8fe8;
+      --badge-green: #2ea043;
+      --badge-orange: #d18616;
+      --badge-purple: #8b5cf6;
+      --accent: #ff8b6a;
+      --card-bg: #0d1829;
+      --card-border: #1e2d3d;
+      --card-hover: #111f33;
+      --added: #2ea04380;
+      --removed: #f8514980;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 28px;
+    }
+
+    .frame {
+      width: min(1360px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #08111d 0%, #07101a 100%);
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0,0,0,.28);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 22px 0 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 0 16px 0;
+      font-weight: 700;
+      letter-spacing: .02em;
+      font-size: 18px;
+      color: var(--text);
+      position: relative;
+    }
+
+    .tab::after {
+      content: "";
+      position: absolute;
+      left: -10px;
+      bottom: -1px;
+      width: 116px;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+
+    .book { width: 24px; height: 24px; opacity: .9; }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .breadcrumb a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb .sep { color: var(--muted); }
+
+    .content { padding: 48px 48px 56px 48px; }
+
+    h1 { font-size: 48px; line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    h2 { margin: 48px 0 12px 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+    h3 { margin: 28px 0 14px 0; font-size: 20px; font-weight: 700; }
+
+    hr { border: none; border-top: 1px solid var(--line); margin: 20px 0 24px 0; }
+
+    p { margin: 0 0 20px 0; font-size: 17px; line-height: 1.7; }
+
+    a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+
+    .module-desc {
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.7;
+    }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 28px 0; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 14px;
+      line-height: 1;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+
+    .badge .label { background: #4c5563; padding: 6px 10px; }
+    .badge .value { padding: 6px 12px; }
+    .badge .value.blue { background: var(--badge-blue); }
+    .badge .value.green { background: var(--badge-green); }
+    .badge .value.orange { background: var(--badge-orange); }
+    .badge .value.purple { background: var(--badge-purple); }
+
+    .inline {
+      display: inline-block;
+      background: #2b3440;
+      color: #f0f4fa;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      vertical-align: baseline;
+    }
+
+    .codeblock {
+      background: var(--code);
+      padding: 20px 24px;
+      margin: 14px 0 22px 0;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      color: #77b9ff;
+      white-space: pre;
+    }
+
+    /* Charts table */
+    .charts-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 28px 0;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .charts-table thead th {
+      background: rgba(255,255,255,.04);
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .charts-table tbody td {
+      padding: 14px 20px;
+      font-size: 15px;
+      border-bottom: 1px solid var(--card-border);
+      vertical-align: top;
+    }
+
+    .charts-table tbody tr:last-child td { border-bottom: none; }
+
+    .charts-table tbody tr:hover { background: var(--card-hover); }
+
+    .chart-name-cell {
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .chart-desc-cell {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .chart-ver-cell { white-space: nowrap; }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .meta-badge .m-label { background: #3a4453; padding: 3px 7px; }
+    .meta-badge .m-value { padding: 3px 8px; }
+    .meta-badge .m-value.v-blue { background: #1e6fbf; }
+    .meta-badge .m-value.v-green { background: #1a7f35; }
+    .meta-badge .m-value.v-purple { background: #6d28d9; }
+
+    .type-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.08);
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    .dep-list {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .dep-list span { color: #77b9ff; }
+
+    /* Changelog */
+    .changelog { margin: 16px 0 28px 0; }
+
+    .release-entry {
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      background: var(--card-bg);
+    }
+
+    .release-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 18px 24px;
+      background: rgba(255,255,255,.02);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .release-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 17px;
+    }
+
+    .release-title a { text-decoration: none; }
+    .release-title a:hover { text-decoration: underline; }
+
+    .release-type-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 3px 10px;
+      border-radius: 4px;
+      color: #fff;
+    }
+
+    .release-type-badge.patch { background: var(--badge-blue); }
+    .release-type-badge.minor { background: var(--badge-green); }
+    .release-type-badge.major { background: var(--badge-orange); }
+
+    .release-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .release-meta .author { color: var(--link); }
+
+    .release-charts {
+      padding: 16px 24px;
+    }
+
+    .release-chart-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 14px;
+    }
+
+    .release-chart-row:last-child { border-bottom: none; }
+
+    .release-chart-name {
+      font-weight: 600;
+      min-width: 180px;
+      color: var(--text);
+    }
+
+    .version-arrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .version-arrow .old { color: var(--muted); }
+    .version-arrow .arrow { color: #4c5563; }
+    .version-arrow .new { color: var(--badge-green); font-weight: 600; }
+
+    /* Loading / empty states */
+    .loader {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--card-border);
+      border-top-color: var(--link);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      padding: 32px 0;
+      color: var(--muted);
+      font-size: 15px;
+      font-style: italic;
+    }
+
+    /* Stats row */
+    .stats {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin: 20px 0 32px 0;
+      padding: 18px 24px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+    }
+
+    .stat { text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 800; color: var(--link); }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    @media (max-width: 900px) {
+      body { padding: 14px; }
+      .content { padding: 24px 18px 32px; }
+      h1 { font-size: 32px; }
+      h2 { font-size: 24px; }
+      .charts-table { font-size: 13px; }
+      .charts-table thead th, .charts-table tbody td { padding: 10px 12px; }
+      .release-chart-name { min-width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <div class="tab">
+        <svg class="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5v-13A2.5 2.5 0 0 1 6.5 2z"></path>
+          <path d="M12 6.5v11"></path>
+        </svg>
+        <span>Helm Charts Registry</span>
+      </div>
+      <div class="breadcrumb">
+        <a href="../">Home</a>
+        <span class="sep">/</span>
+        <span id="breadcrumb-module">...</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 id="page-title">...</h1>
+      <hr>
+
+      <p class="module-desc" id="module-desc"></p>
+
+      <div class="badges" id="module-badges"></div>
+
+      <div class="stats" id="stats-bar">
+        <div class="stat">
+          <div class="stat-num" id="stat-charts">-</div>
+          <div class="stat-label">Charts</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="stat-releases">-</div>
+          <div class="stat-label">Releases</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="stat-latest-date">-</div>
+          <div class="stat-label">Last Updated</div>
+        </div>
+      </div>
+
+      <!-- Charts section -->
+      <h2>Charts</h2>
+      <hr>
+      <div id="charts-section">
+        <div class="loader"><div class="spinner"></div> Loading charts from index.yaml...</div>
+      </div>
+
+      <h3>Quick install</h3>
+      <div class="codeblock" id="install-block">
+        <code id="install-code">Loading...</code>
+      </div>
+
+      <!-- Changelog section -->
+      <h2 id="changelog-heading">Release History</h2>
+      <hr>
+      <div id="changelog-section">
+        <div class="loader"><div class="spinner"></div> Loading changelog...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Module metadata - descriptions and install hints
+    const MODULE_META = {
+      backbone: {
+        title: 'Backbone Charts',
+        description: 'Infrastructure and platform-level services powering the DIGIT stack: ingress controllers, message brokers (Kafka), databases (Elasticsearch, MongoDB), caching (Redis), log visualization (Kibana), TLS certificate management, and notification infrastructure (Novu).',
+        repoName: 'digit-backbone',
+        repoUrl: 'https://helm.digit.org/backbone'
+      },
+      common: {
+        title: 'Common Library',
+        description: 'Shared Helm library chart providing reusable templates and helpers consumed by most core and module service charts. Includes standardized templates for deployments, services, ingress, HPA, configmaps, and init containers. Not deployed directly \u2014 included as a chart dependency.',
+        repoName: 'digit-common',
+        repoUrl: 'https://helm.digit.org/common'
+      },
+      core: {
+        title: 'Core Platform Charts',
+        description: 'Platform microservices powering the DIGIT ecosystem: user management and authentication, API gateway, role-based access control, encryption, master data management (MDMS v1 & v2), workflow engine, persistence layer, file storage, payment gateway integration, notification services (SMS, email), localization, PDF generation, URL shortening, and more.',
+        repoName: 'digit-core',
+        repoUrl: 'https://helm.digit.org/core'
+      }
+    };
+
+    const REPO_BASE = 'https://github.com/egovernments/helm-charts';
+
+    // Detect current module from URL path
+    function detectModule() {
+      const path = window.location.pathname.replace(/\/+$/, '');
+      const parts = path.split('/').filter(Boolean);
+      // Last segment of path is the module name
+      return parts[parts.length - 1] || 'unknown';
+    }
+
+    // Parse Helm index.yaml
+    function parseIndex(yamlText) {
+      const doc = jsyaml.load(yamlText);
+      if (!doc || !doc.entries) return [];
+      const charts = [];
+      for (const [name, versions] of Object.entries(doc.entries)) {
+        if (!Array.isArray(versions) || versions.length === 0) continue;
+        const latest = versions[0];
+        charts.push({
+          name: latest.name || name,
+          version: latest.version || '0.0.0',
+          appVersion: latest.appVersion || '',
+          description: latest.description || '',
+          type: latest.type || 'application',
+          dependencies: latest.dependencies || [],
+          created: latest.created || '',
+          allVersions: versions.map(v => v.version)
+        });
+      }
+      return charts.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Parse changelog.yaml
+    function parseChangelog(yamlText) {
+      const doc = jsyaml.load(yamlText);
+      if (!doc || !Array.isArray(doc.releases)) return [];
+      return doc.releases;
+    }
+
+    // Render charts table
+    function renderChartsTable(charts) {
+      if (charts.length === 0) {
+        return '<div class="empty-state">No charts published yet for this module.</div>';
+      }
+
+      let rows = '';
+      for (const c of charts) {
+        const isLibrary = c.type === 'library';
+        const typeTag = isLibrary ? '<span class="type-tag">library</span>' : '';
+
+        let versionBadges = `
+          <div class="meta-badge">
+            <span class="m-label">chart</span>
+            <span class="m-value v-blue">${c.version}</span>
+          </div>`;
+
+        if (c.appVersion) {
+          versionBadges += `
+          <div class="meta-badge" style="margin-left:4px">
+            <span class="m-label">app</span>
+            <span class="m-value v-green">${c.appVersion}</span>
+          </div>`;
+        }
+
+        let depsHtml = '';
+        if (c.dependencies && c.dependencies.length > 0) {
+          const deps = c.dependencies.map(d => `<span>${d.name} (${d.version})</span>`).join(', ');
+          depsHtml = `<div class="dep-list">Deps: ${deps}</div>`;
+        }
+
+        const versionCount = c.allVersions ? c.allVersions.length : 1;
+
+        rows += `
+          <tr>
+            <td class="chart-name-cell">${c.name}${typeTag}</td>
+            <td class="chart-desc-cell">${c.description}${depsHtml}</td>
+            <td class="chart-ver-cell">${versionBadges}</td>
+            <td style="color:var(--muted);text-align:center">${versionCount}</td>
+          </tr>`;
+      }
+
+      return `
+        <table class="charts-table">
+          <thead>
+            <tr>
+              <th>Chart</th>
+              <th>Description</th>
+              <th>Latest Version</th>
+              <th>Releases</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // Render changelog
+    function renderChangelog(releases) {
+      if (releases.length === 0) {
+        return '<div class="empty-state">No release history recorded yet.</div>';
+      }
+
+      return '<div class="changelog">' + releases.map(r => {
+        const prUrl = r.pr ? `${REPO_BASE}/pull/${r.pr}` : '#';
+        const prLabel = r.pr ? `#${r.pr}` : '';
+        const title = r.pr_title || 'Release';
+        const releaseType = r.release_type || 'patch';
+        const date = r.date || 'Unknown';
+        const author = r.author || 'github-actions';
+
+        let chartsHtml = '';
+        if (r.charts && r.charts.length > 0) {
+          chartsHtml = '<div class="release-charts">' +
+            r.charts.map(c => `
+              <div class="release-chart-row">
+                <span class="release-chart-name">${c.name}</span>
+                <span class="version-arrow">
+                  <span class="old">${c.from || 'new'}</span>
+                  <span class="arrow">&rarr;</span>
+                  <span class="new">${c.to}</span>
+                </span>
+              </div>`
+            ).join('') +
+            '</div>';
+        }
+
+        return `
+          <div class="release-entry">
+            <div class="release-header">
+              <div class="release-title">
+                <span class="release-type-badge ${releaseType}">${releaseType}</span>
+                <a href="${prUrl}">${prLabel}</a>
+                <span>${title}</span>
+              </div>
+              <div class="release-meta">
+                <span>${date}</span>
+                <span>by <span class="author">@${author}</span></span>
+              </div>
+            </div>
+            ${chartsHtml}
+          </div>`;
+      }).join('') + '</div>';
+    }
+
+    async function main() {
+      const module = detectModule();
+      const meta = MODULE_META[module] || {
+        title: module.charAt(0).toUpperCase() + module.slice(1) + ' Charts',
+        description: `Helm charts for the ${module} module.`,
+        repoName: `digit-${module}`,
+        repoUrl: `https://helm.digit.org/${module}`
+      };
+
+      // Set page metadata
+      document.title = `${meta.title} - DIGIT Helm Charts`;
+      document.getElementById('page-title').textContent = meta.title;
+      document.getElementById('breadcrumb-module').textContent = module + '/';
+      document.getElementById('module-desc').textContent = meta.description;
+
+      // Set install code
+      document.getElementById('install-code').textContent =
+        `helm repo add ${meta.repoName} ${meta.repoUrl}\nhelm repo update\nhelm install my-release ${meta.repoName}/<chart-name> -n <namespace> -f values.yaml`;
+
+      // Fetch index.yaml and changelog.yaml in parallel
+      const [indexResult, changelogResult] = await Promise.allSettled([
+        fetch('./index.yaml').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }),
+        fetch('./changelog.yaml').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+      ]);
+
+      // Render charts
+      let charts = [];
+      if (indexResult.status === 'fulfilled') {
+        charts = parseIndex(indexResult.value);
+      }
+      document.getElementById('charts-section').innerHTML = renderChartsTable(charts);
+
+      // Render changelog
+      let releases = [];
+      if (changelogResult.status === 'fulfilled') {
+        releases = parseChangelog(changelogResult.value);
+      }
+      document.getElementById('changelog-section').innerHTML = renderChangelog(releases);
+
+      // Update stats
+      document.getElementById('stat-charts').textContent = charts.length;
+      document.getElementById('stat-releases').textContent = releases.length;
+
+      const latestDate = releases.length > 0 ? releases[0].date : 'N/A';
+      document.getElementById('stat-latest-date').textContent = latestDate;
+
+      // Module badges
+      const badgesHtml = `
+        <div class="badge">
+          <span class="label">Module</span>
+          <span class="value blue">${module}</span>
+        </div>
+        <div class="badge">
+          <span class="label">Charts</span>
+          <span class="value orange">${charts.length}</span>
+        </div>
+        <div class="badge">
+          <span class="label">Repo</span>
+          <span class="value green">${meta.repoUrl.replace('https://', '')}</span>
+        </div>`;
+      document.getElementById('module-badges').innerHTML = badgesHtml;
+    }
+
+    main();
+  </script>
+</body>
+</html>
