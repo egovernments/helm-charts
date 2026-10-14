@@ -1,0 +1,95 @@
+name: PR release form
+
+# Auto-adds / refreshes a "release selection" form at the END of the PR description,
+# built from the projects & modules the HEAD branch changed (vs base). Checkboxes act as
+# single-select (the Require release labels check enforces exactly one per section).
+# Pre-ticks project/module when only one was touched; preserves the Release pick across pushes.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  form:
+    runs-on: ubuntu-latest
+    # same-repo PRs only: fork PRs get a read-only token and cannot edit the body
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed projects/modules
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='${{ github.event.pull_request.base.sha }}'
+          HEAD='${{ github.event.pull_request.head.sha }}'
+          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
+            | awk -F/ '$1=="charts" && NF>=4 {print $2"\t"$3}' | sort -u || true)"
+          PROJECTS="$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | paste -sd' ' -)"
+          MODULES="$(printf '%s\n'  "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | paste -sd' ' -)"
+          echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
+          echo "modules=$MODULES"   >> "$GITHUB_OUTPUT"
+          echo "detected projects=[$PROJECTS] modules=[$MODULES]"
+
+      - name: Render & update PR body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+          PROJECTS: ${{ steps.detect.outputs.projects }}
+          MODULES: ${{ steps.detect.outputs.modules }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/newbody.md
+          import os, re
+          body = os.environ.get("BODY") or ""
+          projects = os.environ.get("PROJECTS","").split()
+          modules  = os.environ.get("MODULES","").split()
+
+          START="<!-- RELEASE-FORM:START -->"
+          END="<!-- RELEASE-FORM:END -->"
+
+          # values already ticked anywhere in the current body (preserve across pushes)
+          prior = set(m.strip() for m in re.findall(r'- \[[xX]\]\s*(.+)', body))
+
+          def group(title, items, autotick_single):
+              out = [f"**{title}**"]
+              for it in items:
+                  ticked = (it in prior) or (autotick_single and len(items) == 1)
+                  out.append(f"- [{'x' if ticked else ' '}] {it}")
+              return "\n".join(out)
+
+          # strip any previous form block
+          body = re.sub(re.escape(START)+r".*?"+re.escape(END), "", body, flags=re.S).rstrip()
+
+          if not projects and not modules:
+              # no chart changes -> no form needed
+              print(body)
+          else:
+              form = "\n".join([
+                  START,
+                  "### Release selection",
+                  "_Tick exactly one per section. Merge is blocked until Project, Module and Release each have one._",
+                  "",
+                  group("Project", projects, True),
+                  "",
+                  group("Module", modules, True),
+                  "",
+                  group("Release", ["major","minor","patch"], False),
+                  END,
+              ])
+              print((body + "\n\n" + form).strip())
+          PY
+          gh pr edit "$PR" --body-file /tmp/newbody.md
+          echo "PR body updated."

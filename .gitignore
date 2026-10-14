@@ -1,3 +1,9 @@
 # Ignore packaged charts and index from master
 *.tgz
 index.yaml
+
+# Local tooling / IDE
+.idea/
+.recall/
+.DS_Store
+Chart.lock

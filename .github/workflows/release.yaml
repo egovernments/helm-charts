@@ -1,10 +1,53 @@
-name: Release Helm charts (service tags on PR merge → gh-pages)
+name: Release charts (label-driven, project/module/service → gh-pages)
+
+# Triggers:
+#   1. PR merged into master  -> project/module/service auto-detected from changed paths,
+#      semver bump taken from the single release:<major|minor|patch> label on the PR.
+#   2. Manual workflow_dispatch -> pick project / module / service / release from dropdowns
+#      (used for backfills and one-off re-publishes).
+#
+# Versioning: the previous version is read from the PUBLISHED index.yaml on gh-pages.
+#   - first ever publish of a chart -> the version in its Chart.yaml is used as-is (seed).
+#   - thereafter -> previous version is bumped per the release type.
+# Tagging: no per-service version tags. One traceability tag per run:
+#   <project>/<module>/PR-<number>   (merge)   or   <project>/<module>/dispatch-<run_number> (manual)
 
 on:
   pull_request:
     types: [closed]
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Project"
+        required: true
+        type: choice
+        options:
+          - digit3
+      module:
+        description: "Module"
+        required: true
+        type: choice
+        options:
+          - common
+          - core
+          - health
+          - urban
+          - frontend
+          - backbone
+      service:
+        description: "Service chart name (exact dir under charts/<project>/<module>/). Ignore for module 'common'."
+        required: false
+        type: string
+      release:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -14,20 +57,32 @@ concurrency:
   group: helm-release-gh-pages
   cancel-in-progress: false
 
+env:
+  GH_PAGES_HOST: helm.digit.org
+  CHARTS_DIR: charts
+
 jobs:
   release:
-    if: github.event.pull_request.merged == true
+    # Run on manual dispatch, or when a PR is actually merged (not just closed).
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    env:
-      GH_PAGES_HOST: helm.digit.org
-      CHARTS_DIR: charts
 
     steps:
-      - name: Checkout repository at merged commit
+      - name: Resolve checkout ref
+        id: ref
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "sha=${{ github.event.pull_request.merge_commit_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ steps.ref.outputs.sha }}
 
       - name: Setup Helm & yq
         run: |
@@ -38,153 +93,90 @@ jobs:
           curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Parse PR body → module + release type
-        id: parse
-        shell: bash
-        run: |
-          set -euo pipefail
-          BODY="${{ github.event.pull_request.body }}"
-          MODULE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*module[[:space:]]*:/ {print $2}' | tr -d '[:space:]')
-          RELEASE=$(printf "%s\n" "$BODY" | awk -F: '/^[[:space:]]*release[[:space:]]*:/ {print $2}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-          case "$RELEASE" in major|minor|patch) : ;; *) echo "::error::release must be one of major|minor|patch (found: '$RELEASE')"; exit 1 ;; esac
-          if [[ -z "$MODULE" ]]; then echo "::error::module: <core|urban|health|frontend|common> must be provided in PR body"; exit 1; fi
-          echo "module=$MODULE"   >> "$GITHUB_OUTPUT"
-          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
-
-      - name: Detect changed charts under module
-        id: changed
-        shell: bash
-        run: |
-          set -euo pipefail
-          MODULE='${{ steps.parse.outputs.module }}'
-          BASE='${{ github.event.pull_request.base.sha }}'
-          HEAD='${{ github.event.pull_request.merge_commit_sha }}'
-          ROOT="${CHARTS_DIR}/${MODULE}"
-          if [[ "$MODULE" == "common" ]]; then
-            printf "common\n" > /tmp/services.txt
-          else
-            test -d "$ROOT" || { echo "::error::Module directory not found: $ROOT"; exit 1; }
-            git diff --name-only "$BASE" "$HEAD" -- "$ROOT" \
-              | awk -F/ -v m="$MODULE" -v c="$CHARTS_DIR" '$1==c && $2==m && NF>=3 {print $3}' \
-              | sort -u > /tmp/services.txt
-            awk -v r="$ROOT" '{ if (system("[ -f \"" r "/" $0 "/Chart.yaml\" ]")==0) print $0 }' /tmp/services.txt > /tmp/services.filtered
-            mv /tmp/services.filtered /tmp/services.txt
-          fi
-          COUNT=$(wc -l < /tmp/services.txt | tr -d ' ')
-          if [[ "$COUNT" -eq 0 ]]; then
-            echo "count=0" >> "$GITHUB_OUTPUT"
-            echo "::notice::No chart changes detected; exiting."
-          else
-            echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-            echo "services=$(paste -sd, /tmp/services.txt)" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Compute next versions, bump Chart.yaml, and create tags
-        if: steps.changed.outputs.count != '0'
-        id: versioning
+      # ---------------------------------------------------------------------
+      # Determine release type + the set of (project, module, service) targets
+      # ---------------------------------------------------------------------
+      - name: Resolve release type and targets
+        id: plan
         shell: bash
         env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
-          MODULE='${{ steps.parse.outputs.module }}'
-          RELEASE='${{ steps.parse.outputs.release }}'
-          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
-          ROOT="${CHARTS_DIR}/${MODULE}"
+          : > /tmp/targets.txt   # lines: project<TAB>module<TAB>service   (service empty => whole module 'common')
 
-          bump() { local v="$1" t="$2"; local IFS=.; read -r MA MI PA <<< "${v:-0.0.0}"; case "$t" in major) echo "$((MA+1)).0.0";; minor) echo "$MA.$((MI+1)).0";; patch) echo "$MA.$MI.$((PA+1))";; esac; }
-          : > /tmp/versions.txt
-
-          git checkout -B release-tmp "$MERGE_SHA"
-          git config user.name  "$GIT_AUTHOR_NAME"
-          git config user.email "$GIT_AUTHOR_EMAIL"
-
-          if [[ "$MODULE" == "common" ]]; then
-            PREV=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
-            PREV_VER="${PREV#*/}"
-            NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-            yq -i '.version = "'"${NEXT_VER}"'"' "${CHARTS_DIR}/common/Chart.yaml"
-            git add "${CHARTS_DIR}/common/Chart.yaml"
-            git commit -m "chore(common): bump chart version to ${NEXT_VER}" || true
-            git tag -a "common/${NEXT_VER}" -m "Auto(${RELEASE}) via PR merge"
-            echo "common=${NEXT_VER}" >> /tmp/versions.txt
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            RELEASE='${{ inputs.release }}'
+            PROJECT='${{ inputs.project }}'
+            MODULE='${{ inputs.module }}'
+            SERVICE='${{ inputs.service }}'
+            if [[ "$MODULE" == "common" ]]; then
+              printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
+            else
+              [[ -n "$SERVICE" ]] || { echo "::error::service input is required for module '$MODULE'"; exit 1; }
+              test -f "${CHARTS_DIR}/${PROJECT}/${MODULE}/${SERVICE}/Chart.yaml" \
+                || { echo "::error::No Chart.yaml at ${CHARTS_DIR}/${PROJECT}/${MODULE}/${SERVICE}"; exit 1; }
+              printf '%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$SERVICE" >> /tmp/targets.txt
+            fi
           else
-            IFS=',' read -r -a SVCS <<< '${{ steps.changed.outputs.services }}'
-            for SVC in "${SVCS[@]}"; do
-              CHDIR="${ROOT}/${SVC}"
-              test -f "${CHDIR}/Chart.yaml" || continue
-              PREV=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
-              PREV_VER="${PREV##*/}"; [[ -z "$PREV_VER" || "$PREV_VER" == "$PREV" ]] && PREV_VER="0.0.0"
-              NEXT_VER=$(bump "$PREV_VER" "$RELEASE")
-              yq -i '.version = "'"${NEXT_VER}"'"' "${CHDIR}/Chart.yaml"
-              git add "${CHDIR}/Chart.yaml"
-              echo "${SVC}=${NEXT_VER}" >> /tmp/versions.txt
-            done
-            git commit -m "chore(${MODULE}): bump chart versions after PR merge (${RELEASE})" || true
-            while IFS='=' read -r SVC VER; do
-              [[ -n "$SVC" && -n "$VER" ]] || continue
-              git tag -a "${MODULE}/${SVC}/${VER}" -m "Auto(${RELEASE}) via PR merge"
-            done < /tmp/versions.txt
+            # ----- PR merge path: project/module from the diff, release from the PR form -----
+            BASE='${{ github.event.pull_request.base.sha }}'
+            HEAD='${{ github.event.pull_request.merge_commit_sha }}'
+
+            CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
+              | awk -F/ -v c="${CHARTS_DIR}" '$1==c && NF>=4 {print $2"\t"$3}' | sort -u || true)"
+            if [[ -z "$CHANGED" ]]; then
+              echo "::notice::No chart changes; nothing to release."
+              echo "release=" >> "$GITHUB_OUTPUT"; echo "count=0" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            PROJECT="$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | head -1)"
+            MODULE="$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | head -1)"
+            NPROJ=$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | grep -c . || true)
+            NMOD=$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | grep -c . || true)
+            { [[ "$NPROJ" -eq 1 ]] && [[ "$NMOD" -eq 1 ]]; } \
+              || { echo "::error::expected one project + one module per PR (got $NPROJ/$NMOD)"; exit 1; }
+
+            RELEASE="$(printf '%s\n' "$PR_BODY" | grep -iE '^- \[[xX]\] (major|minor|patch)[[:space:]]*$' \
+              | head -1 | sed -E 's/^- \[[xX]\] *//; s/[[:space:]]*$//' | tr '[:upper:]' '[:lower:]')"
+            case "$RELEASE" in major|minor|patch) : ;; *) echo "::error::no Release option ticked in PR form"; exit 1 ;; esac
+
+            ROOT="${CHARTS_DIR}/${PROJECT}/${MODULE}"
+
+            if [[ "$MODULE" == "common" ]]; then
+              # release the project's library if it changed at all
+              if git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
+                printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
+              fi
+            else
+              # services changed under the labelled project/module only
+              git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" \
+                | awk -F/ -v c="${CHARTS_DIR}" -v p="$PROJECT" -v m="$MODULE" \
+                    '$1==c && $2==p && $3==m && NF>=4 {print $4}' \
+                | sort -u > /tmp/svcs.txt || true
+              while IFS= read -r S; do
+                [[ -n "$S" && -f "${ROOT}/${S}/Chart.yaml" ]] || continue
+                printf '%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$S" >> /tmp/targets.txt
+              done < /tmp/svcs.txt
+            fi
+            sort -u -o /tmp/targets.txt /tmp/targets.txt
           fi
 
-          git push origin --tags
-          echo "versions=$(paste -sd, /tmp/versions.txt)" >> "$GITHUB_OUTPUT"
+          COUNT=$(grep -c . /tmp/targets.txt || true)
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT"    >> "$GITHUB_OUTPUT"
+          echo "::notice::release=$RELEASE  targets=$COUNT"
+          cat /tmp/targets.txt || true
 
-      - name: Package updated charts
-        if: steps.changed.outputs.count != '0'
+      # ---------------------------------------------------------------------
+      # Prepare the gh-pages worktree (source of truth for previous versions)
+      # ---------------------------------------------------------------------
+      - name: Prepare gh-pages worktree
+        if: steps.plan.outputs.count != '0'
         shell: bash
         run: |
           set -euo pipefail
-          MODULE='${{ steps.parse.outputs.module }}'
-          ROOT="${CHARTS_DIR}/${MODULE}"
-          VERS='${{ steps.versioning.outputs.versions }}'
-          mkdir -p packaged
-
-          if [[ "$MODULE" == "common" ]]; then
-            VER="$(awk -F= 'BEGIN{RS=","} $1=="common"{print $2}' <<<"$VERS")"; export VER
-            yq -i '.version = env(VER)' "${CHARTS_DIR}/common/Chart.yaml"
-            rm -f  "${CHARTS_DIR}/common/Chart.lock"
-            rm -rf "${CHARTS_DIR}/common/charts"
-            helm dependency build "${CHARTS_DIR}/common"
-            mkdir -p packaged/common
-            helm package "${CHARTS_DIR}/common" --destination packaged/common
-          else
-            IFS=',' read -r -a PAIRS <<< "$VERS"
-            for pair in "${PAIRS[@]}"; do
-              SVC="${pair%%=*}"
-              VER="${pair##*=}"
-              [[ -n "$SVC" && -n "$VER" ]] || continue
-              export VER
-              CHDIR="${ROOT}/${SVC}"
-              test -f "${CHDIR}/Chart.yaml" || { echo "::error::Missing Chart.yaml at ${CHDIR}"; exit 1; }
-
-              yq -i '.version = env(VER)' "${CHDIR}/Chart.yaml"
-              rm -f  "${CHDIR}/Chart.lock"
-              rm -rf "${CHDIR}/charts"
-              helm dependency build "${CHDIR}"
-
-              mkdir -p "packaged/${MODULE}/${SVC}"
-              helm package "${CHDIR}" --destination "packaged/${MODULE}/${SVC}"
-            done
-          fi
-
-      - name: Publish to gh-pages
-        if: steps.changed.outputs.count != '0'
-        shell: bash
-        run: |
-          set -euo pipefail
-          MODULE='${{ steps.parse.outputs.module }}'
-          HOST='${{ env.GH_PAGES_HOST }}'
-          URL="https://${HOST}/${MODULE}"
-          VERS='${{ steps.versioning.outputs.versions }}'
           GHP_DIR="_gh_pages"
-
-          git worktree list | awk '{print $1}' | grep -x "${GHP_DIR}" >/dev/null 2>&1 && git worktree remove -f "${GHP_DIR}"
           rm -rf "${GHP_DIR}"
-
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:gh-pages
             git worktree add --force "${GHP_DIR}" gh-pages
@@ -193,186 +185,211 @@ jobs:
             rm -rf "${GHP_DIR:?}/"* || true
           fi
 
-          git -C "${GHP_DIR}" config user.name  "github-actions[bot]"
-          git -C "${GHP_DIR}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          export GIT_AUTHOR_NAME="github-actions[bot]"
-          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
-          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
-          export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+      # ---------------------------------------------------------------------
+      # Compute next version, bump Chart.yaml, package, publish per (project/module)
+      # ---------------------------------------------------------------------
+      - name: Build, version, package & publish
+        if: steps.plan.outputs.count != '0'
+        id: publish
+        shell: bash
+        env:
+          RELEASE: ${{ steps.plan.outputs.release }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          GHP_DIR="_gh_pages"
+          HOST="${GH_PAGES_HOST}"
+          : > /tmp/released.txt   # lines: project<TAB>module<TAB>service<TAB>from<TAB>to
 
-          echo "Publishing into ${GHP_DIR}/${MODULE} (URL base: ${URL})"
+          bump() {
+            local v="$1" t="$2"; local IFS=.; read -r MA MI PA <<< "${v:-0.0.0}"
+            case "$t" in
+              major) echo "$((MA+1)).0.0";;
+              minor) echo "$MA.$((MI+1)).0";;
+              patch) echo "$MA.$MI.$((PA+1))";;
+            esac
+          }
+          # highest published version of a chart from its module index.yaml ("" if none)
+          prev_version() {
+            local idx="$1" name="$2"
+            [[ -f "$idx" ]] || { echo ""; return; }
+            NAME="$name" yq -r '(.entries[strenv(NAME)] // []) | .[].version' "$idx" 2>/dev/null \
+              | sort -V | tail -1
+          }
 
-          if [[ "$MODULE" == "common" ]]; then
-            mkdir -p "${GHP_DIR}/common"
-            cp -v packaged/common/*.tgz "${GHP_DIR}/common/" || true
+          while IFS=$'\t' read -r PROJECT MODULE SERVICE; do
+            [[ -n "$PROJECT" && -n "$MODULE" ]] || continue
+            URL="https://${HOST}/${PROJECT}/${MODULE}"
+            IDX="${GHP_DIR}/${PROJECT}/${MODULE}/index.yaml"
 
-            TMP="${GHP_DIR}/_tmpindex"
-            mkdir -p "$TMP"
-            [[ -f "${GHP_DIR}/common/index.yaml" ]] && cp "${GHP_DIR}/common/index.yaml" "${TMP}/index-old.yaml" || true
-            cp -v "${GHP_DIR}/common/"*.tgz "${TMP}/" || true
-
-            if [[ -f "${TMP}/index-old.yaml" ]]; then
-              helm repo index "${TMP}" --url "$URL" --merge "${TMP}/index-old.yaml"
+            if [[ "$MODULE" == "common" ]]; then
+              CHDIR="${CHARTS_DIR}/${PROJECT}/common"; NAME="common"
             else
-              helm repo index "${TMP}" --url "$URL"
+              CHDIR="${CHARTS_DIR}/${PROJECT}/${MODULE}/${SERVICE}"; NAME="$SERVICE"
             fi
+            test -f "${CHDIR}/Chart.yaml" || { echo "::warning::skip missing ${CHDIR}/Chart.yaml"; continue; }
 
-            [[ -f "${TMP}/index.yaml" ]] || { echo "::error::common index.yaml not created"; ls -la "$TMP"; exit 1; }
-            mv "${TMP}/index.yaml" "${GHP_DIR}/common/index.yaml"
-            rm -rf "$TMP"
-
-          else
-            IFS=',' read -r -a PAIRS <<< "$VERS"
-            for pair in "${PAIRS[@]}"; do
-              SVC="${pair%%=*}"
-              [[ -n "$SVC" ]] || continue
-              mkdir -p "${GHP_DIR}/${MODULE}/${SVC}"
-              cp -v "packaged/${MODULE}/${SVC}/"*.tgz "${GHP_DIR}/${MODULE}/${SVC}/" || true
-            done
-
-            TMP="${GHP_DIR}/_tmpindex"
-            mkdir -p "$TMP"
-            [[ -f "${GHP_DIR}/${MODULE}/index.yaml" ]] && cp "${GHP_DIR}/${MODULE}/index.yaml" "${TMP}/index-old.yaml" || true
-
-            TGZ_COUNT=0
-            while IFS= read -r -d '' f; do
-              cp -v "$f" "${TMP}/" && TGZ_COUNT=$((TGZ_COUNT+1))
-            done < <(find "${GHP_DIR}/${MODULE}" -mindepth 2 -maxdepth 2 -name '*.tgz' -print0)
-
-            MERGE_FLAG=()
-            if [[ -f "${TMP}/index-old.yaml" ]] && yq 'type == "!!map"' "${TMP}/index-old.yaml" >/dev/null 2>&1; then
-              MERGE_FLAG=(--merge "${TMP}/index-old.yaml")
-            fi
-
-            if [[ "$TGZ_COUNT" -eq 0 && ${#MERGE_FLAG[@]} -eq 0 ]]; then
-              echo "::warning::No charts found and no existing index; skipping index rebuild."
+            PREV="$(prev_version "$IDX" "$NAME")"
+            if [[ -z "$PREV" ]]; then
+              NEXT="$(yq -r '.version' "${CHDIR}/Chart.yaml")"      # seed from Chart.yaml on first publish
+              [[ -n "$NEXT" && "$NEXT" != "null" ]] || NEXT="$(bump "0.0.0" "$RELEASE")"
             else
-              if ! helm repo index "${TMP}" --url "$URL" "${MERGE_FLAG[@]}"; then
-                echo "::warning::helm repo index failed; retrying without --merge"
-                rm -f "${TMP}/index.yaml"
-                helm repo index "${TMP}" --url "$URL"
-              fi
+              NEXT="$(bump "$PREV" "$RELEASE")"
             fi
+            export NEXT
+            yq -i '.version = env(NEXT)' "${CHDIR}/Chart.yaml"
 
-            [[ -f "${TMP}/index.yaml" ]] || { echo "::error::index.yaml was not created in ${TMP}"; ls -la "${TMP}"; exit 1; }
+            # resolve dependencies (common is pulled from the live registry)
+            rm -f  "${CHDIR}/Chart.lock"
+            rm -rf "${CHDIR}/charts"
+            helm dependency build "${CHDIR}" || helm dependency update "${CHDIR}"
 
-            export URL
-            IDX="${TMP}/index.yaml"
+            DEST="${GHP_DIR}/${PROJECT}/${MODULE}/${NAME}"
+            mkdir -p "${DEST}"
+            helm package "${CHDIR}" --destination "${DEST}"
 
-            while IFS= read -r NAME; do
-              export NAME
-              yq -i '
-                .entries[env(NAME)][] |=
-                  ( .urls = [ (.urls[0] | sub("^" + env(URL) + "/"; env(URL) + "/" + env(NAME) + "/")) ] )
+            printf '%s\t%s\t%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$NAME" "${PREV:-0.0.0}" "$NEXT" >> /tmp/released.txt
+            echo "::notice::${PROJECT}/${MODULE}/${NAME}: ${PREV:-<new>} -> ${NEXT}"
+          done < /tmp/targets.txt
+
+          # -------- rebuild one index.yaml per (project/module) that changed --------
+          cut -f1,2 /tmp/released.txt | sort -u > /tmp/pm.txt
+          while IFS=$'\t' read -r PROJECT MODULE; do
+            [[ -n "$PROJECT" && -n "$MODULE" ]] || continue
+            URL="https://${HOST}/${PROJECT}/${MODULE}"
+            MROOT="${GHP_DIR}/${PROJECT}/${MODULE}"
+            TMP="${MROOT}/_tmpindex"; rm -rf "$TMP"; mkdir -p "$TMP"
+            [[ -f "${MROOT}/index.yaml" ]] && cp "${MROOT}/index.yaml" "${TMP}/index-old.yaml" || true
+            # gather every .tgz under this module (service subdirs), plus common at module root
+            find "${MROOT}" -mindepth 2 -maxdepth 2 -name '*.tgz' -exec cp {} "${TMP}/" \; 2>/dev/null || true
+            find "${MROOT}" -maxdepth 1 -name '*.tgz' -exec cp {} "${TMP}/" \; 2>/dev/null || true
+
+            MERGE=()
+            [[ -f "${TMP}/index-old.yaml" ]] && MERGE=(--merge "${TMP}/index-old.yaml")
+            helm repo index "${TMP}" --url "$URL" "${MERGE[@]}"
+
+            # rewrite flat urls -> nested service dirs (common stays at module root)
+            IDX="${TMP}/index.yaml"; export URL
+            while IFS= read -r ENTRY; do
+              [[ "$ENTRY" == "common" ]] && continue
+              NAME="$ENTRY" yq -i '
+                .entries[strenv(NAME)][] |=
+                  (.urls = [ (.urls[0] | sub("^" + strenv(URL) + "/"; strenv(URL) + "/" + strenv(NAME) + "/")) ])
               ' "$IDX"
             done < <(yq -r '.entries | keys[]' "$IDX")
 
-            mkdir -p "${GHP_DIR}/${MODULE}"
-            mv "$IDX" "${GHP_DIR}/${MODULE}/index.yaml"
+            mv "$IDX" "${MROOT}/index.yaml"
             rm -rf "$TMP"
-          fi
+          done < /tmp/pm.txt
 
+          # expose for changelog/index steps
+          echo "released<<EOF" >> "$GITHUB_OUTPUT"; cat /tmp/released.txt >> "$GITHUB_OUTPUT"; echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # -------- commit & push gh-pages --------
+          git -C "${GHP_DIR}" config user.name  "$GIT_AUTHOR_NAME"
+          git -C "${GHP_DIR}" config user.email "$GIT_AUTHOR_EMAIL"
           git -C "${GHP_DIR}" add .
-          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${MODULE} charts" || echo "nothing to commit"
+          git -C "${GHP_DIR}" commit -m "gh-pages: publish ${RELEASE} release ($(cut -f1-3 /tmp/released.txt | paste -sd';' -))" || echo "nothing to commit"
           git -C "${GHP_DIR}" push origin gh-pages
 
-      - name: Update changelog and index pages on gh-pages
-        if: steps.changed.outputs.count != '0'
-        continue-on-error: false
+      # ---------------------------------------------------------------------
+      # Changelog + registry discovery files (projects.json / <project>/modules.json)
+      # ---------------------------------------------------------------------
+      - name: Update changelog & discovery files
+        if: steps.plan.outputs.count != '0'
         shell: bash
+        env:
+          RELEASE: ${{ steps.plan.outputs.release }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
           set -euo pipefail
-          MODULE='${{ steps.parse.outputs.module }}'
-          VERS='${{ steps.versioning.outputs.versions }}'
           GHP_DIR="_gh_pages"
-          MERGE_SHA='${{ github.event.pull_request.merge_commit_sha }}'
-
-          export GIT_AUTHOR_NAME="github-actions[bot]"
-          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
-          export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
-          export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
-
-          # Ensure gh-pages worktree is up to date
           git -C "${GHP_DIR}" pull --rebase origin gh-pages || true
 
-          # --- Update per-module changelog.yaml ---
-          CHANGELOG="${GHP_DIR}/${MODULE}/changelog.yaml"
-          PR_NUM='${{ github.event.pull_request.number }}'
-          PR_TITLE='${{ github.event.pull_request.title }}'
-          PR_AUTHOR='${{ github.event.pull_request.user.login }}'
-          RELEASE_TYPE='${{ steps.parse.outputs.release }}'
-          RELEASE_DATE="$(date -u +%Y-%m-%d)"
-
-          ENTRY_FILE="/tmp/changelog_entry.yaml"
-          {
-            printf '  - date: "%s"\n' "$RELEASE_DATE"
-            printf '    pr: %s\n' "$PR_NUM"
-            printf '    pr_title: "%s"\n' "$PR_TITLE"
-            printf '    author: "%s"\n' "$PR_AUTHOR"
-            printf '    release_type: "%s"\n' "$RELEASE_TYPE"
-            printf '    charts:\n'
-          } > "$ENTRY_FILE"
-
-          IFS=',' read -r -a VER_PAIRS <<< "$VERS"
-          for pair in "${VER_PAIRS[@]}"; do
-            SVC="${pair%%=*}"
-            NEW_VER="${pair##*=}"
-            [[ -n "$SVC" && -n "$NEW_VER" ]] || continue
-            if [[ "$MODULE" == "common" ]]; then
-              PREV_TAG=$(git tag -l | grep -E "^common/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
-              OLD_VER="${PREV_TAG#*/}"
-            else
-              PREV_TAG=$(git tag -l | grep -E "^${MODULE}/${SVC}/[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -2 | head -1 || true)
-              OLD_VER="${PREV_TAG##*/}"
-            fi
-            [[ -z "$OLD_VER" || "$OLD_VER" == "$PREV_TAG" ]] && OLD_VER="0.0.0"
-            [[ "$OLD_VER" == "$NEW_VER" ]] && OLD_VER="0.0.0"
-            printf '      - name: "%s"\n        from: "%s"\n        to: "%s"\n' "$SVC" "$OLD_VER" "$NEW_VER" >> "$ENTRY_FILE"
-          done
-
-          if [[ -f "$CHANGELOG" ]]; then
-            {
-              head -1 "$CHANGELOG"
-              cat "$ENTRY_FILE"
-              tail -n +2 "$CHANGELOG"
-            } > "${CHANGELOG}.tmp"
-            mv "${CHANGELOG}.tmp" "$CHANGELOG"
+          DATE="$(date -u +%Y-%m-%d)"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            REF_KIND="PR"; REF_ID='${{ github.event.pull_request.number }}'
+            TITLE='${{ github.event.pull_request.title }}'; AUTHOR='${{ github.event.pull_request.user.login }}'
           else
-            mkdir -p "$(dirname "$CHANGELOG")"
-            { printf 'releases:\n'; cat "$ENTRY_FILE"; } > "$CHANGELOG"
+            REF_KIND="dispatch"; REF_ID='${{ github.run_number }}'
+            TITLE="manual dispatch"; AUTHOR='${{ github.actor }}'
           fi
-          rm -f "$ENTRY_FILE"
 
-          # --- Generate modules.json from all module directories on gh-pages ---
-          MODS_JSON="["
-          FIRST=true
-          for MOD_DIR in "${GHP_DIR}"/*/; do
-            [[ -d "$MOD_DIR" ]] || continue
-            MOD_NAME="$(basename "$MOD_DIR")"
-            [[ "$MOD_NAME" == _* ]] && continue
-            [[ "$FIRST" == "true" ]] && FIRST=false || MODS_JSON="${MODS_JSON},"
-            MODS_JSON="${MODS_JSON}\"${MOD_NAME}\""
+          # one changelog entry per (project/module), listing its charts
+          for PM in $(cut -f1,2 /tmp/released.txt | sort -u | tr '\t' '/'); do
+            PROJECT="${PM%%/*}"; MODULE="${PM##*/}"
+            CL="${GHP_DIR}/${PROJECT}/${MODULE}/changelog.yaml"
+            E="/tmp/entry.yaml"
+            {
+              printf '  - date: "%s"\n' "$DATE"
+              printf '    ref: "%s-%s"\n' "$REF_KIND" "$REF_ID"
+              printf '    title: "%s"\n' "$TITLE"
+              printf '    author: "%s"\n' "$AUTHOR"
+              printf '    release_type: "%s"\n' "$RELEASE"
+              printf '    charts:\n'
+            } > "$E"
+            while IFS=$'\t' read -r P M S FROM TO; do
+              [[ "$P/$M" == "$PM" ]] || continue
+              printf '      - name: "%s"\n        from: "%s"\n        to: "%s"\n' "$S" "$FROM" "$TO" >> "$E"
+            done < /tmp/released.txt
+            if [[ -f "$CL" ]]; then
+              { head -1 "$CL"; cat "$E"; tail -n +2 "$CL"; } > "${CL}.tmp" && mv "${CL}.tmp" "$CL"
+            else
+              mkdir -p "$(dirname "$CL")"; { printf 'releases:\n'; cat "$E"; } > "$CL"
+            fi
           done
-          MODS_JSON="${MODS_JSON}]"
-          echo "$MODS_JSON" > "${GHP_DIR}/modules.json"
-          echo "Generated modules.json: $MODS_JSON"
 
-          # --- Copy index.html from master to gh-pages root ---
-          if git show "${MERGE_SHA}:index.html" > /dev/null 2>&1; then
-            git show "${MERGE_SHA}:index.html" > "${GHP_DIR}/index.html"
-          fi
+          # projects.json (root) and <project>/modules.json
+          PROJS="$(ls -d "${GHP_DIR}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_' | grep -vE '\.' || true)"
+          echo "[$(printf '%s\n' $PROJS | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/projects.json"
+          for P in $PROJS; do
+            MODS="$(ls -d "${GHP_DIR}/${P}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_' || true)"
+            echo "[$(printf '%s\n' $MODS | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/${P}/modules.json"
+          done
 
-          # --- Copy module-index.html to ALL module directories on gh-pages ---
-          if git show "${MERGE_SHA}:module-index.html" > /dev/null 2>&1; then
-            for MOD_DIR in "${GHP_DIR}"/*/; do
-              [[ -d "$MOD_DIR" ]] || continue
-              MOD_NAME="$(basename "$MOD_DIR")"
-              [[ "$MOD_NAME" == _* ]] && continue
-              git show "${MERGE_SHA}:module-index.html" > "${MOD_DIR}/index.html"
-              echo "Copied module-index.html to ${MOD_NAME}/index.html"
+          # copy registry html from the merged commit (best-effort)
+          for f in index.html project-index.html module-index.html; do
+            git show "${{ steps.ref.outputs.sha }}:$f" > "/tmp/$f" 2>/dev/null || true
+          done
+          [[ -f /tmp/index.html ]] && cp /tmp/index.html "${GHP_DIR}/index.html" || true
+          for P in $PROJS; do
+            [[ -f /tmp/project-index.html ]] && cp /tmp/project-index.html "${GHP_DIR}/${P}/index.html" || true
+            for M in $(ls -d "${GHP_DIR}/${P}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_'); do
+              [[ -f /tmp/module-index.html ]] && cp /tmp/module-index.html "${GHP_DIR}/${P}/${M}/index.html" || true
             done
-          fi
+          done
 
           git -C "${GHP_DIR}" add .
-          git -C "${GHP_DIR}" commit -m "gh-pages: update changelog and index pages for ${MODULE}" || echo "nothing to commit"
+          git -C "${GHP_DIR}" commit -m "gh-pages: changelog + discovery (${RELEASE})" || echo "nothing to commit"
           git -C "${GHP_DIR}" push origin gh-pages
+
+      # ---------------------------------------------------------------------
+      # Traceability tag: <project>/<module>/PR-<n>  (or dispatch-<run>)
+      # ---------------------------------------------------------------------
+      - name: Tag the release
+        if: steps.plan.outputs.count != '0'
+        shell: bash
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SUFFIX="PR-${{ github.event.pull_request.number }}"
+          else
+            SUFFIX="dispatch-${{ github.run_number }}"
+          fi
+          SHA='${{ steps.ref.outputs.sha }}'
+          for PM in $(cut -f1,2 /tmp/released.txt | sort -u | tr '\t' '/'); do
+            TAG="${PM}/${SUFFIX}"
+            git tag -f -a "$TAG" "$SHA" -m "Release ${SUFFIX} (${PM})" || true
+          done
+          git push -f origin --tags || true
