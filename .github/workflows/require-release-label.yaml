@@ -1,0 +1,33 @@
+name: Require release label
+
+# Mandatory gate. Stays failing until the PR carries exactly one
+# release:major | release:minor | release:patch label.
+# Wire this job as a REQUIRED status check on master so no PR can merge without it.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  require-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exactly one release:* label
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MATCHED=$(printf '%s\n' "${PR_LABELS//,/$'\n'}" | grep -iE '^release:(major|minor|patch)$' || true)
+          COUNT=$(printf '%s\n' "$MATCHED" | grep -c . || true)
+          if [[ "${COUNT:-0}" -ne 1 ]]; then
+            echo "::error::This PR needs exactly ONE release label (release:major | release:minor | release:patch). Found ${COUNT:-0}."
+            exit 1
+          fi
+          echo "OK - release type: ${MATCHED#release:}"
