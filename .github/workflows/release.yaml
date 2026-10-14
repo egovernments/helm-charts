@@ -100,8 +100,7 @@ jobs:
         id: plan
         shell: bash
         env:
-          # whitespace/comma-separated list of label names on the PR
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
           : > /tmp/targets.txt   # lines: project<TAB>module<TAB>service   (service empty => whole module 'common')
@@ -120,21 +119,27 @@ jobs:
               printf '%s\t%s\t%s\n' "$PROJECT" "$MODULE" "$SERVICE" >> /tmp/targets.txt
             fi
           else
-            # ----- PR merge path: project / module / release each from exactly one label -----
-            labels="$(printf '%s\n' "${PR_LABELS//,/$'\n'}")"
-            one() { printf '%s\n' "$labels" | grep -iE "$1" | head -1 | sed "s/^$2://"; }
-            cnt() { printf '%s\n' "$labels" | grep -icE "$1" || true; }
-
-            [[ "$(cnt '^project:[a-z0-9][a-z0-9-]*$')" -eq 1 ]] || { echo "::error::need exactly one project:* label"; exit 1; }
-            [[ "$(cnt '^module:(common|core|health|urban|frontend|backbone)$')" -eq 1 ]] || { echo "::error::need exactly one module:* label"; exit 1; }
-            [[ "$(cnt '^release:(major|minor|patch)$')" -eq 1 ]] || { echo "::error::need exactly one release:* label"; exit 1; }
-
-            PROJECT="$(one '^project:[a-z0-9][a-z0-9-]*$' project)"
-            MODULE="$(one '^module:(common|core|health|urban|frontend|backbone)$' module)"
-            RELEASE="$(one '^release:(major|minor|patch)$' release | tr '[:upper:]' '[:lower:]')"
-
+            # ----- PR merge path: project/module from the diff, release from the PR form -----
             BASE='${{ github.event.pull_request.base.sha }}'
             HEAD='${{ github.event.pull_request.merge_commit_sha }}'
+
+            CHANGED="$(git diff --name-only "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
+              | awk -F/ -v c="${CHARTS_DIR}" '$1==c && NF>=4 {print $2"\t"$3}' | sort -u || true)"
+            if [[ -z "$CHANGED" ]]; then
+              echo "::notice::No chart changes; nothing to release."
+              echo "release=" >> "$GITHUB_OUTPUT"; echo "count=0" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            PROJECT="$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | head -1)"
+            MODULE="$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | head -1)"
+            NPROJ=$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | grep -c . || true)
+            NMOD=$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | grep -c . || true)
+            { [[ "$NPROJ" -eq 1 ]] && [[ "$NMOD" -eq 1 ]]; } \
+              || { echo "::error::expected one project + one module per PR (got $NPROJ/$NMOD)"; exit 1; }
+
+            RELEASE="$(printf '%s\n' "$PR_BODY" | grep -iE '^- \[[xX]\] (major|minor|patch)[[:space:]]*$' \
+              | head -1 | sed -E 's/^- \[[xX]\] *//; s/[[:space:]]*$//' | tr '[:upper:]' '[:lower:]')"
+            case "$RELEASE" in major|minor|patch) : ;; *) echo "::error::no Release option ticked in PR form"; exit 1 ;; esac
+
             ROOT="${CHARTS_DIR}/${PROJECT}/${MODULE}"
 
             if [[ "$MODULE" == "common" ]]; then

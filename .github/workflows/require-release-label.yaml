@@ -1,13 +1,13 @@
-name: Require release labels
+name: Require release selection
 
-# Mandatory gate. Stays failing until the PR carries exactly one of EACH:
-#   project:<name>   module:<name>   release:<major|minor|patch>
-# Wire the 'require-label' job as a REQUIRED status check on master so no PR can merge
-# without all three. (Job id kept as 'require-label' to match existing branch protection.)
+# Mandatory gate (job id kept 'require-label' to match existing branch protection).
+# - PRs with NO chart changes pass automatically.
+# - PRs that change charts must: touch exactly one project and one module, and have
+#   exactly one Project / Module / Release option ticked in the release-selection form.
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled]
+    types: [opened, reopened, synchronize, edited]
     branches:
       - master
 
@@ -19,34 +19,36 @@ jobs:
   require-label:
     runs-on: ubuntu-latest
     steps:
-      - name: Exactly one project / module / release label
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release selection
         env:
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          labels="$(printf '%s\n' "${PR_LABELS//,/$'\n'}")"
 
-          check() {
-            local kind="$1" pattern="$2"
-            local matched count
-            matched="$(printf '%s\n' "$labels" | grep -iE "$pattern" || true)"
-            count="$(printf '%s\n' "$matched" | grep -c . || true)"
-            if [[ "${count:-0}" -ne 1 ]]; then
-              echo "::error::Add exactly ONE '${kind}:*' label (found ${count:-0})."
-              return 1
-            fi
-            echo "${kind}: ${matched#*:}"
-            return 0
-          }
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD" -- charts \
+            | awk -F/ '$1=="charts" && NF>=4 {print $2"\t"$3}' | sort -u || true)"
+          if [[ -z "$CHANGED" ]]; then
+            echo "No chart changes under charts/<project>/<module>/<service>/ - release selection not required."
+            exit 0
+          fi
 
-          rc=0
-          check "project" '^project:[a-z0-9][a-z0-9-]*$'            || rc=1
-          check "module"  '^module:(common|core|health|urban|frontend|backbone)$' || rc=1
-          check "release" '^release:(major|minor|patch)$'           || rc=1
+          NPROJ=$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | grep -c . || true)
+          NMOD=$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | grep -c . || true)
+          [[ "$NPROJ" -eq 1 ]] || { echo "::error::This PR changes $NPROJ projects. Keep it to one project per PR."; exit 1; }
+          [[ "$NMOD"  -eq 1 ]] || { echo "::error::This PR changes $NMOD modules. Keep it to one module per PR."; exit 1; }
 
-          if [[ "$rc" -ne 0 ]]; then
-            echo "::error::PR must carry exactly one project:*, one module:*, and one release:* label before it can merge."
+          tick_count() { printf '%s\n' "$BODY" | grep -icE "^- \[[xX]\] ($1)[[:space:]]*$" || true; }
+          R=$(tick_count 'major|minor|patch')
+          if [[ "$R" -ne 1 ]]; then
+            echo "::error::Tick exactly one Release option (major|minor|patch) in the PR's Release selection form (found $R)."
             exit 1
           fi
-          echo "All three labels present."
+          echo "OK - one project, one module, one release selected."
