@@ -1,0 +1,15 @@
+{{- /* See persistentvolume.yaml for why the helmfile override wrapper is dropped. */ -}}
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+apiVersion: "v1"
+kind: PersistentVolumeClaim
+metadata:
+  name: filestore-data-egov-filestore
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+   - {{ .Values.persistence.accessMode | quote }}
+  resources:
+    requests:
+        storage: {{ .Values.persistence.dataDirSize | quote }}
+  storageClassName: {{ .Values.persistence.storageClassName | quote }}
+{{- end }}
