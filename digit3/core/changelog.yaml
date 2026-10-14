@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-14"
+    ref: "PR-67"
+    title: "feat(digit3/core): add filestore chart at 1.0.0 baseline"
+    author: "nikhilmulinti"
+    release_type: "major"
+    charts:
+      - name: "filestore"
+        from: "0.0.0"
+        to: "1.0.0"
+  - date: "2026-10-14"
     ref: "PR-64"
     title: "Feat/digit3 localization"
     author: "shivam-eGov"
