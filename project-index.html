@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project - DIGIT Helm Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    :root {
+      --bg:#0b1220; --border:#2a3444; --text:#e8edf5; --muted:#8b95a5; --line:#273243; --link:#4ea1ff;
+      --code:#0f1c2d; --badge-blue:#2c8fe8; --badge-green:#2ea043; --badge-orange:#d18616; --badge-purple:#8b5cf6;
+      --accent:#ff8b6a; --card-bg:#0d1829; --card-border:#1e2d3d; --card-hover:#111f33;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; padding:28px; }
+    .frame { width:min(1360px,100%); margin:0 auto; border:1px solid var(--border); border-radius:18px; background:linear-gradient(180deg,#08111d,#07101a); overflow:hidden; box-shadow:0 12px 36px rgba(0,0,0,.28); }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 0 22px; border-bottom:1px solid var(--border); }
+    .tab { display:flex; align-items:center; gap:12px; padding:0 0 16px 0; font-weight:700; font-size:18px; position:relative; }
+    .tab::after { content:""; position:absolute; left:-10px; bottom:-1px; width:150px; height:3px; border-radius:3px; background:var(--accent); }
+    .book { width:24px; height:24px; opacity:.9; } .icons svg { width:22px; height:22px; stroke:#d9e0ea; opacity:.88; } .icons { padding-bottom:12px; }
+    .content { padding:40px 48px 56px 48px; }
+    .breadcrumb { font-size:15px; color:var(--muted); margin-bottom:18px; }
+    .breadcrumb a { color:var(--link); text-decoration:none; } .breadcrumb a:hover { text-decoration:underline; }
+    h1 { font-size:48px; line-height:1.1; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px; }
+    h2 { margin:40px 0 12px 0; font-size:30px; font-weight:800; }
+    h3 { margin:28px 0 14px 0; font-size:20px; font-weight:700; }
+    hr { border:none; border-top:1px solid var(--line); margin:18px 0 22px 0; }
+    p { margin:0 0 18px 0; font-size:17px; line-height:1.7; }
+    a { color:var(--link); text-underline-offset:3px; }
+    .badges { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 26px 0; }
+    .badge { display:inline-flex; align-items:center; border-radius:6px; font-size:14px; color:#fff; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
+    .badge .label { background:#4c5563; padding:6px 10px; } .badge .value { padding:6px 12px; }
+    .badge .value.blue { background:var(--badge-blue); } .badge .value.green { background:var(--badge-green); } .badge .value.orange { background:var(--badge-orange); } .badge .value.purple { background:var(--badge-purple); }
+    .codeblock { background:var(--code); padding:22px 26px; margin:14px 0 22px 0; border-radius:8px; overflow:auto; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:15px; color:#77b9ff; white-space:pre; }
+    .inline { display:inline-block; background:#2b3440; color:#f0f4fa; border-radius:6px; padding:3px 8px; font-size:14px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+    .category { margin:26px 0 24px 0; border:1px solid var(--card-border); border-radius:14px; background:var(--card-bg); overflow:hidden; }
+    .category-header { display:flex; align-items:center; justify-content:space-between; padding:18px 26px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--card-border); }
+    .category-title { display:flex; align-items:center; gap:14px; font-size:22px; font-weight:800; }
+    .category-title .icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; }
+    .category-title a { color:var(--text); text-decoration:none; }
+    .category-count { font-size:14px; color:var(--muted); background:rgba(255,255,255,.06); padding:4px 14px; border-radius:20px; }
+    .category-error { padding:18px 26px; font-size:15px; color:var(--muted); font-style:italic; }
+    .charts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:0; }
+    .chart-card { padding:18px 26px; border-bottom:1px solid var(--card-border); border-right:1px solid var(--card-border); transition:background .15s; }
+    .chart-card:hover { background:var(--card-hover); }
+    .chart-name { font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+    .type-tag { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; padding:2px 8px; border-radius:4px; background:rgba(255,255,255,.08); color:var(--muted); }
+    .chart-desc { font-size:14px; color:var(--muted); margin-bottom:10px; line-height:1.5; }
+    .chart-meta { display:flex; gap:6px; flex-wrap:wrap; }
+    .meta-badge { display:inline-flex; align-items:center; border-radius:4px; font-size:12px; color:#fff; overflow:hidden; }
+    .meta-badge .m-label { background:#3a4453; padding:3px 7px; } .meta-badge .m-value { padding:3px 8px; }
+    .m-value.v-blue { background:#1e6fbf; } .m-value.v-green { background:#1a7f35; } .m-value.v-purple { background:#6d28d9; }
+    .stats { display:flex; gap:32px; flex-wrap:wrap; margin:20px 0 28px 0; padding:20px 26px; background:rgba(255,255,255,.02); border:1px solid var(--card-border); border-radius:12px; }
+    .stat { text-align:center; } .stat-num { font-size:30px; font-weight:800; color:var(--link); } .stat-label { font-size:14px; color:var(--muted); margin-top:4px; }
+    .loader { display:flex; align-items:center; gap:12px; padding:22px 26px; color:var(--muted); font-size:15px; }
+    .spinner { width:20px; height:20px; border:2px solid var(--card-border); border-top-color:var(--link); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @media (max-width:900px) { body{padding:14px;} .content{padding:22px 16px 30px;} h1{font-size:32px;} .charts-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <div class="tab">
+        <svg class="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5v-13A2.5 2.5 0 0 1 6.5 2z"></path><path d="M12 6.5v11"></path></svg>
+        <span>Helm Charts Registry</span>
+      </div>
+      <div class="icons"><a href="https://github.com/egovernments/helm-charts" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></div>
+    </div>
+    <div class="content">
+      <div class="breadcrumb"><a href="/">Registry</a> / <span id="crumb-project">project</span></div>
+      <h1 id="page-title">Project</h1>
+      <hr>
+      <div class="badges" id="project-badges"></div>
+      <p id="project-desc">Modules in this project. Each module is an independent Helm repository.</p>
+
+      <div class="stats" id="stats-bar"><div class="loader"><div class="spinner"></div> Loading modules...</div></div>
+
+      <h2>Modules</h2><hr>
+      <div id="modules-container"><div class="loader"><div class="spinner"></div> Loading modules...</div></div>
+
+      <h2 id="usage">Usage</h2><hr>
+      <p>Add any module as a repo:</p>
+      <div class="codeblock"><code id="usage-code">Loading...</code></div>
+    </div>
+  </div>
+
+  <script>
+    const ICON_COLORS = ['linear-gradient(135deg,#3b82f6,#1d4ed8)','linear-gradient(135deg,#8b5cf6,#6d28d9)','linear-gradient(135deg,#f59e0b,#d97706)','linear-gradient(135deg,#10b981,#059669)','linear-gradient(135deg,#ef4444,#dc2626)','linear-gradient(135deg,#06b6d4,#0891b2)'];
+    const HOST = 'helm.digit.org';
+
+    function project() {
+      const parts = window.location.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
+      return parts[parts.length - 1] || 'unknown';
+    }
+    function parseIndex(t) {
+      const d = jsyaml.load(t); if (!d || !d.entries) return [];
+      const out = [];
+      for (const [name, vers] of Object.entries(d.entries)) {
+        if (!Array.isArray(vers) || !vers.length) continue;
+        const l = vers[0];
+        out.push({ name:l.name||name, version:l.version||'0.0.0', appVersion:l.appVersion||'', description:l.description||'', type:l.type||'application', dependencies:l.dependencies||[] });
+      }
+      return out.sort((a,b)=>a.name.localeCompare(b.name));
+    }
+    function chartCard(c) {
+      const lib = c.type === 'library';
+      let meta = `<div class="meta-badge"><span class="m-label">chart</span><span class="m-value v-blue">${c.version}</span></div>`;
+      if (c.appVersion) meta += `<div class="meta-badge"><span class="m-label">app</span><span class="m-value v-green">${c.appVersion}</span></div>`;
+      if (lib) meta += `<div class="meta-badge"><span class="m-label">type</span><span class="m-value v-purple">library</span></div>`;
+      return `<div class="chart-card"><div class="chart-name">${c.name} ${lib?'<span class="type-tag">library</span>':''}</div><div class="chart-desc">${c.description||''}</div><div class="chart-meta">${meta}</div></div>`;
+    }
+    function renderModule(proj, mod, idx, charts) {
+      const color = ICON_COLORS[idx % ICON_COLORS.length];
+      const grid = charts.length ? `<div class="charts-grid">${charts.map(chartCard).join('')}</div>` : '<div class="category-error">No charts published yet.</div>';
+      return `<div class="category" id="${mod}">
+        <div class="category-header">
+          <div class="category-title"><div class="icon" style="background:${color}">&#9881;</div><a href="./${mod}/">${mod}/</a></div>
+          <div style="display:flex;align-items:center;gap:12px"><div class="category-count">${charts.length} chart${charts.length===1?'':'s'}</div><a href="./${mod}/" style="font-size:14px;color:var(--link);text-decoration:none">View details &rarr;</a></div>
+        </div>${grid}</div>`;
+    }
+    async function main() {
+      const proj = project();
+      document.title = `${proj} - DIGIT Helm Charts`;
+      document.getElementById('page-title').textContent = proj;
+      document.getElementById('crumb-project').textContent = proj;
+      const container = document.getElementById('modules-container'), statsBar = document.getElementById('stats-bar');
+      let modules = [];
+      try { const r = await fetch('./modules.json'); if (r.ok) modules = await r.json(); } catch {}
+      if (!Array.isArray(modules) || !modules.length) {
+        container.innerHTML = '<div class="category-error">No modules published yet for this project.</div>'; statsBar.innerHTML = '';
+        document.getElementById('usage-code').textContent = `helm repo add ${proj}-<module> https://${HOST}/${proj}/<module>`;
+        return;
+      }
+      const results = await Promise.allSettled(modules.map(async m => {
+        const r = await fetch(`./${m}/index.yaml`); if (!r.ok) throw new Error();
+        return { m, charts: parseIndex(await r.text()) };
+      }));
+      let total = 0; const counts = {}; const sections = [];
+      results.forEach((res, i) => {
+        const m = modules[i];
+        const charts = res.status === 'fulfilled' ? res.value.charts : [];
+        counts[m] = charts.length; total += charts.length;
+        sections.push(renderModule(proj, m, i, charts));
+      });
+      container.innerHTML = sections.join('');
+      statsBar.innerHTML = modules.map(m => `<div class="stat"><div class="stat-num">${counts[m]||0}</div><div class="stat-label">${m}</div></div>`).join('') +
+        `<div class="stat"><div class="stat-num">${total}</div><div class="stat-label">Total Charts</div></div>`;
+      document.getElementById('project-badges').innerHTML =
+        `<div class="badge"><span class="label">Project</span><span class="value purple">${proj}</span></div>
+         <div class="badge"><span class="label">Modules</span><span class="value blue">${modules.length}</span></div>
+         <div class="badge"><span class="label">Charts</span><span class="value orange">${total}</span></div>`;
+      document.getElementById('usage-code').textContent = modules.map(m => `helm repo add ${proj}-${m} https://${HOST}/${proj}/${m}`).join('\n');
+    }
+    main();
+  </script>
+</body>
+</html>
