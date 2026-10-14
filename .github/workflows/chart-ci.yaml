@@ -1,0 +1,103 @@
+name: Chart lint & template
+
+# On every PR, lint and render (helm template) each changed chart. Blocks merge until it renders
+# cleanly. PRs with no chart changes pass automatically. Wire the 'lint-template' job as a REQUIRED
+# status check on master.
+#
+# A chart may ship an optional ci/test-values.yaml with the values its templates need to render;
+# it is applied on top of a dummy global.containerRegistry for the check.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  lint-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Helm
+        run: |
+          set -e
+          curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64
+
+      - name: Lint & template changed charts
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REG="registry.local"   # dummy container registry so common.image renders
+
+          # map changed files -> chart directories (common at <project>/common, services at <project>/<module>/<service>)
+          git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
+            | awk -F/ '$1=="charts" && NF>=3 {
+                if ($3=="common") print $1"/"$2"/"$3;
+                else if (NF>=4) print $1"/"$2"/"$3"/"$4;
+              }' | sort -u > /tmp/charts.txt || true
+
+          # keep only dirs that actually have a Chart.yaml
+          : > /tmp/targets.txt
+          while IFS= read -r d; do
+            [[ -n "$d" && -f "$d/Chart.yaml" ]] && echo "$d" >> /tmp/targets.txt
+          done < /tmp/charts.txt
+
+          if [[ ! -s /tmp/targets.txt ]]; then
+            echo "No chart changes - nothing to lint."
+            exit 0
+          fi
+
+          echo "Charts to check:"; cat /tmp/targets.txt
+
+          # add the common repo for every project involved (for helm dependency build)
+          awk -F/ '{print $2}' /tmp/targets.txt | sort -u | while read -r proj; do
+            helm repo add "${proj}-common" "https://helm.digit.org/${proj}/common" >/dev/null 2>&1 || true
+          done
+          helm repo update >/dev/null 2>&1 || true
+
+          rc=0
+          while IFS= read -r dir; do
+            echo "::group::$dir"
+            vals=(--set "global.containerRegistry=${REG}")
+            [[ -f "$dir/ci/test-values.yaml" ]] && vals+=(-f "$dir/ci/test-values.yaml")
+
+            if ! helm dependency build "$dir" 2>&1; then
+              helm dependency update "$dir" 2>&1 || { echo "::error::$dir: dependency build failed (is the dependency version published?)"; rc=1; echo "::endgroup::"; continue; }
+            fi
+
+            if ! helm lint "$dir" "${vals[@]}" 2>&1; then
+              echo "::error::$dir: helm lint failed"; rc=1
+            fi
+
+            # library charts are not installable; render only application charts
+            ctype="$(helm show chart "$dir" 2>/dev/null | awk -F': *' '/^type:/{print $2}')"
+            if [[ "$ctype" != "library" ]]; then
+              if ! helm template ci-render "$dir" "${vals[@]}" >/dev/null 2>&1; then
+                echo "::error::$dir: helm template failed to render"
+                helm template ci-render "$dir" "${vals[@]}" 2>&1 | tail -20 || true
+                rc=1
+              fi
+            fi
+
+            # don't commit vendored deps (CI workspace only, but keep it clean)
+            rm -rf "$dir/charts" "$dir/Chart.lock"
+            echo "::endgroup::"
+          done < /tmp/targets.txt
+
+          if [[ "$rc" -ne 0 ]]; then
+            echo "::error::One or more charts failed lint/template. Fix before merging."
+            exit 1
+          fi
+          echo "All changed charts lint and render cleanly."
