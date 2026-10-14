@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          CHANGED="$(git diff --name-only "$BASE" "$HEAD" -- charts \
+          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
             | awk -F/ '$1=="charts" && NF>=4 {print $2"\t"$3}' | sort -u || true)"
           if [[ -z "$CHANGED" ]]; then
             echo "No chart changes under charts/<project>/<module>/<service>/ - release selection not required."

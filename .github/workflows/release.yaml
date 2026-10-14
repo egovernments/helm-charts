@@ -123,7 +123,7 @@ jobs:
             BASE='${{ github.event.pull_request.base.sha }}'
             HEAD='${{ github.event.pull_request.merge_commit_sha }}'
 
-            CHANGED="$(git diff --name-only "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
+            CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
               | awk -F/ -v c="${CHARTS_DIR}" '$1==c && NF>=4 {print $2"\t"$3}' | sort -u || true)"
             if [[ -z "$CHANGED" ]]; then
               echo "::notice::No chart changes; nothing to release."
@@ -144,12 +144,12 @@ jobs:
 
             if [[ "$MODULE" == "common" ]]; then
               # release the project's library if it changed at all
-              if git diff --name-only "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
+              if git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
                 printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
               fi
             else
               # services changed under the labelled project/module only
-              git diff --name-only "$BASE" "$HEAD" -- "${ROOT}" \
+              git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" \
                 | awk -F/ -v c="${CHARTS_DIR}" -v p="$PROJECT" -v m="$MODULE" \
                     '$1==c && $2==p && $3==m && NF>=4 {print $4}' \
                 | sort -u > /tmp/svcs.txt || true
