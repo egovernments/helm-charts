@@ -31,13 +31,14 @@ on:
         type: choice
         options:
           - common
+          - cluster-configs
           - core
           - health
           - urban
           - frontend
           - backbone
       service:
-        description: "Service chart name (exact dir under charts/<project>/<module>/). Ignore for module 'common'."
+        description: "Service chart name (exact dir under charts/<project>/<module>/). Ignore for single-chart modules like common or cluster-configs."
         required: false
         type: string
       release:
@@ -110,7 +111,8 @@ jobs:
             PROJECT='${{ inputs.project }}'
             MODULE='${{ inputs.module }}'
             SERVICE='${{ inputs.service }}'
-            if [[ "$MODULE" == "common" ]]; then
+            if [[ -f "${CHARTS_DIR}/${PROJECT}/${MODULE}/Chart.yaml" ]]; then
+              # single-chart module (module dir is itself a chart, e.g. common, cluster-configs)
               printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
             else
               [[ -n "$SERVICE" ]] || { echo "::error::service input is required for module '$MODULE'"; exit 1; }
@@ -142,8 +144,9 @@ jobs:
 
             ROOT="${CHARTS_DIR}/${PROJECT}/${MODULE}"
 
-            if [[ "$MODULE" == "common" ]]; then
-              # release the project's library if it changed at all
+            if [[ -f "${ROOT}/Chart.yaml" ]]; then
+              # single-chart module (module dir is itself a chart, e.g. common, cluster-configs):
+              # release it if anything under it changed
               if git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
                 printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
               fi
@@ -225,8 +228,9 @@ jobs:
             URL="https://${HOST}/${PROJECT}/${MODULE}"
             IDX="${GHP_DIR}/${PROJECT}/${MODULE}/index.yaml"
 
-            if [[ "$MODULE" == "common" ]]; then
-              CHDIR="${CHARTS_DIR}/${PROJECT}/common"; NAME="common"
+            if [[ -z "$SERVICE" ]]; then
+              # single-chart module (module dir is itself a chart, e.g. common, cluster-configs)
+              CHDIR="${CHARTS_DIR}/${PROJECT}/${MODULE}"; NAME="$MODULE"
             else
               CHDIR="${CHARTS_DIR}/${PROJECT}/${MODULE}/${SERVICE}"; NAME="$SERVICE"
             fi
