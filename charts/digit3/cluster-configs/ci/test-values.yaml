@@ -1,57 +1,104 @@
-# CI-only dummy values so cluster-configs renders in the lint-template check.
-# Real values come from the environment values file at install time.
+# CI render values for the lint-template check, and a worked example of a product values file
+# (e.g. digit3/core.yaml). Install namespace: digit3. Real secret values come from the deployer.
 global:
   domain: "ci.example.com"
   setup: "default"
   containerRegistry: "registry.local"
+
 cluster-configs:
+  # product-scoped: create its own namespace, keep cluster-wide RBAC on the platform install only
+  cluster-roles:
+    enabled: false         # products do NOT own cluster-wide RBAC; the platform install does
+  namespaces:
+    create: true
+    values: [ digit3 ]
+
+  root-ingress:
+    enabled: true
+    name: root-ingress
+    namespace: digit3
+    cert-issuer: "letsencrypt-prod"
+    appRoot: citizen
+    serviceName: citizen
+    servicePort: 80
+
+  configmaps:
+    egov-config:
+      name: egov-config
+      namespace: [ digit3 ]
+      data:
+        db-url: "jdbc:postgresql://db-service.digit3:5432/digit3"
+        db-host: "db-service.digit3"
+        db-name: "digit3"
+        redis-host: "redis.digit3"
+        flyway-locations: "db/migration/main"
+        kafka-brokers: "kafka-kraft.backbone:9092"
+    egov-service-host:
+      name: egov-service-host
+      namespace: [ digit3 ]
+      data:
+        apportion: "http://apportion.digit3:8080/"
+        billing: "http://billing.digit3:8080/"
+        boundary: "http://boundary.digit3:8080/"
+        filestore: "http://filestore.digit3:8080/"
+        idgen: "http://idgen.digit3:8080/"
+        individual: "http://individual.digit3:8080/"
+        notification: "http://notification.digit3:8080/"
+        otp: "http://otp.digit3:8080/"
+        registry: "http://registry.digit3:8080/"
+        template-config: "http://template-config.digit3:8080/"
+        vault: "http://vault.digit3:8200/"
+
   secrets:
     db:
-      flywayPassword: "ci-test"
-      flywayUsername: "ci-test"
-      name: "ci-test"
-      password: "ci-test"
+      name: db
+      namespace: [ digit3, backbone ]    # list -> one Secret per namespace
       username: "ci-test"
-    egov-metabase:
-      egov-metabase-api-key: "ci-test"
-      egov-metabase-secret-key: "ci-test"
-      name: "ci-test"
-    git-sync:
-      known-hosts: "ci-test"
-      ssh: "ci-test"
-    hmac-secret:
-      hmac-secret: "ci-test"
-    kafka-kraft:
-      kraft-cluster-id: "ci-test"
-    kc-admin:
-      name: "ci-test"
       password: "ci-test"
-      username: "ci-test"
-    kc-db:
-      name: "ci-test"
-      password: "ci-test"
-      username: "ci-test"
-    license-certificate:
-      certificate-otp-bypass-code: "ci-test"
-      egov-keycloak-client-secret: "ci-test"
-      name: "ci-test"
-    metabase:
-      name: "ci-test"
-      password: "ci-test"
-      username: "ci-test"
+      flyway-username: "ci-test"
+      flyway-password: "ci-test"
     minio:
+      name: minio
+      namespace: [ digit3 ]
       accesskey: "ci-test"
-      name: "ci-test"
       secretkey: "ci-test"
-    pgbouncer:
-      adminPassword: "ci-test"
-      adminUser: "ci-test"
-      name: "ci-test"
+    kc-admin:
+      name: kc-admin
+      namespace: [ digit3 ]
+      username: "ci-test"
+      password: "ci-test"
     vault-approle:
-      name: "ci-test"
+      name: vault-approle
+      namespace: [ digit3 ]
       role-id: "ci-test"
       secret-id: "ci-test"
-    vault-root-token:
-      name: "ci-test"
-      recovery-keys: "ci-test"
-      token: "ci-test"
+    hmac-secret:
+      name: hmac-secret
+      namespace: [ digit3 ]
+      hmac-secret: "ci-test"
+    employee-iam-secret:
+      name: employee-iam-secret
+      namespace: [ digit3 ]
+      employee-iam-client-secret: "ci-test"
+    citizen-broker-secret:
+      name: citizen-broker-secret
+      namespace: [ digit3 ]
+      citizen-broker-client-secret: "ci-test"
+    egov-notification-mail:
+      name: egov-notification-mail
+      namespace: [ digit3 ]
+      mailsenderusername: "ci-test"
+      mailsenderpassword: "ci-test"
+    egov-notification-sms:
+      name: egov-notification-sms
+      namespace: [ digit3 ]
+      username: "ci-test"
+      password: "ci-test"
+    egov-pg-service:
+      name: egov-pg-service
+      namespace: [ digit3 ]
+      stripe-secret-key: "ci-test"
+    docker-registry-secret:
+      name: docker-registry-secret
+      namespace: [ digit3 ]
+      dockerconfigjson: '{"auths":{}}'
