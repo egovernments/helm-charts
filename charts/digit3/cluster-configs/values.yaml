@@ -1,96 +1,214 @@
 # cluster-configs - DIGIT 3.0
-#
-# One install per product, scoped to the product namespace (e.g. digit3), alongside the platform's
-# own cluster-configs on the same cluster.
-#
-# These are SAFE defaults: nothing cluster-wide and nothing in any shared namespace renders by
-# default. Each object renders only when the product values file supplies a namespace (always a
-# LIST) and the object's required data key. See ci/test-values.yaml for a complete example.
+# Full content restored; every secret/configmap namespace is a LIST (default egov);
+# singleton infra (db service, root-ingress, nginx-errors) keep a scalar namespace.
+# Cluster-wide RBAC and root-ingress stay OFF by default (multi-install safety).
 cluster-configs:
-
-  # Cluster-wide RBAC (ClusterRole / ClusterRoleBinding). OFF by default so a product install does
-  # not clash with the platform's cluster-configs over the same cluster-scoped objects.
   cluster-roles:
     enabled: false
-
-  # Namespaces to create. OFF by default; a product sets: create: true, values: [ digit3 ].
-  namespaces:
-    create: false
-    values: []
-
-  # Root ingress. OFF by default; a product opts in and sets host/service/namespace.
-  root-ingress:
-    enabled: false
-    name: root-ingress
-    namespace: ""
-    cert-issuer: "letsencrypt-staging"
-    appRoot: ""
-    serviceName: ""
-    servicePort: 80
-
-  # Default-backend ingress for nginx error pages. OFF by default.
-  nginx-errors:
-    enabled: false
-    name: nginx-errors
-    namespace: ""
-    serviceName: nginx-errors
-    servicePort: 80
-
-  # Headless DB service/endpoints. Renders only when db-ips is supplied.
   db:
+    namespace: egov
     name: db-service
-    namespace: []
     port: 5432
     targetPort: 5432
 
-  configmaps:
-    # egov-config - used by all services. Product supplies namespace: [ digit3 ] and data: {...}
-    # (db-url, flyway-locations, kafka-brokers, db-host, db-name, redis-host).
-    egov-config:
-      name: egov-config
-      namespace: []
-      data: {}
-    # egov-service-host - internal service URLs. Product supplies namespace + data
-    # (apportion, billing, boundary, filestore, idgen, individual, notification, otp, registry,
-    #  template-config, vault).
-    egov-service-host:
-      name: egov-service-host
-      namespace: []
-      data: {}
+  root-ingress:
+    enabled: false
+    name: root-ingress
+    namespace: egov
+    cert-issuer: "letsencrypt-staging"
+    appRoot: citizen
+    serviceName: citizen
+    servicePort: 80
 
-  # Each secret renders one object per entry in its (LIST) namespace, only when its required data
-  # key is supplied. Names default to what the services expect.
+  nginx-errors:
+    enabled: false
+    name: nginx-errors
+    namespace: egov
+    serviceName: nginx-errors
+    servicePort: 80
+
+  configmaps:
+    egov-config:
+      namespace: [ egov ]
+      name: egov-config
+
+    egov-service-host:    
+      name: egov-service-host
+      namespace: [ egov ] 
+
+    hcm-moz-impl:
+      name: hcm-moz-impl
+      namespace: [ health ]
+
   secrets:
-    db:                                   # username, password, flyway-username, flyway-password
+    db: 
+      namespace: [ egov, health ]
       name: db
-      namespace: []
-    minio:                                # accesskey, secretkey
-      name: minio
-      namespace: []
-    kc-admin:                             # username, password
+
+    kc-db:
+      namespace: [ keycloak ]
+      name: kc-db
+
+    kc-admin:
+      namespace: [ keycloak, egov ]
       name: kc-admin
-      namespace: []
-    vault-approle:                        # role-id, secret-id
-      name: vault-approle
-      namespace: []
-    hmac-secret:                          # hmac-secret
-      name: hmac-secret
-      namespace: []
-    employee-iam-secret:                  # employee-iam-client-secret
-      name: employee-iam-secret
-      namespace: []
-    citizen-broker-secret:                # citizen-broker-client-secret
-      name: citizen-broker-secret
-      namespace: []
-    egov-notification-mail:               # mailsenderusername, mailsenderpassword
-      name: egov-notification-mail
-      namespace: []
-    egov-notification-sms:                # username, password (optional secure-key)
+
+    egov-notification-sms:
+      namespace: [ egov ]
       name: egov-notification-sms
-      namespace: []
-    egov-pg-service:                      # stripe-secret-key (optional axis/easypay/payu/ccavenue)
-      name: egov-pg-service
-      namespace: []
-    docker-registry-secret:               # dockerconfigjson (imagePullSecrets for all services)
+
+    egov-filestore:
+      namespace: [ egov ]
+      name: egov-filestore
+
+    hcm-moz-impl:
+      namespace: [ health ]
+      name: hcm-moz-impl
+      
+    egov-location: 
+      namespace: [ egov ]
+      name: egov-location
+
+    egov-pg-service: 
+      namespace: [ egov ]
+      name: egov-pg-service                 
+
+    pgadmin: 
+      namespace: [ playground ]
+      name: pgadmin       
+
+    egov-enc-service: 
+      namespace: [ egov ]
+      name: egov-enc-service       
+
+    egov-notification-mail: 
+      namespace: [ egov ]
+      name: egov-notification-mail
+
+    home-isolation-notification-mail: 
+      namespace: [ egov ]
+      name: home-isolation-notification-mail      
+
+    git-sync: 
+      namespace: [ egov ]
+      name: git-creds   
+
+    kibana: 
+      namespace: [ egov ]
+      name: kibana-creds                       
+
+    kibana-infra: 
+      namespace: [ egov ]
+      name: kibana-infra-creds     
+
+    pgadmin: 
+      namespace: [ playground ]
+      name: pgadmin
+
+    egov-si-microservice:
+      namespace: [ egov ]
+      name: egov-si-microservice
+
+    egov-edcr-notification:
+      namespace: [ egov ]
+      name: egov-edcr-notification 
+
+    egov-edcr-bank-gateway:
+      namespace: [ egov ]
+      name: egov-edcr-bank-gateway
+
+    chatbot:
+      namespace: [ egov ]
+      name: chatbot
+    
+    covid-chatbot:
+      namespace: [ egov ]
+      name: covid-chatbot
+
+    egov-user-chatbot:
+      namespace: [ egov ]
+      name: egov-user-chatbot
+
+    oauth2-proxy:
+      namespace: [ egov ]
+      name: oauth2-proxy   
+
+    case-management:
+      namespace: [ egov ]
+      name: case-management   
+  
+    minio:
+      namespace: [backbone, egov]
+      name: minio
+
+    alertmanager:
+      namespace: [ monitoring ]
+      name: alertmanager-main
+
+    grafana:
+      namespace: [ monitoring ]
+      name: grafana-oauth
+
+    elasticsearch-master-creds:
+      namespace: [ monitoring ]
+      name: elasticsearch-master-creds
+
+    jenkins:
+      namespace: [ jenkins ]
+      name: jenkins 
+    
+    mysql:
+      namespace: [ egov ]
+      name: mysql
+    
+    wordpress:
+      namespace: [ egov ]
+      name: wordpress
+
+    postgres:
+      namespace: [ jenkins ]
+      name: postgres
+    
+    vault-root-token:
+      namespace: [ egov ] 
+      name: vault-root-token
+
+    citizen-broker-secret:
+      name: citizen-broker-secret
+      namespace: [ egov ]
+
+    metabase:
+      name: metabase
+      namespace: [ egov ]
+
+    egov-metabase:
+      namespace: [ egov ]
+      name: egov-metabase
+    
+    hmac-secret:
+      namespace: [ egov ]
+      name: hmac-secret
+
+    kafka-kraft:
+      name: release-name-kafka-kraft-cluster-id
+      namespace: [ backbone ]
+
+    employee-iam-secret:
+      name: employee-iam-secret
+      namespace: [ egov ]
+
+    pgbouncer:
+      namespace: [ egov ]
+      name: pgbouncer-secret
+
+    vault-approle:
+      namespace: [ egov ]
+      name: vault-approle
+
+    license-certificate:
+      namespace: [ egov ]
+      name: license-certificate
+
+    docker-registry-secret:              # imagePullSecrets for all services (.dockerconfigjson)
+      namespace: [ egov ]
       name: docker-registry-secret
-      namespace: []
