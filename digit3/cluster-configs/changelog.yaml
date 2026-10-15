@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-15"
+    ref: "PR-69"
+    title: "feat(cluster-configs): publish digit3 cluster-configs v1.0.0"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "cluster-configs"
+        from: "0.0.0"
+        to: "1.0.0"
