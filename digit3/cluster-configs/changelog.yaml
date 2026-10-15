@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-15"
+    ref: "PR-71"
+    title: "fix(cluster-configs): restore full values, namespaces as lists (default egov)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "cluster-configs"
+        from: "1.0.1"
+        to: "1.0.2"
+  - date: "2026-10-15"
     ref: "PR-70"
     title: "feat(cluster-configs): DIGIT 3.0 multi-install-safe, namespace-scoped"
     author: "shivam-eGov"
