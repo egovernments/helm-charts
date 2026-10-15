@@ -3,7 +3,17 @@ entries:
   cluster-configs:
     - apiVersion: v2
       appVersion: 1.0.0
-      created: "2026-10-15T10:02:47.626860893Z"
+      created: "2026-10-15T10:34:51.520628876Z"
+      description: A Helm chart for Kubernetes
+      digest: 4c9a2f37a4c294d0c8e22bd1f33bc3eee9808a0678d91f2f8dddca39658dbc3a
+      name: cluster-configs
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cluster-configs/cluster-configs/cluster-configs-1.0.1.tgz
+      version: 1.0.1
+    - apiVersion: v2
+      appVersion: 1.0.0
+      created: "2026-10-15T10:34:51.520023589Z"
       description: A Helm chart for Kubernetes
       digest: 030dde0f6f6d762713339ae322fe07361dd042d7ee3fc1873fd8d50c3f0ae5b5
       name: cluster-configs
@@ -11,4 +21,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/cluster-configs/cluster-configs/cluster-configs-1.0.0.tgz
       version: 1.0.0
-generated: "2026-10-15T10:02:47.624797239Z"
+generated: "2026-10-15T10:34:51.519037283Z"
