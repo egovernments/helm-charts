@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-15"
+    ref: "PR-72"
+    title: "test localization"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "localization"
+        from: "1.0.0"
+        to: "1.0.1"
   - date: "2026-10-14"
     ref: "PR-67"
     title: "feat(digit3/core): add filestore chart at 1.0.0 baseline"
