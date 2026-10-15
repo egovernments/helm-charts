@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-15"
+    ref: "PR-70"
+    title: "feat(cluster-configs): DIGIT 3.0 multi-install-safe, namespace-scoped"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "cluster-configs"
+        from: "1.0.0"
+        to: "1.0.1"
+  - date: "2026-10-15"
     ref: "PR-69"
     title: "feat(cluster-configs): publish digit3 cluster-configs v1.0.0"
     author: "shivam-eGov"
