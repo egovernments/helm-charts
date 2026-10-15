@@ -41,12 +41,20 @@ jobs:
           set -euo pipefail
           REG="registry.local"   # dummy container registry so common.image renders
 
-          # map changed files -> chart directories (common at <project>/common, services at <project>/<module>/<service>)
+          # map changed files -> chart directories.
+          # A module that is itself a chart (charts/<project>/<module>/Chart.yaml) is a single-chart
+          # module (common, cluster-configs, ...); otherwise charts live at <project>/<module>/<service>.
+          : > /tmp/charts.txt
           git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
-            | awk -F/ '$1=="charts" && NF>=3 {
-                if ($3=="common") print $1"/"$2"/"$3;
-                else if (NF>=4) print $1"/"$2"/"$3"/"$4;
-              }' | sort -u > /tmp/charts.txt || true
+            | awk -F/ '$1=="charts" && NF>=3 {print $2"/"$3"/"$4}' | sort -u \
+            | while IFS=/ read -r p m s; do
+                [[ -n "$p" && -n "$m" ]] || continue
+                if [[ -f "charts/$p/$m/Chart.yaml" ]]; then
+                  echo "charts/$p/$m"
+                elif [[ -n "$s" ]]; then
+                  echo "charts/$p/$m/$s"
+                fi
+              done | sort -u > /tmp/charts.txt
 
           # keep only dirs that actually have a Chart.yaml
           : > /tmp/targets.txt
