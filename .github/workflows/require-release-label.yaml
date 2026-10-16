@@ -1,13 +1,16 @@
 name: Require release selection
 
-# Mandatory gate (job id kept 'require-label' to match existing branch protection).
+# Mandatory gate (job id 'require-label' - keep: it's the required status check on master).
+# Re-runs on EVERY PR mutation (open/reopen/push/body-edit/label change). While it is queued or
+# running, the required check is not green, so merge is blocked. It is checkout-free (reads the body
+# from the event, changed files via the API) so it reports as fast as possible, minimising the
+# window between a change and the block.
 # - PRs with NO chart changes pass automatically.
-# - PRs that change charts must: touch exactly one project and one module, and have
-#   exactly one Project / Module / Release option ticked in the release-selection form.
+# - Chart PRs must change exactly one project + one module and tick exactly one Release option.
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, edited]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
     branches:
       - master
 
@@ -15,40 +18,33 @@ permissions:
   contents: read
   pull-requests: read
 
+concurrency:                      # a newer change supersedes an in-flight run for the same PR
+  group: require-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   require-label:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Validate release selection
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
           BODY: ${{ github.event.pull_request.body }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
-
-          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
+          CHANGED="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' \
             | awk -F/ '$1=="charts" && NF>=4 {print $2"\t"$3}' | sort -u || true)"
           if [[ -z "$CHANGED" ]]; then
-            echo "No chart changes under charts/<project>/<module>/<service>/ - release selection not required."
+            echo "No chart changes - release selection not required."
             exit 0
           fi
-
           NPROJ=$(printf '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $1}' | sort -u | grep -c . || true)
           NMOD=$(printf  '%s\n' "$CHANGED" | awk -F'\t' 'NF{print $2}' | sort -u | grep -c . || true)
-          [[ "$NPROJ" -eq 1 ]] || { echo "::error::This PR changes $NPROJ projects. Keep it to one project per PR."; exit 1; }
-          [[ "$NMOD"  -eq 1 ]] || { echo "::error::This PR changes $NMOD modules. Keep it to one module per PR."; exit 1; }
-
-          tick_count() { printf '%s\n' "$BODY" | grep -icE "^- \[[xX]\] ($1)[[:space:]]*$" || true; }
-          R=$(tick_count 'major|minor|patch')
-          if [[ "$R" -ne 1 ]]; then
-            echo "::error::Tick exactly one Release option (major|minor|patch) in the PR's Release selection form (found $R)."
-            exit 1
-          fi
-          echo "OK - one project, one module, one release selected."
+          [[ "$NPROJ" -eq 1 ]] || { echo "::error::This PR changes $NPROJ projects. One project per PR."; exit 1; }
+          [[ "$NMOD"  -eq 1 ]] || { echo "::error::This PR changes $NMOD modules. One module per PR."; exit 1; }
+          R=$(printf '%s\n' "$BODY" | grep -icE "^- \[[xX]\] (major|minor|patch)[[:space:]]*$" || true)
+          [[ "$R" -eq 1 ]] || { echo "::error::Tick exactly one Release option (major|minor|patch) in the PR form (found $R)."; exit 1; }
+          echo "OK - one project, one module, one release."
