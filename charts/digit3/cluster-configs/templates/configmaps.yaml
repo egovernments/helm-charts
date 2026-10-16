@@ -1,0 +1,23 @@
+{{- /*
+  Generic ConfigMap renderer. Iterates cluster-configs.configmaps and renders one ConfigMap per
+  namespace for every item that has data. Data may be under `data:` or as keys directly on the item.
+  Reserved keys: name, namespace, data.
+*/ -}}
+{{- range $key, $item := (index .Values "cluster-configs" "configmaps") }}
+{{- $data := $item.data | default (omit $item "name" "namespace") }}
+{{- if $data }}
+{{- $name := $item.name | default $key }}
+{{- range $ns := $item.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ $ns }}
+data:
+{{- range $k, $v := $data }}
+  {{ $k }}: {{ $v | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,74 +1,81 @@
-# CI render values for the lint-template check, and an example of the data a deployer supplies.
-# Namespaces come from values.yaml (default egov, as lists); here we only add the data keys that
-# the digit3 core charts consume, so the render exercises every object.
+# CI render values for the lint-template check, and a worked example of a product/env values file.
+# Shows the recommended shape: each item sets namespace (list) + data (map). The generic templates
+# also accept keys placed directly on the item (back-compat with existing core-secrets.yaml).
 global:
   domain: "ci.example.com"
   setup: "default"
   containerRegistry: "registry.local"
 
 cluster-configs:
-  cluster-roles:
-    enabled: true           # platform install owns cluster-wide RBAC; exercised here
   namespaces:
     create: true
-    values: [ egov ]
-  root-ingress:
-    enabled: true
+    values: [ digit3-core ]
 
   configmaps:
     egov-config:
+      namespace: [ digit3-core ]
       data:
-        db-url: "jdbc:postgresql://db-service.egov:5432/egov"
-        db-host: "db-service.egov"
-        db-name: "egov"
-        redis-host: "redis.backbone"
-        flyway-locations: "db/migration/main"
-        kafka-brokers: "kafka-kraft.backbone:9092"
+        db-url: "jdbc:postgresql://postgresql-18-rw.backbone:5432/coredb"
+        db-host: "postgresql-18-rw.backbone"
+        db-name: "coredb"
+        flyway-locations: "filesystem:/flyway/sql"
+        kafka-brokers: "kafka-kraft-controller-headless.backbone:9092"
     egov-service-host:
+      namespace: [ digit3-core ]
       data:
-        apportion: "http://apportion.egov:8080/"
-        billing: "http://billing.egov:8080/"
-        boundary: "http://boundary.egov:8080/"
-        filestore: "http://filestore.egov:8080/"
-        idgen: "http://idgen.egov:8080/"
-        individual: "http://individual.egov:8080/"
-        notification: "http://notification.egov:8080/"
-        otp: "http://otp.egov:8080/"
-        registry: "http://registry.egov:8080/"
-        template-config: "http://template-config.egov:8080/"
-        vault: "http://vault.egov:8200/"
+        apportion: "http://apportion.digit3-core:8080/"
+        billing: "http://billing.digit3-core:8080/"
+        boundary: "http://boundary.digit3-core:8080/"
+        filestore: "http://filestore.digit3-core:8080/"
+        idgen: "http://idgen.digit3-core:8080/"
+        individual: "http://individual.digit3-core:8080/"
+        notification: "http://notification.digit3-core:8080/"
+        otp: "http://otp.digit3-core:8080/"
+        registry: "http://registry.digit3-core:8080/"
+        template-config: "http://template-config.digit3-core:8080/"
+        vault: "http://vault.digit3-core:8200/"
 
   secrets:
-    db:                                 # renders in egov AND health (values namespace list)
-      username: "ci-test"
-      password: "ci-test"
-      flyway-username: "ci-test"
-      flyway-password: "ci-test"
+    db:
+      namespace: [ digit3-core, backbone ]      # list -> one Secret per namespace
+      data: { username: ci, password: ci, flyway-username: ci, flyway-password: ci }
     minio:
-      accesskey: "ci-test"
-      secretkey: "ci-test"
+      namespace: [ digit3-core ]
+      data: { accesskey: ci, secretkey: ci }
     kc-admin:
-      username: "ci-test"
-      password: "ci-test"
+      namespace: [ digit3-core ]
+      data: { username: ci, password: ci }
     kc-db:
-      username: "ci-test"
-      password: "ci-test"
+      namespace: [ digit3-core ]
+      data: { username: ci, password: ci }
     vault-approle:
-      role-id: "ci-test"
-      secret-id: "ci-test"
+      namespace: [ digit3-core ]
+      data: { role-id: ci, secret-id: ci }
     hmac-secret:
-      hmac-secret: "ci-test"
+      namespace: [ digit3-core ]
+      data: { hmac-secret: ci }
     employee-iam-secret:
-      employee-iam-client-secret: "ci-test"
+      namespace: [ digit3-core ]
+      data: { employee-iam-client-secret: ci }
     citizen-broker-secret:
-      citizen-broker-client-secret: "ci-test"
+      namespace: [ digit3-core ]
+      data: { citizen-broker-client-secret: ci }
     egov-notification-mail:
-      mailsenderusername: "ci-test"
-      mailsenderpassword: "ci-test"
+      namespace: [ digit3-core ]
+      data: { mailsenderusername: ci, mailsenderpassword: ci }
     egov-notification-sms:
-      username: "ci-test"
-      password: "ci-test"
+      namespace: [ digit3-core ]
+      data: { username: ci, password: ci }
     egov-pg-service:
-      stripe-secret-key: "ci-test"
+      namespace: [ digit3-core ]
+      data: { stripe-secret-key: ci }
     docker-registry-secret:
-      dockerconfigjson: '{"auths":{}}'
+      namespace: [ digit3-core ]
+      # type comes from the chart default (kubernetes.io/dockerconfigjson)
+      data: { dockerconfigjson: '{"auths":{}}' }
+
+  # example of adding a brand-new secret with no chart change:
+  # service-x:
+  #   name: service-x-secret
+  #   namespace: [ digit3-core ]
+  #   data: { api-key: "..." }
