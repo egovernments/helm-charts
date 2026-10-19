@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-19"
+    ref: "PR-73"
+    title: "refactor(cluster-configs): dynamic secret/configmap templates"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "cluster-configs"
+        from: "1.0.2"
+        to: "1.0.3"
   - date: "2026-10-15"
     ref: "PR-71"
     title: "fix(cluster-configs): restore full values, namespaces as lists (default egov)"
