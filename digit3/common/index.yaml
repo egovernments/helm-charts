@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  common:
+    - apiVersion: v1
+      appVersion: 1.0.0
+      created: "2026-10-26T07:04:56.865768331Z"
+      description: base chartbuilding components and helpers
+      digest: 07d81649e1a05fa14abce7ce49b04c3b74e7ead550076560b728ec811a3602dd
+      name: common
+      urls:
+        - https://helm.digit.org/digit3/common/common/common-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-26T07:04:56.86490281Z"
