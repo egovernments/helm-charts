@@ -91,10 +91,10 @@ initContainers:
           value: "/work-dir"
 
 healthChecks:
-    enabled: false
+    enabled: true
     livenessProbe: |
         httpGet:
-            path: "{{ .Values.healthChecks.livenessProbePath }}"
+            path: "/{{ .Values.ingress.context }}{{ .Values.healthChecks.livenessProbePath }}"
             port: {{ .Values.httpPort }}
         initialDelaySeconds: 30
         timeoutSeconds: 3
@@ -103,7 +103,7 @@ healthChecks:
         failureThreshold: 5
     readinessProbe: |
         httpGet:
-            path: "{{ .Values.healthChecks.readinessProbePath }}"
+            path: "/{{ .Values.ingress.context }}{{ .Values.healthChecks.readinessProbePath }}"
             port: {{ .Values.httpPort }}
         initialDelaySeconds: 30
         timeoutSeconds: 3
