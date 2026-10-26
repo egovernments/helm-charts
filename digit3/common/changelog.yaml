@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-26"
+    ref: "PR-80"
+    title: "feat(common): onboard v3.0.0 (ingress.zuul -> ingress.gateway)"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "common"
+        from: "0.0.0"
+        to: "3.0.0"
