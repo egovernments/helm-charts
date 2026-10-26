@@ -85,8 +85,6 @@ env: |
         key: kafka-brokers
   - name: HTTP_PORT
     value: "8080"
-  - name: SERVER_CONTEXT_PATH
-    value: /localization
   - name: DB_MAX_OPEN_CONNS
     value: "100"
   - name: DB_MAX_IDLE_CONNS
