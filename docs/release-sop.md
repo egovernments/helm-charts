@@ -18,8 +18,8 @@ Follow this every time you release a chart. It is deliberately short. Background
 - [ ] Changes are limited to **one** `charts/<project>/<module>/...` module.
 - [ ] For a **new chart**: `Chart.yaml` has the seed `version`, the right `appVersion`
       (= image tag), and `dependencies[].version` points at a **published** `common` version.
-- [ ] `values.yaml` sets `image.tag` (and any init-container image tag). No vendored `charts/`
-      or `Chart.lock` committed.
+- [ ] `appVersion` is the **real image tag** (prod mode uses it for the service + init images; do
+      not leave the `1.16.0` scaffold default). No vendored `charts/` or `Chart.lock` committed.
 - [ ] (Recommended) `helm dependency build` + `helm lint` + `helm template` pass locally.
 
 ## Release steps

@@ -79,7 +79,7 @@ Service charts declare `common` as a dependency pulled from the registry:
 # charts/digit3/core/localization/Chart.yaml
 dependencies:
   - name: common
-    version: 1.0.0
+    version: 3.0.0
     repository: https://helm.digit.org/digit3/common
 ```
 
@@ -87,18 +87,21 @@ At release time CI runs `helm dependency build`, which downloads the pinned `com
 from the registry. This means **`common` must be published before any chart that depends on it**,
 and a dependent's `version:` must point at a `common` version that already exists in the registry.
 
-### Image tags come from values, defaulted to the service's appVersion
+### Image tags: the `global.mode` mechanism
 
-The `common` library's `common.image` helper **requires** an image tag (`required "Tag is mandatory"`).
-It does not fall back to `appVersion` on its own. The convention is:
+`common.image` resolves the tag from `global.mode` (default `prod`, set in `common`):
 
-- set the chart's `appVersion` to the image tag you want (e.g. `flyway-branch-18c74fe`), and
-- set `image.tag` (and any init-container image tag) in `values.yaml` to the same value.
+- **prod** (default): the image tag is always the chart's `Chart.AppVersion`. `image.tag` in
+  `values.yaml` is ignored. Set `appVersion` to the real tag (e.g. `flyway-branch-18c74fe`); it
+  drives both the service image and the `<service>-db` init-image.
+- **dev**: uses `.Values.image.tag` if set, else falls back to `appVersion`.
 
-Both are plain `values.yaml` defaults, so a values file supplied at install time overrides them:
+So in normal operation you set `appVersion` and leave `image.tag` out. To override per environment,
+install with `global.mode=dev` and an `image.tag`:
 
 ```bash
-helm install my-release digit3-core/localization -f my-values.yaml   # my-values.yaml image.tag wins
+helm install my-release digit3-core/localization \
+  --set global.mode=dev --set image.tag=my-xyz
 ```
 
 See [onboarding-a-service.md](onboarding-a-service.md) for the exact fields.
