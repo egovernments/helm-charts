@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-26"
+    ref: "PR-82"
+    title: "feat(cluster-configs): onboard v3.0.0"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "cluster-configs"
+        from: "0.0.0"
+        to: "3.0.0"
