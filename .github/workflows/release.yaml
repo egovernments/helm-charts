@@ -102,6 +102,8 @@ jobs:
         shell: bash
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           : > /tmp/targets.txt   # lines: project<TAB>module<TAB>service   (service empty => whole module 'common')
@@ -122,10 +124,16 @@ jobs:
             fi
           else
             # ----- PR merge path: project/module from the diff, release from the PR form -----
-            BASE='${{ github.event.pull_request.base.sha }}'
-            HEAD='${{ github.event.pull_request.merge_commit_sha }}'
+            # The PR's OWN changed files (via the API), NOT a base..merge_commit diff: when the
+            # PR branch is behind master, base.sha..merge_commit_sha also captures whatever else
+            # landed on master in between, so unrelated modules leak in and trip the one-module
+            # gate (kong PR #84 picked up an intervening common delete+re-add -> got 1/2). The
+            # API list is exactly this PR's files, matching the require-label gate. 'removed'
+            # files are dropped so a pure deletion is not counted as a changed module.
+            CHANGED_FILES="$(gh api --paginate "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+              --jq '.[] | select(.status != "removed") | .filename' || true)"
 
-            CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${CHARTS_DIR}" \
+            CHANGED="$(printf '%s\n' "$CHANGED_FILES" \
               | awk -F/ -v c="${CHARTS_DIR}" '$1==c && NF>=4 {print $2"\t"$3}' | sort -u || true)"
             if [[ -z "$CHANGED" ]]; then
               echo "::notice::No chart changes; nothing to release."
@@ -147,12 +155,12 @@ jobs:
             if [[ -f "${ROOT}/Chart.yaml" ]]; then
               # single-chart module (module dir is itself a chart, e.g. common, cluster-configs):
               # release it if anything under it changed
-              if git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" | grep -q .; then
+              if printf '%s\n' "$CHANGED_FILES" | grep -qE "^${ROOT}/"; then
                 printf '%s\t%s\t\n' "$PROJECT" "$MODULE" >> /tmp/targets.txt
               fi
             else
               # services changed under the labelled project/module only
-              git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- "${ROOT}" \
+              printf '%s\n' "$CHANGED_FILES" \
                 | awk -F/ -v c="${CHARTS_DIR}" -v p="$PROJECT" -v m="$MODULE" \
                     '$1==c && $2==p && $3==m && NF>=4 {print $4}' \
                 | sort -u > /tmp/svcs.txt || true
