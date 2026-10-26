@@ -3,7 +3,7 @@ entries:
   account:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.077640304Z"
+      created: "2026-10-26T11:59:27.878859622Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -18,7 +18,7 @@ entries:
   apportion:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.078690513Z"
+      created: "2026-10-26T11:59:27.879682564Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -32,7 +32,7 @@ entries:
   billing:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.079734862Z"
+      created: "2026-10-26T11:59:27.880476402Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -47,7 +47,7 @@ entries:
   boundary:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.080733836Z"
+      created: "2026-10-26T11:59:27.881239344Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -62,7 +62,7 @@ entries:
   boundary-management:
     - apiVersion: v2
       appVersion: 1.0.0
-      created: "2026-10-26T11:46:23.081708494Z"
+      created: "2026-10-26T11:59:27.882034455Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -77,7 +77,7 @@ entries:
   employee:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.082688261Z"
+      created: "2026-10-26T11:59:27.883485092Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -91,7 +91,7 @@ entries:
   filestore:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.084299934Z"
+      created: "2026-10-26T11:59:27.884395615Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -106,7 +106,7 @@ entries:
   idgen:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.085518011Z"
+      created: "2026-10-26T11:59:27.885204396Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -120,7 +120,7 @@ entries:
   individual:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.086468885Z"
+      created: "2026-10-26T11:59:27.885931865Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -135,7 +135,7 @@ entries:
   kong:
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-10-26T11:46:23.089205738Z"
+      created: "2026-10-26T11:59:27.888283015Z"
       description: The Cloud-Native Ingress and API-management
       digest: 7fe7c6f44e8961bb4155d20d9350cecd6ac1ef5ff25631cc52d0d7e115eca316
       home: https://konghq.com/
@@ -152,7 +152,7 @@ entries:
   localization:
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-10-26T11:46:23.090139178Z"
+      created: "2026-10-26T11:59:27.889432671Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -164,10 +164,25 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/localization/localization-3.0.0.tgz
       version: 3.0.0
+  mdms-v2:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:59:27.890131187Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 41dcb24d4b1e1c351c3092980228571adbbeafab73d1b52abc842b2c7ae25f53
+      name: mdms-v2
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/mdms-v2/mdms-v2-3.0.0.tgz
+      version: 3.0.0
   notification:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.091300416Z"
+      created: "2026-10-26T11:59:27.890895011Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -179,10 +194,25 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/notification/notification-3.0.0.tgz
       version: 3.0.0
+  notify:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:59:27.891611263Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: e9df3f12564e62ad1310260999b631f3b6d1ad41ee897cdb9178ee9a807b6e67
+      name: notify
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/notify/notify-3.0.0.tgz
+      version: 3.0.0
   otp:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.092810607Z"
+      created: "2026-10-26T11:59:27.892361416Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -196,7 +226,7 @@ entries:
   pg-service:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.094031487Z"
+      created: "2026-10-26T11:59:27.893301423Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -211,7 +241,7 @@ entries:
   registry:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.094937296Z"
+      created: "2026-10-26T11:59:27.894052187Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -226,7 +256,7 @@ entries:
   template-config:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.095833887Z"
+      created: "2026-10-26T11:59:27.895401097Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -240,7 +270,7 @@ entries:
   url-shortener:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.096783458Z"
+      created: "2026-10-26T11:59:27.896202096Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -254,7 +284,7 @@ entries:
   workflow:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-10-26T11:46:23.097705678Z"
+      created: "2026-10-26T11:59:27.896937878Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -266,4 +296,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/workflow/workflow-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-26T11:46:23.075364078Z"
+generated: "2026-10-26T11:59:27.877774307Z"
