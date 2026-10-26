@@ -67,7 +67,7 @@ resources: |
   limits:
     cpu: "1"
     memory: "1Gi"
-      
+
 # Additional Container Envs
 env: |
   # Per-tenant schema separation: consume the account-migration event and run
