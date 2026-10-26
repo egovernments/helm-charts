@@ -10,7 +10,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 {{- end }}
   labels:
-{{- include "common.labels" . | nindent 4 }}  
+{{- include "common.labels" . | nindent 4 }}
 spec:
   endpoints:
   - port: http
@@ -28,7 +28,7 @@ spec:
 {{- end }}
   selector:
     matchLabels:
-{{- include "common.labels" . | nindent 6 }}  
+{{- include "common.labels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
       - {{ .Values.namespace | quote }}

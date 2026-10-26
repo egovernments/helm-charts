@@ -1,40 +1,40 @@
 {{- define "common.ingress" -}}
 {{- if .Values.ingress.enabled -}}
 ---
-apiVersion: networking.k8s.io/v1 
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ template "common.name" . }}
 {{- if .Values.global.namespace }}
   namespace: {{ .Values.global.namespace }}
 {{- else if .Values.ingress.namespace }}
-  namespace: {{ .Values.ingress.namespace }}    
-{{- else }}  
-  namespace: {{ .Values.namespace }}  
-{{- end }}     
+  namespace: {{ .Values.ingress.namespace }}
+{{- else }}
+  namespace: {{ .Values.namespace }}
+{{- end }}
   annotations:
-{{- toYaml .Values.ingress.annotations | nindent 4 }}   
-{{- if .Values.ingress.waf.enabled }}      
-{{- toYaml .Values.ingress.waf.annotations | nindent 4 }} 
+{{- toYaml .Values.ingress.annotations | nindent 4 }}
+{{- if .Values.ingress.waf.enabled }}
+{{- toYaml .Values.ingress.waf.annotations | nindent 4 }}
 {{- end  }}
-{{- if .Values.ingress.additionalAnnotations }}                                   
+{{- if .Values.ingress.additionalAnnotations }}
   {{- tpl  .Values.ingress.additionalAnnotations . | nindent 4 }}
-{{- end }} 
+{{- end }}
   labels:
-{{- include "common.labels" . | nindent 4 }}                            
+{{- include "common.labels" . | nindent 4 }}
 spec:
   rules:
-{{- if .Values.ingress.host }}   
+{{- if .Values.ingress.host }}
   {{- tpl  .Values.ingress.host . | nindent 2 }}
-{{- else if .Values.ingress.hostName }} 
+{{- else if .Values.ingress.hostName }}
   - host: {{ .Values.ingress.hostName }}
-{{- else }}  
+{{- else }}
   - host: {{ .Values.global.domain }}
-{{- end }}  
+{{- end }}
     http:
       paths:
       - backend:
-{{- if .Values.ingress.gateway }}          
+{{- if .Values.ingress.gateway }}
           service:
             name: kong-kong-proxy
             port:
@@ -44,24 +44,24 @@ spec:
             name: {{ .Values.ingress.serviceName | default (include "common.name" .) }}
             port:
               number: {{ .Values.ingress.servicePort | default .Values.httpPort }}
-{{- end }}            
+{{- end }}
         path: /{{ .Values.ingress.context }}
         pathType: Prefix
-{{- if ne .Values.global.setup "quickstart" }}        
+{{- if ne .Values.global.setup "quickstart" }}
   tls:
 {{- if .Values.ingress.tls }}
   {{- tpl  .Values.ingress.tls . | nindent 2 }}
-{{- else }} 
+{{- else }}
 {{- if .Values.ingress.hostName }}
-  - hosts: 
+  - hosts:
     - {{ .Values.ingress.hostName }}
-    secretName: {{ .Values.ingress.hostName }}-tls-certs  
-{{- else }}      
+    secretName: {{ .Values.ingress.hostName }}-tls-certs
+{{- else }}
   - hosts:
     - {{ .Values.global.domain }}
-    secretName: {{ .Values.global.domain }}-tls-certs 
-{{- end }} 
-{{- end }} 
+    secretName: {{ .Values.global.domain }}-tls-certs
 {{- end }}
-{{- end -}} 
-{{- end -}} 
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- end -}}

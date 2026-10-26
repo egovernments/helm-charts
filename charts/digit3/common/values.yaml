@@ -15,18 +15,18 @@ ingress:
   gateway: false
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/use-regex: "true" 
-  waf: 
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  waf:
     enabled: true
     annotations:
-      nginx.ingress.kubernetes.io/lua-resty-waf: "active"  
+      nginx.ingress.kubernetes.io/lua-resty-waf: "active"
       nginx.ingress.kubernetes.io/lua-resty-waf-debug: "true"
       nginx.ingress.kubernetes.io/lua-resty-waf-score-threshold: "10"
       nginx.ingress.kubernetes.io/lua-resty-waf-allow-unknown-content-types: "true"
-      nginx.ingress.kubernetes.io/lua-resty-waf-process-multipart-body: "false"              
+      nginx.ingress.kubernetes.io/lua-resty-waf-process-multipart-body: "false"
 
 image:
-  pullPolicy: IfNotPresent   
+  pullPolicy: IfNotPresent
 
 affinity:
     preferSpreadAcrossAZ: true
@@ -35,7 +35,7 @@ initContainers:
   dbMigration:
     enabled: false
     image:
-      pullPolicy: IfNotPresent  
+      pullPolicy: IfNotPresent
       tag: latest
     env: |
         - name: "DB_URL"
@@ -59,14 +59,14 @@ initContainers:
                 key: flyway-username
         - name: "FLYWAY_PASSWORD"
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
                 name: db
                 key: flyway-password
         - name: JAVA_ENABLE_DEBUG
-          value: "TRUE"        
+          value: "TRUE"
         - name: "FLYWAY_LOCATIONS"
-          valueFrom: 
-            configMapKeyRef: 
+          valueFrom:
+            configMapKeyRef:
                 name: egov-config
                 key: flyway-locations
 
@@ -75,18 +75,18 @@ initContainers:
     image:
       repository: registry.k8s.io/git-sync/git-sync
       tag: v4.4.0
-      pullPolicy: IfNotPresent   
+      pullPolicy: IfNotPresent
     env: |
         - name: "GIT_SYNC_REPO"
           value: "{{ .Values.initContainers.gitSync.repo }}"
         - name: "GIT_SYNC_BRANCH"
-          value: "{{ .Values.initContainers.gitSync.branch }}"        
+          value: "{{ .Values.initContainers.gitSync.branch }}"
         - name: "GIT_SYNC_DEPTH"
-          value: "1"            
+          value: "1"
         - name: "GIT_SYNC_ONE_TIME"
-          value: "true"          
+          value: "true"
         - name: "GIT_SYNC_SSH"
-          value: "true"      
+          value: "true"
         - name: "GIT_SYNC_ROOT"
           value: "/work-dir"
 
@@ -109,7 +109,7 @@ healthChecks:
         timeoutSeconds: 3
         periodSeconds: 30
         successThreshold: 1
-        failureThreshold: 5        
+        failureThreshold: 5
 
 lifecycle:
     preStop:
@@ -126,21 +126,21 @@ memory_limits: "512Mi"
 resources: |
   {{- if eq .Values.appType "java-spring" -}}
   requests:
-    {{- if index .Values "cpu_requests" }} 
+    {{- if index .Values "cpu_requests" }}
     cpu: {{ index .Values "cpu_requests" | quote }}
     {{- end }}
-    {{- if index .Values "memory_requests" }} 
+    {{- if index .Values "memory_requests" }}
     memory: {{ .Values.memory_requests | quote }}
     {{- end }}
   limits:
-    {{- if index .Values "cpu_limits" }} 
+    {{- if index .Values "cpu_limits" }}
     cpu: {{ index .Values "cpu_limits" | quote }}
     {{- end }}
     {{- if index .Values "memory_limits" }}
     memory: {{ .Values.memory_limits | quote }}
     {{- end }}
   {{- end -}}
-  
+
 ## Allows specification of additional environment variables
 extraEnv:
   java: |
@@ -157,16 +157,16 @@ extraEnv:
             key: db-url
       {{- end }}
       - name: FLYWAY_ENABLED
-        value: "false"      
+        value: "false"
       - name: SPRING_FLYWAY_ENABLED
-        value: {{ .Values.spring_flyway_enabled | default "false" | quote }}      
+        value: {{ .Values.spring_flyway_enabled | default "false" | quote }}
       - name: MANAGEMENT_ENDPOINTS_WEB_BASE_PATH
         value: "/"
       - name: APP_TIMEZONE
         valueFrom:
           configMapKeyRef:
             name: egov-config
-            key: timezone              
+            key: timezone
       - name: FLYWAY_URL
       {{- if eq .Values.namespace "health" }}
         valueFrom:
@@ -195,32 +195,32 @@ extraEnv:
             name: egov-config
             key: spring-datasource-tomcat-initialSize
       - name: SERVER_TOMCAT_MAX_THREADS
-      {{- if index .Values "server-tomcat-max-threads" }} 
-        value: {{ index .Values "server-tomcat-max-threads" | quote }}    
-      {{- else }}        
+      {{- if index .Values "server-tomcat-max-threads" }}
+        value: {{ index .Values "server-tomcat-max-threads" | quote }}
+      {{- else }}
         valueFrom:
           configMapKeyRef:
             name: egov-config
             key: server-tomcat-max-threads
-      {{- end }}            
+      {{- end }}
       - name: SERVER_TOMCAT_MAX_CONNECTIONS
-      {{- if index .Values "server-tomcat-max-connections" }} 
-        value: {{ index .Values "server-tomcat-max-connections" | quote }}    
-      {{- else }}        
+      {{- if index .Values "server-tomcat-max-connections" }}
+        value: {{ index .Values "server-tomcat-max-connections" | quote }}
+      {{- else }}
         valueFrom:
           configMapKeyRef:
             name: egov-config
             key: server-tomcat-max-connections
-      {{- end }}                
+      {{- end }}
       - name: SPRING_DATASOURCE_TOMCAT_MAX_ACTIVE
       {{- if index .Values "spring-datasource-tomcat-max-active" }}
         value: {{ index .Values "spring-datasource-tomcat-max-active" | quote }}
-      {{- else }} 
+      {{- else }}
         valueFrom:
           configMapKeyRef:
             name: egov-config
-            key: spring-datasource-tomcat-max-active 
-      {{- end }}       
+            key: spring-datasource-tomcat-max-active
+      {{- end }}
       - name: SPRING_DATASOURCE_HIKARI_MAXIMUM-POOL-SIZE
       {{- if index .Values "spring-datasource-tomcat-max-active" }}
         value: {{ index .Values "spring-datasource-tomcat-max-active" | quote }}
@@ -228,8 +228,8 @@ extraEnv:
         valueFrom:
           configMapKeyRef:
             name: egov-config
-            key: spring-datasource-tomcat-max-active 
-      {{- end }}           
+            key: spring-datasource-tomcat-max-active
+      {{- end }}
       - name: KAFKA_CONFIG_BOOTSTRAP_SERVER_CONFIG
         valueFrom:
           configMapKeyRef:
@@ -244,11 +244,11 @@ extraEnv:
         valueFrom:
           configMapKeyRef:
             name: egov-config
-            key: spring-jpa-show-sql     
+            key: spring-jpa-show-sql
       - name: IS_ENVIRONMENT_CENTRAL_INSTANCE
         value: "false"
-        
-  jaeger: |             
+
+  jaeger: |
       - name: JAEGER_SERVICE_NAME
         value: {{ template "common.name" . }}
       - name: JAEGER_SAMPLER_TYPE
@@ -270,7 +270,7 @@ extraEnv:
       - name: JAEGER_SAMPLER_MANAGER_HOST_PORT
         value: "$(JAEGER_AGENT_HOST):5778"
       - name: TRACER_OPENTRACING_ENABLED
-        value: "true"         
+        value: "true"
 ## Additional init containers
 extraInitContainers: |
 
@@ -292,14 +292,14 @@ securityContext: {}
   #   - ALL
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
-  # runAsUser: 1000            
+  # runAsUser: 1000
 
 service:
   additionalAnnotations: {}
 
 serviceMonitor:
   honorLabels: true
-  # interval: 2m  
+  # interval: 2m
 
 cron:
   namespace: egov

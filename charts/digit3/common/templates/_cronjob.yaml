@@ -13,12 +13,12 @@ metadata:
   namespace: {{ .Values.namespace }}
 {{- end }}
   labels:
-{{- include "common.labels" . | nindent 4 }} 
+{{- include "common.labels" . | nindent 4 }}
 spec:
   concurrencyPolicy: {{ .Values.cron.concurrencyPolicy }}
   schedule: {{ .Values.cron.schedule | quote }}
   jobTemplate:
-    spec: 
+    spec:
       template:
         metadata:
           {{- /*
@@ -30,46 +30,46 @@ spec:
             off from values.
           */}}
           labels:
-          {{- include "common.labels" . | nindent 12 }}              
+          {{- include "common.labels" . | nindent 12 }}
         spec:
-        {{- if .Values.extraVolumes }}     
-          volumes:      
+        {{- if .Values.extraVolumes }}
+          volumes:
           {{- with .Values.extraVolumes }}
             {{- tpl . $ | nindent 12 }}
-          {{- end }}     
-        {{- end }}             
+          {{- end }}
+        {{- end }}
           containers:
           {{- with .Values.extraContainers }}
             {{- tpl . $ | nindent 12 }}
-          {{- end }}            
+          {{- end }}
           - name: {{ template "common.name" . }}
             image: {{ template "common.image" (dict "Values" $.Values "appVersion" $.Chart.AppVersion "repository" .Values.image.repository "tag" .Values.image.tag) }}
             imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.command }}  
+          {{- if .Values.command }}
             command:
-                {{- toYaml .Values.command  | nindent 12 }} 
+                {{- toYaml .Values.command  | nindent 12 }}
           {{- end }}
-          {{- if .Values.args }}            
+          {{- if .Values.args }}
             args:
             {{- toYaml .Values.args | nindent 12 }}
-          {{- end }}             
+          {{- end }}
             ports:
               - name: http
                 containerPort: {{ .Values.httpPort }}
                 protocol: TCP
           {{- if .Values.extraVolumeMounts }}
-            volumeMounts:  
+            volumeMounts:
             {{- with .Values.extraVolumeMounts }}
               {{- tpl . $ | nindent 14 }}
-            {{- end }}          
-          {{- end }} 
-          {{- if .Values.env }}                         
-            env:                                  
+            {{- end }}
+          {{- end }}
+          {{- if .Values.env }}
+            env:
                 {{- tpl  .Values.env . | nindent 14 }}
-          {{- end }}    
-          {{- if .Values.resources }}                                     
+          {{- end }}
+          {{- if .Values.resources }}
             resources:
                 {{- tpl .Values.resources . | nindent 14 }}
-          {{- end }}             
+          {{- end }}
           restartPolicy: {{ .Values.cron.restartPolicy }}
-{{- end -}}          
+{{- end -}}
