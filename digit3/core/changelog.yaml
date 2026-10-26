@@ -1,5 +1,17 @@
 releases:
   - date: "2026-10-26"
+    ref: "PR-90"
+    title: "fix(core): correct chart names filestore / pg-service (drop digit-)"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "filestore"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "pg-service"
+        from: "0.0.0"
+        to: "3.0.0"
+  - date: "2026-10-26"
     ref: "PR-88"
     title: "feat(core): onboard 16 digit3 service charts v3.0.0"
     author: "shivam-eGov"
