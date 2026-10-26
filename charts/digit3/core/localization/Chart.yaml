@@ -1,0 +1,12 @@
+apiVersion: v2
+name: localization
+description: DIGIT localization service
+type: application
+# chart version (semver); the release workflow seeds/bumps and syncs this on merge
+version: 1.0.0
+# appVersion is the default image tag: used as-is in prod mode; overridable via image.tag in dev mode
+appVersion: "flyway-branch-18c74fe"
+dependencies:
+- name: common
+  version: 1.0.0
+  repository: https://helm.digit.org/digit3/common
