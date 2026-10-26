@@ -1,9 +1,156 @@
 apiVersion: v1
 entries:
+  account:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.630878191Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 4806e020c04b2e95681d976b3fd2e94b75c92d55d03ef63d1a22b9c03016c29a
+      name: account
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/account/account-3.0.0.tgz
+      version: 3.0.0
+  apportion:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.632905555Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 399ad1b2fc7a9d8cc0ae3949bf4ecf84cf8bba053a596ccc904ee7f3b0fb09ff
+      name: apportion
+      urls:
+        - https://helm.digit.org/digit3/core/apportion/apportion-3.0.0.tgz
+      version: 3.0.0
+  billing:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.634062098Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: e97d430a7fbc54504a79efefaa19f2ee388a36edd1a0fb2eac56ae1f16af39c2
+      name: billing
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/billing/billing-3.0.0.tgz
+      version: 3.0.0
+  boundary:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.635035459Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 2fc3994032ec26ef8f096a9c27d3dd3268145bb8e1b78f8b052540308a2ae0c4
+      name: boundary
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/boundary/boundary-3.0.0.tgz
+      version: 3.0.0
+  boundary-management:
+    - apiVersion: v2
+      appVersion: 1.0.0
+      created: "2026-10-26T11:37:41.636028868Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: Boundary Management utility (Node.js/TypeScript) - Excel template generate/process front for the digit3 boundary service
+      digest: 1e3f9e87098979814562b49792dcd6853ad1eef52d4fe1f88dece3b878d9978d
+      name: boundary-management
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/boundary-management/boundary-management-3.0.0.tgz
+      version: 3.0.0
+  digit-filestore:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.637044929Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 54ec11cd8b0b0f3052ac1b3ef17c859b149158e0b8372cc83e5fc386f6a168fe
+      name: digit-filestore
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/digit-filestore/digit-filestore-3.0.0.tgz
+      version: 3.0.0
+  digit-pg-service:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.638182627Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: f08d1fdafbee9209f2a3f82ed7823b33d4983c1537f6705ccca5341aca761b03
+      name: digit-pg-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/digit-pg-service/digit-pg-service-3.0.0.tgz
+      version: 3.0.0
+  employee:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.639154616Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 84b824e170248b1c085aa34c8492a672782bc68ef60c884c682de562377563fc
+      name: employee
+      urls:
+        - https://helm.digit.org/digit3/core/employee/employee-3.0.0.tgz
+      version: 3.0.0
+  idgen:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.64110789Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 558851a9c121b71f3701269cd37af8bca67efcd8497dad210f3bf923e6669023
+      name: idgen
+      urls:
+        - https://helm.digit.org/digit3/core/idgen/idgen-3.0.0.tgz
+      version: 3.0.0
+  individual:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.642063648Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 342e2134b8457b4c4ab58c071a224da1d2945ca48eb4108ba0102c8fa55f8511
+      name: individual
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/individual/individual-3.0.0.tgz
+      version: 3.0.0
   kong:
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-10-26T11:37:25.724954634Z"
+      created: "2026-10-26T11:37:41.644645679Z"
       description: The Cloud-Native Ingress and API-management
       digest: 7fe7c6f44e8961bb4155d20d9350cecd6ac1ef5ff25631cc52d0d7e115eca316
       home: https://konghq.com/
@@ -20,7 +167,7 @@ entries:
   localization:
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-10-26T11:37:25.726004663Z"
+      created: "2026-10-26T11:37:41.645564278Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -32,4 +179,91 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/localization/localization-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-26T11:37:25.720940787Z"
+  notification:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.646756588Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 5b08ad67de805d0175f5901439746e524a63913013a84f1d89a049119e5c4f90
+      name: notification
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/notification/notification-3.0.0.tgz
+      version: 3.0.0
+  otp:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.648286188Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 69aba855d0a5766d6b0aa0050ca5fbb4cc48e0fe417a9e71dc8265608a24fd0b
+      name: otp
+      urls:
+        - https://helm.digit.org/digit3/core/otp/otp-3.0.0.tgz
+      version: 3.0.0
+  registry:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.649241626Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 49e418c4339172063a99d284461c3c6c09f5193a03a2c3568bbe7487eb9e992b
+      name: registry
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/registry/registry-3.0.0.tgz
+      version: 3.0.0
+  template-config:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.650148051Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 353e2c5ac9630380c81eaa566502ac0ae92b8399d1c2c7ce5089ef6eaa74c0bf
+      name: template-config
+      urls:
+        - https://helm.digit.org/digit3/core/template-config/template-config-3.0.0.tgz
+      version: 3.0.0
+  url-shortener:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.65106154Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 28fd687202eb48cad051ef6551acd8d06fe67ccb06c8d7d19b034ad41f64f7a2
+      name: url-shortener
+      urls:
+        - https://helm.digit.org/digit3/core/url-shortener/url-shortener-3.0.0.tgz
+      version: 3.0.0
+  workflow:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-10-26T11:37:41.651971743Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: A Helm chart for Kubernetes
+      digest: 1d30ecef266a9e54d12d88f7f7cef6765aff128a9f51f4e3131c23b74cc79098
+      name: workflow
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/workflow/workflow-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-26T11:37:41.629477932Z"
