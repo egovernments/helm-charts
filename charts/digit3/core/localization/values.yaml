@@ -7,7 +7,7 @@ labels:
 ingress:
   enabled: true
   gateway: true
-  context: "digit-localization"
+  context: "localization"
 
 # Init Containers Configs
 initContainers:
