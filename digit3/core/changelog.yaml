@@ -1,5 +1,17 @@
 releases:
   - date: "2026-10-26"
+    ref: "PR-91"
+    title: "feat(core): onboard notify + mdms-v2 v3.0.0"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "mdms-v2"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "notify"
+        from: "0.0.0"
+        to: "3.0.0"
+  - date: "2026-10-26"
     ref: "PR-90"
     title: "fix(core): correct chart names filestore / pg-service (drop digit-)"
     author: "shivam-eGov"
