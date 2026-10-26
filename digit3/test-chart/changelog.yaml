@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-26"
+    ref: "PR-93"
+    title: "test(test-chart): bump to exercise master write-back (expect 3.0.1)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "test-chart"
+        from: "3.0.0"
+        to: "3.0.1"
+  - date: "2026-10-26"
     ref: "PR-89"
     title: "test(test-chart): validate release version-bump + master write-back"
     author: "shivam-eGov"
