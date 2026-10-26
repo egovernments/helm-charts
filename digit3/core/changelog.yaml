@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-26"
+    ref: "PR-81"
+    title: "feat(localization): onboard v3.0.0"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "localization"
+        from: "0.0.0"
+        to: "3.0.0"
+  - date: "2026-10-26"
     ref: "dispatch-116"
     title: "manual dispatch"
     author: "shivam-eGov"
