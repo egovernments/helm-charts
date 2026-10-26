@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-26"
+    ref: "dispatch-116"
+    title: "manual dispatch"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "kong"
+        from: "0.0.0"
+        to: "3.0.0"
