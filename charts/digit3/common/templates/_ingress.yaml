@@ -36,7 +36,7 @@ spec:
       - backend:
 {{- if .Values.ingress.gateway }}
           service:
-            name: kong-kong-proxy
+            name: kong-proxy
             port:
               number: 8000
 {{ else }}
