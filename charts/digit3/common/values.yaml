@@ -91,7 +91,7 @@ initContainers:
           value: "/work-dir"
 
 healthChecks:
-    enabled: true
+    enabled: false
     livenessProbe: |
         httpGet:
             path: "/{{ .Values.ingress.context }}{{ .Values.healthChecks.livenessProbePath }}"
