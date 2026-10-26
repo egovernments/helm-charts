@@ -3,7 +3,17 @@ entries:
   test-chart:
     - apiVersion: v2
       appVersion: 1.0.0
-      created: "2026-10-26T12:15:35.133268364Z"
+      created: "2026-10-26T12:19:13.33295949Z"
+      description: Throwaway chart to validate the release pipeline's version-bump + master write-back. Delete after testing.
+      digest: 64a7223a54eccde65a8882d3e43f7edd83792fcb3d534124158bbf85b2efe799
+      name: test-chart
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/test-chart/test-chart/test-chart-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: 1.0.0
+      created: "2026-10-26T12:19:13.332860943Z"
       description: Throwaway chart to validate the release pipeline's version-bump + master write-back. Delete after testing.
       digest: 1cf2985d86fe6449d8f2738b491d50c4c0db696f03a28f3e97b98417b4e520d3
       name: test-chart
@@ -11,4 +21,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/test-chart/test-chart/test-chart-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-26T12:15:35.133032769Z"
+generated: "2026-10-26T12:19:13.332623737Z"
