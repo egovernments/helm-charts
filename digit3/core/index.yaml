@@ -1,0 +1,20 @@
+apiVersion: v1
+entries:
+  kong:
+    - apiVersion: v2
+      appVersion: "3.5"
+      created: "2026-10-26T10:36:33.229409936Z"
+      description: The Cloud-Native Ingress and API-management
+      digest: 7fe7c6f44e8961bb4155d20d9350cecd6ac1ef5ff25631cc52d0d7e115eca316
+      home: https://konghq.com/
+      icon: https://s3.amazonaws.com/downloads.kong/universe/assets/icon-kong-inc-large.png
+      maintainers:
+        - email: team-k8s@konghq.com
+          name: team-k8s-bot
+      name: kong
+      sources:
+        - https://github.com/Kong/charts/tree/main/charts/kong
+      urls:
+        - https://helm.digit.org/digit3/core/kong/kong-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-26T10:36:33.226515174Z"
