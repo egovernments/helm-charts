@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-10-26"
+    ref: "PR-89"
+    title: "test(test-chart): validate release version-bump + master write-back"
+    author: "shivam-eGov"
+    release_type: "major"
+    charts:
+      - name: "test-chart"
+        from: "0.0.0"
+        to: "3.0.0"
