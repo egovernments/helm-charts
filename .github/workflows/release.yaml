@@ -373,9 +373,13 @@ jobs:
           git -C "${GHP_DIR}" push origin gh-pages
 
       # ---------------------------------------------------------------------
-      # Traceability tag: <project>/<module>/PR-<n>  (or dispatch-<run>)
+      # Version-sync: write the released version into each chart's Chart.yaml on master,
+      # then tag that commit with the version. master Chart.yaml and the tag always match
+      # what was published. Done after packaging/publishing, before the version tag is cut.
+      # Tag format: <project>/<module>/<version> (single-chart module) or
+      #             <project>/<module>/<service>/<version> (service chart).
       # ---------------------------------------------------------------------
-      - name: Tag the release
+      - name: Sync chart versions to master & tag
         if: steps.plan.outputs.count != '0'
         shell: bash
         env:
@@ -385,14 +389,40 @@ jobs:
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            SUFFIX="PR-${{ github.event.pull_request.number }}"
-          else
-            SUFFIX="dispatch-${{ github.run_number }}"
-          fi
-          SHA='${{ steps.ref.outputs.sha }}'
-          for PM in $(cut -f1,2 /tmp/released.txt | sort -u | tr '\t' '/'); do
-            TAG="${PM}/${SUFFIX}"
-            git tag -f -a "$TAG" "$SHA" -m "Release ${SUFFIX} (${PM})" || true
+          WT=_master_sync
+          SYNCED=""
+          # released.txt lines: project<TAB>module<TAB>name<TAB>from<TAB>to  (name==module for single-chart)
+          for attempt in 1 2 3 4 5; do
+            git worktree remove -f "$WT" 2>/dev/null || true
+            git fetch origin master -q
+            git worktree add --force --detach "$WT" origin/master
+            changed=0
+            while IFS=$'\t' read -r P M N FROM TO; do
+              [[ -n "$P" && -n "$M" && -n "$N" && -n "$TO" ]] || continue
+              if [[ "$N" == "$M" ]]; then CH="$WT/${CHARTS_DIR}/${P}/${M}/Chart.yaml"
+              else CH="$WT/${CHARTS_DIR}/${P}/${M}/${N}/Chart.yaml"; fi
+              [[ -f "$CH" ]] || { echo "::warning::missing on master: $CH"; continue; }
+              CUR="$(yq -r '.version' "$CH")"
+              if [[ "$CUR" != "$TO" ]]; then export TO; yq -i '.version = env(TO)' "$CH"; changed=1; fi
+            done < /tmp/released.txt
+            if [[ "$changed" == "0" ]]; then
+              echo "master Chart.yaml already at target versions."
+              SYNCED="$(git -C "$WT" rev-parse HEAD)"; break
+            fi
+            git -C "$WT" add -A
+            git -C "$WT" commit -q -m "chore(release): set chart versions [$(cut -f1-3 /tmp/released.txt | tr '\t' '/' | paste -sd',' -)]"
+            if git -C "$WT" push origin HEAD:master 2>/tmp/pusherr.log; then
+              SYNCED="$(git -C "$WT" rev-parse HEAD)"; echo "version bump pushed to master."; break
+            fi
+            echo "push to master failed (attempt $attempt):"; cat /tmp/pusherr.log || true
+            sleep 3
           done
-          git push -f origin --tags || true
+          [[ -n "$SYNCED" ]] || { echo "::error::could not sync chart versions to master (branch protection may block the bot push)"; exit 1; }
+          while IFS=$'\t' read -r P M N FROM TO; do
+            [[ -n "$P" && -n "$M" && -n "$N" && -n "$TO" ]] || continue
+            if [[ "$N" == "$M" ]]; then TAG="${P}/${M}/${TO}"; else TAG="${P}/${M}/${N}/${TO}"; fi
+            git tag -f -a "$TAG" "$SYNCED" -m "Release $TAG"
+            echo "tag: $TAG -> $SYNCED"
+          done < /tmp/released.txt
+          git push -f origin --tags
+          git worktree remove -f "$WT" 2>/dev/null || true
