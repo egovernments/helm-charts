@@ -74,36 +74,6 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/boundary-management/boundary-management-3.0.0.tgz
       version: 3.0.0
-  digit-filestore:
-    - apiVersion: v2
-      appVersion: 1.16.0
-      created: "2026-10-26T11:37:41.637044929Z"
-      dependencies:
-        - name: common
-          repository: https://helm.digit.org/digit3/common
-          version: 3.0.0
-      description: A Helm chart for Kubernetes
-      digest: 54ec11cd8b0b0f3052ac1b3ef17c859b149158e0b8372cc83e5fc386f6a168fe
-      name: digit-filestore
-      type: application
-      urls:
-        - https://helm.digit.org/digit3/core/digit-filestore/digit-filestore-3.0.0.tgz
-      version: 3.0.0
-  digit-pg-service:
-    - apiVersion: v2
-      appVersion: 1.16.0
-      created: "2026-10-26T11:37:41.638182627Z"
-      dependencies:
-        - name: common
-          repository: https://helm.digit.org/digit3/common
-          version: 3.0.0
-      description: A Helm chart for Kubernetes
-      digest: f08d1fdafbee9209f2a3f82ed7823b33d4983c1537f6705ccca5341aca761b03
-      name: digit-pg-service
-      type: application
-      urls:
-        - https://helm.digit.org/digit3/core/digit-pg-service/digit-pg-service-3.0.0.tgz
-      version: 3.0.0
   employee:
     - apiVersion: v2
       appVersion: 1.16.0
