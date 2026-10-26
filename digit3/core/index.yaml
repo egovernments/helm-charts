@@ -3,7 +3,7 @@ entries:
   kong:
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-10-26T10:36:33.229409936Z"
+      created: "2026-10-26T11:37:25.724954634Z"
       description: The Cloud-Native Ingress and API-management
       digest: 7fe7c6f44e8961bb4155d20d9350cecd6ac1ef5ff25631cc52d0d7e115eca316
       home: https://konghq.com/
@@ -17,4 +17,19 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/kong/kong-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-26T10:36:33.226515174Z"
+  localization:
+    - apiVersion: v2
+      appVersion: flyway-branch-18c74fe
+      created: "2026-10-26T11:37:25.726004663Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.0.0
+      description: DIGIT localization service
+      digest: 89efe1fbbf134bff24e8dd1233a0dbb1c15f055dee439ca035429e69778aff80
+      name: localization
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/localization/localization-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-26T11:37:25.720940787Z"
