@@ -56,7 +56,7 @@ appType: "java"
 tracing-export-enabled: "false"
 tracing-enabled: false # Assuming you want to keep tracing
 healthChecks:
-  enabled: false # Disabled as requested
+  enabled: true
   livenessProbePath: "/health"
   readinessProbePath: "/health"
 # Resource configuration for Go service
