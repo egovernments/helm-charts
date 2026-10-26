@@ -1,0 +1,11 @@
+apiVersion: v2
+name: employee
+description: A Helm chart for Kubernetes
+version: 3.0.0
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application.
+appVersion: 1.16.0
+dependencies:
+  - name: common
+    version: 3.0.0
+    repository: https://helm.digit.org/digit3/common
