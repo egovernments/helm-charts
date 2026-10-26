@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1c610649-ae36-4fa8-a11c-64fac24ca9f4" name="Changes" comment="removed test workflow" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="novu-release" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;shivam-eGov&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/egovernments/helm-charts.git&quot;,
+    &quot;accountId&quot;: &quot;85e00457-195d-4ee4-bb95-c5de805117ec&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="356KpKePW2UWopuE4tAzRggcqZO" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Git.Working.Tree.Tab.closed.by.user": "closed",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "docs/registry-and-release-sop",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/shivam/egovernments/repo/helm-charts/charts/backbone",
+    "nodejs_package_manager_path": "npm"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/charts/backbone" />
+    </key>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1c610649-ae36-4fa8-a11c-64fac24ca9f4" name="Changes" comment="" />
+      <created>1762425263061</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762425263061</updated>
+    </task>
+    <task id="LOCAL-00001" summary="added novu helm charts">
+      <option name="closed" value="true" />
+      <created>1774849059795</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1774849059795</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Add dynamic index.html pages for helm chart registry with per-module detail views&#10;&#10;  - Root index.html dynamically fetches index.yaml from each module to display chart versions&#10;   &#10;  - module-index.html template provides detailed per-module pages with charts table and release history&#10;  &#10;  - Workflow updated to generate per-module changelog.yaml, copy root and module index.html to gh-pages&#10;  &#10;  - Module changelogs are only updated when that specific module has changes">
+      <option name="closed" value="true" />
+      <created>1774849314350</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1774849314350</updated>
+    </task>
+    <task id="LOCAL-00003" summary="fix github-actions">
+      <option name="closed" value="true" />
+      <created>1774849631917</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1774849631918</updated>
+    </task>
+    <task id="LOCAL-00004" summary="fix github-actions">
+      <option name="closed" value="true" />
+      <created>1774860672859</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1774860672859</updated>
+    </task>
+    <task id="LOCAL-00005" summary="fix github-actions">
+      <option name="closed" value="true" />
+      <created>1774861423449</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1774861423449</updated>
+    </task>
+    <task id="LOCAL-00006" summary="fix github workflow &amp; index.html">
+      <option name="closed" value="true" />
+      <created>1774863282676</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1774863282677</updated>
+    </task>
+    <task id="LOCAL-00007" summary="removed test workflow">
+      <option name="closed" value="true" />
+      <created>1774864251494</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1774864251494</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="added novu helm charts" />
+    <MESSAGE value="Add dynamic index.html pages for helm chart registry with per-module detail views&#10;&#10;  - Root index.html dynamically fetches index.yaml from each module to display chart versions&#10;   &#10;  - module-index.html template provides detailed per-module pages with charts table and release history&#10;  &#10;  - Workflow updated to generate per-module changelog.yaml, copy root and module index.html to gh-pages&#10;  &#10;  - Module changelogs are only updated when that specific module has changes" />
+    <MESSAGE value="fix github-actions" />
+    <MESSAGE value="fix github workflow &amp; index.html" />
+    <MESSAGE value="removed test workflow" />
+    <option name="LAST_COMMIT_MESSAGE" value="removed test workflow" />
+  </component>
+</project>
