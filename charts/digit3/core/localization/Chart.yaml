@@ -18,10 +18,10 @@ version: 1.0.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-# appVersion doubles as the default container image tag (see values.yaml image.tag).
+# appVersion is the default image tag: used as-is in prod mode; overridable via image.tag in dev mode.
 appVersion: "flyway-branch-18c74fe"
 
 dependencies:
 - name: common
-  version: 1.0.0
+  version: 3.0.0
   repository: https://helm.digit.org/digit3/common

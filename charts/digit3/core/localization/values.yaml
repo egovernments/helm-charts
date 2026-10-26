@@ -16,8 +16,6 @@ initContainers:
     schemaTable: "localization_schema"
     image:
       repository: "localization-db"
-      # defaults to appVersion; override via a values file at install time
-      tag: "flyway-branch-18c74fe"
     env: |
         - name: "DB_URL"
           valueFrom:
@@ -51,8 +49,6 @@ initContainers:
 # Container Configs
 image:
   repository: "localization"
-  # defaults to appVersion; override via a values file at install time
-  tag: "flyway-branch-18c74fe"
 replicas: 1
 appType: "java"
 # OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
@@ -186,5 +182,3 @@ env: |
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
     value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
-  - name: TEST_ENV
-    value: "for test only"
