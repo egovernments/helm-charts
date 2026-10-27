@@ -1,15 +1,15 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "otp"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "otp"
 
-# Init Containers Configs
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -46,20 +46,21 @@ initContainers:
         - name: FLYWAY_DEFAULT_SCHEMA
           value: public
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "otp"
 replicas: 1
 appType: "java"
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the otp block in environments/<env>.yaml
+
+# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
-tracing-enabled: true # Assuming you want to keep tracing
+tracing-enabled: true
+
 healthChecks:
-  enabled: false # Disabled as requested
-  livenessProbePath: "/otp/health"
-  readinessProbePath: "/otp/health"
-# Resource configuration for Go service
+  enabled: false
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -68,33 +69,13 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# Additional Container Envs
+# ── Container env ─────────────────────────────────────────────────────────────
 env: |
-  # Per-tenant schema separation: consume the account-migration event and run
-  # this service's migrations into the tenant's schema (schema-table and
-  # consumer group are baked into the service defaults).
-  - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+  # ── Service ───────────────────────────────────────────────────────────
   - name: SERVER_PORT
     value: "8080"
-  - name: DB_HOST
-    value: postgresql-lts.egov
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_SSL_MODE
-    value: disable
-  - name: DB_NAME
-    value: postgres
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
+
+  # ── OTP ───────────────────────────────────────────────────────────────
   - name: OTP_LENGTH
     value: "6"
   - name: OTP_CHARSET
@@ -117,24 +98,74 @@ env: |
     value: "200"
   - name: ENABLE_RATE_LIMIT
     value: "false"
+
+  # ── Notification ──────────────────────────────────────────────────────
+  # key `notification` resolves to http://notification:8080/ (pre-java Deployment scaled 0/0; notification is the live service)
   - name: NOTIFY_BASE_URL
     valueFrom:
       configMapKeyRef:
-        # key `notification` resolves to http://notification:8080/ -- the pre-java
-        # Deployment, scaled to 0/0. notification is the live service.
         key: notification
         name: egov-service-host
   - name: NOTIFY_ASYNC
     value: "false"
-  # From the cluster-configs-rendered secret — an empty-string value here is
-  # WORSE than absent: Spring prefers a present-but-empty env var over the
-  # property default and HmacSHA256 rejects the empty key (every generate 503s).
+
+  # ── HMAC ──────────────────────────────────────────────────────────────
+  # present-but-empty is worse than absent: Spring prefers it over the default and HmacSHA256 rejects an empty key (generate 503s)
   - name: HMAC_SECRET
     valueFrom:
       secretKeyRef:
         name: hmac-secret
         key: hmac-secret
         optional: true
+
+  # ── Tenant / schema separation ────────────────────────────────────────
+  - name: TENANT_MIGRATION_ENABLED
+    value: "true"
+  - name: SCHEMA_SEPARATION_MODE
+    value: "true"
+  - name: SCHEMA_SEPARATION_TOPIC
+    value: account-migration
+
+  # ── App-level migrations ──────────────────────────────────────────────
+  - name: MIGRATION_FLYWAY_LOCATIONS
+    value: classpath:db/migration  # jar-embedded migrations
+  - name: MIGRATION_SCRIPT_PATH
+    value: /opt/digit/migrate.sh
+  - name: MIGRATION_FLYWAY_BIN
+    value: /opt/flyway/flyway
+  - name: MIGRATION_SCHEMA_TABLE
+    value: otp_schema
+
+  # ── Kafka ─────────────────────────────────────────────────────────────
+  - name: KAFKA_BROKERS
+    valueFrom:
+      configMapKeyRef:
+        key: kafka-brokers
+        name: egov-config
+  - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+    value: "true"
+  - name: KAFKA_PARTITION_COUNT
+    value: "1"
+  - name: KAFKA_REPLICATION_FACTOR
+    value: "1"
+  - name: KAFKA_CONSUMER_GROUP
+    value: otp-service
+
+  # ── PubSub ────────────────────────────────────────────────────────────
+  - name: PUBSUB_ENABLED
+    value: "true"
+  - name: PUBSUB_TYPE
+    value: "kafka"
+  - name: PUBSUB_TOPIC_GENERATE_OTP
+    value: otp-generate-otp
+  - name: PUBSUB_TOPIC_RESEND_OTP
+    value: otp-resend-otp
+  - name: PUBSUB_TOPIC_VERIFY_OTP
+    value: otp-verify-otp
+  - name: PUBSUB_TOPIC_INVALIDATE_OTP
+    value: otp-invalidate-otp
+
+  # ── Redis ─────────────────────────────────────────────────────────────
   - name: REDIS_HOST
     value: redis.backbone
   - name: REDIS_PORT
@@ -142,6 +173,20 @@ env: |
   - name: REDIS_PASSWORD
   - name: REDIS_DB
     value: "0"
+  - name: REDIS_ADDRESS
+    value: redis.backbone.svc.cluster.local:6379
+  - name: REDIS_CONSUMER_GROUP
+    value: otp-service
+  - name: REDIS_CONSUMER_ID
+    value: otp-service-1
+  - name: REDIS_RETENTION_DAYS
+    value: "7"
+  - name: REDIS_MAX_STREAM_LENGTH
+    value: "1000000"
+  - name: REDIS_CLEANUP_INTERVAL
+    value: "86400"
+
+  # ── Vault ─────────────────────────────────────────────────────────────
   - name: VAULT_HOST
     valueFrom:
       configMapKeyRef:
@@ -161,6 +206,9 @@ env: |
         optional: true
   - name: VAULT_ENABLED
     value: {{ index .Values "vault-enabled" | quote }}
+
+  # ── Observability (OpenTelemetry) ─────────────────────────────────────
+  # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: OTEL_ENABLED
     value: "false"
   - name: OTEL_SERVICE_NAME
@@ -177,59 +225,6 @@ env: |
     value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
   - name: CONSOLE_LOGS_ENABLED
     value: "true"
-  - name: PUBSUB_ENABLED
-    value: "true"
-  - name: PUBSUB_TYPE
-    value: "kafka"
-  - name: PUBSUB_TOPIC_GENERATE_OTP
-    value: otp-generate-otp
-  - name: PUBSUB_TOPIC_RESEND_OTP
-    value: otp-resend-otp
-  - name: PUBSUB_TOPIC_VERIFY_OTP
-    value: otp-verify-otp
-  - name: PUBSUB_TOPIC_INVALIDATE_OTP
-    value: otp-invalidate-otp
-  - name: KAFKA_BROKERS
-    valueFrom:
-      configMapKeyRef:
-        key: kafka-brokers
-        name: egov-config
-  - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: "true"
-  - name: KAFKA_PARTITION_COUNT
-    value: "1"
-  - name: KAFKA_REPLICATION_FACTOR
-    value: "1"
-  - name: KAFKA_CONSUMER_GROUP
-    value: otp-service
-  - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
-  - name: REDIS_CONSUMER_GROUP
-    value: otp-service
-  - name: REDIS_CONSUMER_ID
-    value: otp-service-1
-  - name: REDIS_RETENTION_DAYS
-    value: "7"
-  - name: REDIS_MAX_STREAM_LENGTH
-    value: "1000000"
-  - name: REDIS_CLEANUP_INTERVAL
-    value: "86400"
-  - name: SCHEMA_SEPARATION_MODE
-    value: "true"
-  - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
-  - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations; the filesystem path only ever existed in the Go-era init containers
-  - name: MIGRATION_SCRIPT_PATH
-    value: /opt/digit/migrate.sh
-  - name: MIGRATION_FLYWAY_BIN
-    value: /opt/flyway/flyway
-  - name: MIGRATION_SCHEMA_TABLE
-    value: otp_schema
-
-  # ── Observability: OTel span export disabled ──────────────────────────────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

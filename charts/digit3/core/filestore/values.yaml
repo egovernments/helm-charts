@@ -1,9 +1,9 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "digit-filestore"
   group: "core"
 
-# Init Containers Configs
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -40,33 +40,36 @@ initContainers:
         - name: FLYWAY_DEFAULT_SCHEMA
           value: public
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "filestore"
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "filestore"
 replicas: "1"
-healthChecks:
-  enabled: true
-  livenessProbePath: "/digit-filestore/actuator/health"
-  readinessProbePath: "/digit-filestore/actuator/health"
 appType: "java"
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the digit-filestore block in environments/<env>.yaml
+heap: "-Xmx256m -Xms256m"
+
+# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
 tracing-enabled: true
+
+# storage backend (in-cluster MinIO / S3)
 is-bucket-fixed: "true"
 fixed-bucketname: "unified-dev-bucket-s3"
-heap: "-Xmx256m -Xms256m"
 file-storage-mount-path: "/filestore"
 is-nfs-enabled: false
 is-s3-enabled: true
 minio-enabled: true
-# Resource configuration for Go service
+
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -75,44 +78,43 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
+# ── persistence ───────────────────────────────────────────────────────────────
 persistence:
   enabled: false
 
-# Additional Container Envs
+# ── Container env ─────────────────────────────────────────────────────────────
 env: |
-  # Per-tenant schema separation: consume the account-migration event and run
-  # this service's migrations into the tenant's schema (schema-table and
-  # consumer group are baked into the service defaults).
-  - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+  # ── Service ──────────────────────────────────────────────────────────────
   - name: SERVER_PORT
     value: "8080"
-  - name: DB_HOST
-    value: postgresql-lts.egov
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_SSL_MODE
-    value: disable
-  - name: DB_NAME
-    value: postgres
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
+
+  # ── Tenant / schema separation ───────────────────────────────────────────
+  # consume account-migration, migrate into the tenant schema
+  - name: TENANT_MIGRATION_ENABLED
+    value: "true"
+  - name: SCHEMA_SEPARATION_MODE
+    value: "true"
+  - name: SCHEMA_SEPARATION_TOPIC
+    value: account-migration
+
+  # ── App-level migrations ─────────────────────────────────────────────────
+  - name: MIGRATION_FLYWAY_LOCATIONS
+    value: classpath:db/migration  # jar-embedded migrations
+  - name: MIGRATION_SCRIPT_PATH
+    value: /opt/digit/migrate.sh
+  - name: MIGRATION_FLYWAY_BIN
+    value: /opt/flyway/flyway
+  - name: MIGRATION_SCHEMA_TABLE
+    value: filestore_schema
+
+  # ── Storage (S3 / MinIO) ─────────────────────────────────────────────────
+  # S3 backend = in-cluster MinIO (backbone ns); creds from the `minio` secret
   - name: MINIO_USE_SSL
     value: "false"
   - name: S3_BUCKET
     value: unified-dev-bucket-s3
   - name: S3_READ_BUCKET
     value: unified-dev-bucket-s3
-  # S3 backend = in-cluster MinIO (backbone namespace), same pattern as test-lts.
-  # Credentials come from the `minio` secret created by cluster-configs.
   - name: S3_USE_SSL
     value: "false"
   - name: S3_REGION
@@ -131,24 +133,8 @@ env: |
     value: s3
   - name: S3_ENDPOINT
     value: minio.backbone.svc.cluster.local:9000
-  - name: OTEL_ENABLED
-    value: "true"
-  - name: OTEL_SERVICE_NAME
-    value: filestore
-  - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
-  - name: OTEL_METRICS_ENABLED
-    value: "true"
-  - name: PROMETHEUS_PORT
-    value: "9090"
-  - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
-  - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
-  - name: PUBSUB_ENABLED
-    value: "true"
-  - name: PUBSUB_TYPE
-    value: "kafka"
+
+  # ── Kafka ────────────────────────────────────────────────────────────────
   - name: KAFKA_BROKERS
     valueFrom:
       configMapKeyRef:
@@ -162,6 +148,22 @@ env: |
     value: "1"
   - name: KAFKA_CONSUMER_GROUP
     value: filestore-service
+
+  # ── PubSub ───────────────────────────────────────────────────────────────
+  - name: PUBSUB_ENABLED
+    value: "true"
+  - name: PUBSUB_TYPE
+    value: "kafka"
+  - name: PUBSUB_TOPIC_UPLOAD_FILE
+    value: filestore-upload-file
+  - name: PUBSUB_TOPIC_CREATE_DOC_CATEGORY
+    value: filestore-create-doc-category
+  - name: PUBSUB_TOPIC_UPDATE_DOC_CATEGORY
+    value: filestore-update-doc-category
+  - name: PUBSUB_TOPIC_DELETE_DOC_CATEGORY
+    value: filestore-delete-doc-category
+
+  # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
     value: redis.backbone.svc.cluster.local:6379
   - name: REDIS_PASSWORD
@@ -177,31 +179,27 @@ env: |
     value: "1000000"
   - name: REDIS_CLEANUP_INTERVAL
     value: "86400"
-  - name: PUBSUB_TOPIC_UPLOAD_FILE
-    value: filestore-upload-file
-  - name: PUBSUB_TOPIC_CREATE_DOC_CATEGORY
-    value: filestore-create-doc-category
-  - name: PUBSUB_TOPIC_UPDATE_DOC_CATEGORY
-    value: filestore-update-doc-category
-  - name: PUBSUB_TOPIC_DELETE_DOC_CATEGORY
-    value: filestore-delete-doc-category
-  - name: SCHEMA_SEPARATION_MODE
-    value: "true"
-  - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
-  - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations; the filesystem path only ever existed in the Go-era init containers
-  - name: MIGRATION_SCRIPT_PATH
-    value: /opt/digit/migrate.sh
-  - name: MIGRATION_FLYWAY_BIN
-    value: /opt/flyway/flyway
-  - name: MIGRATION_SCHEMA_TABLE
-    value: filestore_schema
+
+  # ── Logging ──────────────────────────────────────────────────────────────
   - name: CONSOLE_LOGS_ENABLED
     value: "true"
-  # ── Observability: OTel span export disabled ──────────────────────────────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
+
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
+  # span switch is *_EXPORT_ENABLED, not *_ENABLED
+  - name: OTEL_ENABLED
+    value: "true"
+  - name: OTEL_SERVICE_NAME
+    value: filestore
+  - name: OTEL_SERVICE_VERSION
+    value: 1.0.0
+  - name: OTEL_METRICS_ENABLED
+    value: "true"
+  - name: OTEL_TRACES_SAMPLER_ARG
+    value: "1.0"
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+  - name: PROMETHEUS_PORT
+    value: "9090"
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

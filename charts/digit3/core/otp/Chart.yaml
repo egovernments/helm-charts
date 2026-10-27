@@ -1,11 +1,11 @@
 apiVersion: v2
 name: otp
-description: A Helm chart for Kubernetes
+description: OTP generation, verification and invalidation for DIGIT 3.0
 version: 3.0.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
 appVersion: flyway-branch-18c74fe
 dependencies:
   - name: common
-    version: 3.0.0
+    version: 3.1.0
     repository: https://helm.digit.org/digit3/common
