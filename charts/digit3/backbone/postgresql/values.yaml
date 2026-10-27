@@ -1,0 +1,142 @@
+# PostgreSQL 18 (CloudNativePG) defaults. Platform-neutral: apply unchanged to
+# managed (AKS/EKS/GKE) and bare-metal/on-prem. Site-specific bits (StorageClass,
+# zone anti-affinity, object store) go under `postgresql-18:` in environments/<env>.yaml.
+
+# ── Labels ────────────────────────────────────────────────────────────────────
+namespace: backbone
+
+labels:
+  app: "postgresql"
+  group: "db"
+
+# ── Image ─────────────────────────────────────────────────────────────────────
+# Pinned (not operator default) for reproducibility + air-gapped mirroring. Major+variant
+# pinned, patch floats. standard = pgvector/PGAudit/failover-slots/JIT; minimal drops JIT.
+image:
+  repository: ghcr.io/cloudnative-pg/postgresql
+  tag: "18-standard-trixie"
+  pullPolicy: IfNotPresent
+# imagePullSecrets:
+#   - name: regcred
+
+# ── Topology ──────────────────────────────────────────────────────────────────
+# Instances: 1 primary + (n-1) hot standbys. Set to 3 (three schedulable nodes) for
+# automated failover. Even numbers give no extra safety.
+instances: 1
+
+# ── Storage ───────────────────────────────────────────────────────────────────
+storage:
+  size: 20Gi
+  # Empty on purpose: uses the cluster default StorageClass (naming one breaks portability).
+  # Use block storage, NOT NFS (fsync/corruption risk).
+  storageClass: ""
+
+# WAL on its own volume: stops WAL growth from filling the data volume. Doubles PVC count.
+walStorage:
+  enabled: false
+  size: 5Gi
+  storageClass: ""
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# PRODUCTION: set memory requests == limits (OOMKill mid-write is costly). CPU left
+# without a limit: throttling during a checkpoint is worse than bursting.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 2Gi
+
+# ── Scheduling ────────────────────────────────────────────────────────────────
+# hostname, not zone: bare-metal/single-site clusters lack zone labels, and a rule keyed
+# on a missing label silently stops spreading. Cloud envs override topologyKey to zone.
+affinity:
+  enablePodAntiAffinity: true
+  topologyKey: kubernetes.io/hostname
+  podAntiAffinityType: preferred
+
+nodeSelector: {}
+tolerations: []
+priorityClassName: ""
+
+# ── PostgreSQL settings ───────────────────────────────────────────────────────
+# shared_buffers is allocated up front: raise it only with resources.requests.memory
+# (~25% is the conventional start).
+postgresql:
+  parameters:
+    max_connections: "200"
+    shared_buffers: 128MB
+    work_mem: 4MB
+    maintenance_work_mem: 64MB
+  # pg_hba lines evaluated BEFORE the operator's generated rules (TLS already enforced).
+  pg_hba: []
+  shared_preload_libraries: []
+
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+# initdb runs once: changing these afterwards has NO effect on an existing cluster.
+bootstrap:
+  database: app
+  owner: app
+
+# ── Credentials ───────────────────────────────────────────────────────────────
+# Empty = operator generates random passwords (<name>-app, <name>-superuser). Set to consume
+# cluster-configs secrets from SOPS instead. Both must be kubernetes.io/basic-auth.
+# superuserSecret is reconciled continuously; existingSecret is read ONLY at first bootstrap.
+# existingSecret.username MUST match bootstrap.owner.
+auth:
+  existingSecret: ""
+  superuserSecret: ""
+
+# ── Managed roles ─────────────────────────────────────────────────────────────
+# Managed roles are reconciled every pass, so a SOPS password change reaches the running db
+# (bootstrap secret alone would not). ownerFromSecret makes bootstrap.owner a managed role
+# backed by auth.existingSecret (which must be set, username == bootstrap.owner).
+managedRoles:
+  ownerFromSecret: true
+
+  # Extra roles, verbatim to spec.managed.roles. Any passwordSecret must be basic-auth,
+  # best rendered by cluster-configs from environments/<env>-secrets.yaml.
+  #   - name: readonly
+  #     ensure: present
+  #     login: true
+  #     passwordSecret:
+  #       name: postgresql-18-readonly-db
+  extra: []
+
+# Disable to drop the `postgres` superuser (app user only); superuserSecret then ignored.
+enableSuperuserAccess: true
+
+# ── Updates ───────────────────────────────────────────────────────────────────
+# switchover promotes a replica before touching the primary (seconds of downtime, not a
+# full restart). No effect at instances: 1.
+primaryUpdateStrategy: unsupervised
+primaryUpdateMethod: switchover
+
+# PodDisruptionBudget so a node drain cannot take down primary + standbys at once.
+enablePDB: true
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+# Needs the PodMonitor CRD (kube-prometheus-stack); enabling without it fails the sync.
+monitoring:
+  enabled: false
+  prometheusRule: false
+
+# ── Backup ────────────────────────────────────────────────────────────────────
+# PRODUCTION: the most important block to configure. barman-cloud to any S3-compatible store
+# (MinIO on-prem or cloud). Credentials MUST come from a Secret, never inlined.
+backup:
+  enabled: false
+  # destinationPath: s3://postgresql-18-backups/
+  # endpointURL: http://minio.backbone.svc.cluster.local:9000
+  # S3 credentials are read from this Secret (keys ACCESS_KEY_ID / ACCESS_SECRET_KEY)
+  # credentialsSecret: postgresql-18-backup-creds
+  retentionPolicy: 30d
+  wal:
+    compression: gzip
+  data:
+    compression: gzip
+  # CNPG cron has SIX fields (leads with seconds): "0 0 2 * * *" is 02:00 daily.
+  scheduledBackup:
+    enabled: false
+    schedule: "0 0 2 * * *"
+    backupOwnerReference: self
