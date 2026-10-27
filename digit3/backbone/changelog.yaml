@@ -1,0 +1,13 @@
+releases:
+  - date: "2026-10-27"
+    ref: "PR-100"
+    title: "feat(backbone): onboard postgresql (CloudNativePG) and vault"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "postgresql"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "vault"
+        from: "0.0.0"
+        to: "3.0.0"
