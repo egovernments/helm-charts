@@ -1,7 +1,7 @@
 apiVersion: v2
 name: employee
 description: Employee records, onboarding and jurisdictions for DIGIT 3.0
-version: 3.0.0
+version: 3.1.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
 appVersion: flyway-branch-18c74fe
