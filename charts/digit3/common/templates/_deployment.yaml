@@ -172,6 +172,7 @@ spec:
         {{- end -}}
         {{- if eq .Values.appType "java" }}
           {{- tpl  .Values.extraEnv.db . | nindent 12 }}
+          {{- tpl  .Values.extraEnv.platform . | nindent 12 }}
         {{- end -}}
         {{- if or (index .Values "global" "tracing-enabled") (index .Values "tracing-enabled") }}
           {{- tpl  .Values.extraEnv.otel . | nindent 12 }}

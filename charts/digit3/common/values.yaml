@@ -183,6 +183,33 @@ extraEnv:
           configMapKeyRef:
             name: egov-config
             key: db-pool-connection-timeout-ms
+  # Platform defaults for appType "java" services (read by digit3 application.properties),
+  # injected alongside db. flyway is off in-app (the db-migration init container owns
+  # migrations). kafka/timezone/jpa resolve from egov-config (seeded per environment).
+  platform: |
+      - name: FLYWAY_ENABLED
+        value: "false"
+      - name: SPRING_FLYWAY_ENABLED
+        value: {{ .Values.spring_flyway_enabled | default "false" | quote }}
+      - name: MANAGEMENT_ENDPOINTS_WEB_BASE_PATH
+        value: "/"
+      - name: APP_TIMEZONE
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: timezone
+      - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: kafka-brokers
+      - name: SPRING_JPA_SHOW_SQL
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: spring-jpa-show-sql
+      - name: IS_ENVIRONMENT_CENTRAL_INSTANCE
+        value: "false"
   # OpenTelemetry: injected only when tracing is enabled. Toggle + endpoint from egov-config
   # (otel-enabled defaults "false"); service-name/version/sampling keep the app's own defaults.
   otel: |
