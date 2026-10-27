@@ -79,13 +79,32 @@ Service charts declare `common` as a dependency pulled from the registry:
 # charts/digit3/core/localization/Chart.yaml
 dependencies:
   - name: common
-    version: 3.0.0
+    version: 3.1.0
     repository: https://helm.digit.org/digit3/common
 ```
 
 At release time CI runs `helm dependency build`, which downloads the pinned `common` version
 from the registry. This means **`common` must be published before any chart that depends on it**,
 and a dependent's `version:` must point at a `common` version that already exists in the registry.
+
+### What `common` provides
+
+`common` is more than shared templates - it **centralises runtime config** so every service is wired
+the same way. For a chart with `appType: "java"` it injects (via `extraEnv.java`) the datasource
+(`SPRING_DATASOURCE_*` from `egov-config`/the `db` Secret), the Hikari pool, the Kafka brokers, the
+timezone, flyway/JPA/Tomcat settings and the actuator base-path - all read from the `egov-config`
+ConfigMap and the `db` Secret. A separate `extraEnv.otel` block adds OpenTelemetry env when tracing
+is enabled. Services therefore **do not** redefine their datasource, broker or pool; they inherit
+them. See [onboarding-a-service.md](onboarding-a-service.md) for the exact fields.
+
+### Shared config: `cluster-configs`
+
+The values those env vars read from are defined in one place - the `cluster-configs` chart
+(`charts/digit3/cluster-configs`). It renders the shared `egov-config` ConfigMap (db URL, pool,
+Kafka brokers, timezone, OTel toggle, Keycloak), the `egov-service-host` ConfigMap (internal service
+URLs), and declares the named Secrets (`db`, `minio`, …). It is installed once per product namespace,
+before the services. Platform-neutral defaults live here; environment-specific values are overridden
+in `environments/<env>.yaml`.
 
 ### Image tags: the `global.mode` mechanism
 

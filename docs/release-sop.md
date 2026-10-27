@@ -10,6 +10,9 @@ Follow this every time you release a chart. It is deliberately short. Background
 - **Publish dependencies first.** Publish/bump `common` (or any dependency) before the charts that
   depend on it, and point the dependent's `dependencies[].version` at a version that already exists.
 - **Everything goes through a PR.** No direct pushes to `master`; no manual packaging or tagging.
+- **Leave the release form alone.** The `<!-- RELEASE-FORM -->` block in the PR description is
+  managed by a workflow. Do not delete it when editing the description - if you do, push any commit
+  (or reopen the PR) to re-inject it; your ticks are preserved.
 
 ## Pre-flight checklist
 

@@ -35,6 +35,13 @@ helm install my-release digit3-core/localization -n core -f values.yaml
 - One **project** + one **module** per PR. Multiple service charts inside that module in a
   single PR are fine.
 - Service charts depend on the per-project **`common`** library chart, pulled from the registry.
+  `common` centralises runtime config - datasource, Kafka, pool, timezone and tracing env - so a
+  `java` service **inherits** those and does not redefine them (see
+  [onboarding-a-service.md](onboarding-a-service.md)).
+- Shared config and secrets (`egov-config`, `egov-service-host`, the `db` Secret, …) are defined
+  once in the **`cluster-configs`** chart.
+- Infrastructure charts (`kong`, `vault`, `postgresql`) are **vendored** from upstream (they do not
+  use `common`) and carry `digit.org/upstream-*` provenance annotations.
 - Versions are derived from the published registry, not from git tags. There are no
   per-service version tags; a single `"<project>/<module>/PR-<number>"` tag is cut per release
   run for traceability.
