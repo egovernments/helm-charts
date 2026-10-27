@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-27"
+    ref: "PR-98"
+    title: "feat(cluster-configs): seed egov-config datasource/OTel/keycloak defaults + service hosts"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "cluster-configs"
+        from: "3.0.0"
+        to: "3.1.0"
   - date: "2026-10-26"
     ref: "PR-82"
     title: "feat(cluster-configs): onboard v3.0.0"
