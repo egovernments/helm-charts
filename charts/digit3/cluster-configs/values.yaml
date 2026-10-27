@@ -47,7 +47,7 @@ cluster-configs:
         db-pool-connection-timeout-ms: "1000"
         # Platform (read by appType java services via common.extraEnv.java)
         kafka-brokers: "kafka-controller-headless.backbone:9092"
-        timezone: "UTC"
+        timezone: "Asia/Kolkata"
         spring-jpa-show-sql: "false"
         # Observability
         otel-enabled: "false"
