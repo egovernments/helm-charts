@@ -1,15 +1,15 @@
-# Common Labels
+# ── Labels ──────────────────────────────────────────────────────────────────
 labels:
   app: "notify"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "notify"
 
-# Init Containers Configs
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -46,23 +46,25 @@ initContainers:
         - name: FLYWAY_DEFAULT_SCHEMA
           value: public
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "notify"
 replicas: "1"
-healthChecks:
-  enabled: true
-  livenessProbePath: "/notify/health"
-  readinessProbePath: "/notify/health"
 appType: "java"
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the notify block in environments/<env>.yaml
+
+# OTel span export switch; override per env via the notify block in environments/<env>.yaml
 tracing-export-enabled: "false"
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 gmail-from-name: "eGov Foundation"
 smscountry-api-url: "http://api.smscountry.com/SMSCwebservice_bulk.aspx"
-# Optional. Left blank the gateway applies the header registered against the
+# Optional; left blank, the gateway applies the registered sender header
 smscountry-sender-id: ""
+
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -71,40 +73,33 @@ resources: |
     cpu: "1"
     memory: "1.5Gi"
 
-# Nothing is mounted at /providers: the jars are baked into the image and a
-# volume on that path would hide them.
-
-# Additional Container Envs
+# ── Container env ─────────────────────────────────────────────────────────────
 env: |
-  # The entrypoint is an explicit `java -jar`, so JAVA_OPTS is never expanded.
+  # ── Service ──────────────────────────────────────────────────────────────
+  # entrypoint is an explicit `java -jar`, so JAVA_OPTS is never expanded
   - name: JAVA_TOOL_OPTIONS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
     value: "8080"
   - name: SERVER_SERVLET_CONTEXT_PATH
     value: /notify
-  - name: SPRING_DATASOURCE_URL
+  - name: APP_TIMEZONE
     valueFrom:
       configMapKeyRef:
         name: egov-config
-        key: db-url
-  - name: SPRING_DATASOURCE_USERNAME
-    valueFrom:
-      secretKeyRef:
-        name: db
-        key: username
-  - name: SPRING_DATASOURCE_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: db
-        key: password
+        key: timezone
+  - name: LOGGING_LEVEL_ORG_DIGIT_NOTIFY
+    value: INFO
+
+  # ── Datasource ───────────────────────────────────────────────────────────
   - name: SPRING_FLYWAY_ENABLED
     value: "false"
+
+  # ── Providers (email / SMS) ──────────────────────────────────────────────
+  # jars are baked into the image; nothing is mounted at /providers (a volume would hide them)
   - name: NOTIFY_PLUGINS_DIR
     value: /providers
-  # Each provider reads its own credentials at startup and is left unregistered
-  # if any of them are missing. Host, port and content type are fixed inside the
-  # provider jars, so only the account settings appear here.
+  # each provider reads its own credentials at startup; host/port/content-type are fixed in the jars
   - name: GMAIL_FROM_ADDRESS
     valueFrom:
       secretKeyRef:
@@ -131,22 +126,17 @@ env: |
     value: {{ index .Values "smscountry-api-url" | quote }}
   - name: SMSCOUNTRY_SENDER_ID
     value: {{ index .Values "smscountry-sender-id" | quote }}
-  - name: APP_TIMEZONE
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: timezone
-  # base-path `/` puts the actuator endpoints under the servlet context path,
-  # which is where the probes above look for them.
+
+  # ── Management / actuator ────────────────────────────────────────────────
+  # base-path `/` puts the actuator endpoints under the servlet context path, where the probes look
   - name: MANAGEMENT_ENDPOINTS_WEB_BASE_PATH
     value: "/"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
     value: health,info
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
     value: "false"
-  - name: LOGGING_LEVEL_ORG_DIGIT_NOTIFY
-    value: INFO
 
+  # ── Kafka ────────────────────────────────────────────────────────────────
   - name: PUBSUB_TYPE
     value: kafka
   - name: KAFKA_BROKERS
@@ -154,8 +144,10 @@ env: |
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
+  - name: KAFKA_CONSUMER_GROUP
+    value: notify-service
 
-
+  # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_HOST
     value: redis.backbone.svc.cluster.local
   - name: REDIS_PORT
@@ -163,6 +155,8 @@ env: |
   - name: REDIS_PASSWORD
   - name: REDIS_DB
     value: "0"
+
+  # ── Tenant / schema separation ───────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
     value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
@@ -170,11 +164,11 @@ env: |
   - name: TENANT_MIGRATION_CONSUMER_GROUP
     value: notify-service
 
+  # ── Notification topics ──────────────────────────────────────────────────
   - name: NOTIFY_TOPIC_SEND_ENABLED
     value: "true"
-  - name: KAFKA_CONSUMER_GROUP
-    value: notify-service
 
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

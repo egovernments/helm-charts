@@ -1,15 +1,15 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "account"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "account"
 
-# Init Containers Configs
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -46,21 +46,22 @@ initContainers:
       - name: FLYWAY_DEFAULT_SCHEMA
         value: public
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "account"
 replicas: 1
 appType: "java"
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the account block in environments/<env>.yaml
+heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
+
+# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
 tracing-enabled: false
-heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
+
 healthChecks:
   enabled: false
-  livenessProbePath: "/account/actuator/health/liveness"
-  readinessProbePath: "/account/actuator/health/readiness"
-# Resource configuration for the Java service
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -69,52 +70,34 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# Additional Container Envs
+# ── Container env ─────────────────────────────────────────────────────────────
 env: |
-  # Per-tenant schema separation: consume the account-migration event and run
-  # this service's migrations into the tenant's schema (schema-table and
-  # consumer group are baked into the service defaults).
-  - name: TENANT_MIGRATION_ENABLED
-    value: "true"
-  # some services spell the same switch SCHEMA_SEPARATION_MODE
-  - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+  # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
     value: "8080"
   - name: CONTEXT_PATH
     value: /account
-
   - name: CANONICAL_API_PREFIX
     value: canonical
 
-  - name: DB_HOST
-    value: postgresql-lts.egov
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
-  - name: DB_NAME
-    value: postgres
-  - name: DB_SSL_MODE
-    value: disable
+  # ── Tenant / schema separation ───────────────────────────────────────────
+  # consume account-migration, migrate into the tenant schema
+  - name: TENANT_MIGRATION_ENABLED
+    value: "true"
+  - name: SCHEMA_SEPARATION_MODE
+    value: "true"
 
+  # ── Keycloak ─────────────────────────────────────────────────────────────
   - name: KEYCLOAK_BASE_URL
-    value: http://keycloak.keycloak.svc.cluster.local:8080/keycloak
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: keycloak-base-url
   - name: KEYCLOAK_PUBLIC_BASE_URL
     value: https://{{ .Values.global.domain }}/keycloak
-  # Both halves come from the same kc-admin secret the keycloak chart bootstraps
-  # its admin from — a hardcoded username here breaks on any cluster whose secret
-  # names the admin differently.
+  # admin creds come from the kc-admin secret the keycloak chart bootstraps from
   - name: KEYCLOAK_ADMIN_USER
     valueFrom:
       secretKeyRef:
@@ -132,17 +115,17 @@ env: |
       secretKeyRef:
         name: citizen-broker-secret
         key: citizen-broker-client-secret
-
   - name: EMPLOYEE_IAM_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
         name: employee-iam-secret
         key: employee-iam-client-secret
-
   - name: CLIENT_REDIRECT_URL
     value: https://{{ .Values.global.domain }}/*
   - name: FIRST_LOGIN_URLS
     value: admin=https://{{ .Values.global.domain }}/license/admin/{realm},employee=https://{{ .Values.global.domain }}/license/employee/{realm},citizen=https://{{ .Values.global.domain }}/license/citizen/{realm}
+
+  # ── SMTP ─────────────────────────────────────────────────────────────────
   - name: SMTP_HOST
     value: smtp.gmail.com
   - name: SMTP_PORT
@@ -171,6 +154,7 @@ env: |
         name: egov-notification-mail
         key: mailsenderpassword
 
+  # ── Sessions / tokens ────────────────────────────────────────────────────
   - name: ACCESS_TOKEN_LIFESPAN
     value: "14400"
   - name: SSO_SESSION_IDLE_TIMEOUT
@@ -178,6 +162,7 @@ env: |
   - name: SSO_SESSION_MAX_LIFESPAN
     value: "36000"
 
+  # ── Notification (email) ─────────────────────────────────────────────────
   - name: NOTIFICATION_BASE_URL
     valueFrom:
       configMapKeyRef:
@@ -194,6 +179,7 @@ env: |
   - name: NOTIFICATION_ENABLED
     value: "true"
 
+  # ── Platform auth ────────────────────────────────────────────────────────
   - name: PLATFORM_AUTH_ENABLED
     value: "false"
   - name: PLATFORM_AUTH_REALM
@@ -203,7 +189,7 @@ env: |
   - name: SIGNUP_ENABLED
     value: "true"
 
-
+  # ── OTP ──────────────────────────────────────────────────────────────────
   - name: OTP_BASE_URL
     valueFrom:
       configMapKeyRef:
@@ -221,8 +207,10 @@ env: |
     value: login,registration
   - name: OTP_TIMEOUT_SECONDS
     value: "10"
+  - name: OTP_PLATFORM_TENANT
+    value: default
 
-
+  # ── Kafka / PubSub ───────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
     value: "true"
   - name: PUBSUB_TYPE
@@ -232,14 +220,6 @@ env: |
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
-
-  - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
-  - name: REDIS_HOST
-    value: redis.backbone.svc.cluster.local
-  - name: REDIS_PORT
-    value: "6379"
-
   - name: PUBSUB_TOPIC_CREATE_TENANT
     value: account-create-tenant
   - name: PUBSUB_TOPIC_UPDATE_TENANT
@@ -252,15 +232,21 @@ env: |
     value: account-update-tenant-config
   - name: PUBSUB_TOPIC_MIGRATION
     value: account-migration
-  - name: OTP_PLATFORM_TENANT
-    value: default
 
+  # ── Redis ────────────────────────────────────────────────────────────────
+  - name: REDIS_ADDRESS
+    value: redis.backbone.svc.cluster.local:6379
+  - name: REDIS_HOST
+    value: redis.backbone.svc.cluster.local
+  - name: REDIS_PORT
+    value: "6379"
+
+  # ── Logging ──────────────────────────────────────────────────────────────
   - name: LOG_LEVEL
     value: DEBUG
 
-  # ── Observability: OTel span export disabled ──────────────────────────────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
+  # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

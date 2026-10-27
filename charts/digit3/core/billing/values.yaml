@@ -1,20 +1,17 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "billing"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "billing"
 
-# Init Containers Configs
-# DB migration runs in an init container (preferred strategy) — same as the Go
-# chart. The migration image ships the Flyway SQL + migrate.sh and runs against
-# the elevated flyway credentials before the app starts; the app itself has
-# in-boot Flyway disabled (SPRING_FLYWAY_ENABLED=false below). History table
-# billing_schema matches migrate.sh's -table setting.
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+# App-boot Flyway is off (SPRING_FLYWAY_ENABLED=false); migration runs here.
+# History table billing_schema matches migrate.sh's -table setting.
 initContainers:
   dbMigration:
     enabled: true
@@ -51,21 +48,22 @@ initContainers:
       - name: FLYWAY_DEFAULT_SCHEMA
         value: public
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "billing"
 replicas: 1
 appType: "java"
-tracing-enabled: false
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the billing block in environments/<env>.yaml
-tracing-export-enabled: "false"
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
+
+# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
+tracing-export-enabled: "false"
+tracing-enabled: false
+
 healthChecks:
   enabled: false
-  livenessProbePath: "/billing/actuator/health/liveness"
-  readinessProbePath: "/billing/actuator/health/readiness"
-# Resource configuration for the Java service
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -74,43 +72,14 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# Additional Container Envs
-# The service is configured through Spring properties (relaxed env binding),
-# not the Go service's env var names. Defaults baked into the image's
-# application.properties are only overridden where the deployment differs.
-# Dropped Go knobs (see billing/VERIFICATION.md §4): PUBSUB_ENABLED (pub/sub is
-# always wired), KAFKA_AUTO_CREATE/PARTITIONS/REPLICATION (broker posture),
-# KAFKA_CONSUMER_GROUP / REDIS_CONSUMER_* (the bulk-bill group is the service
-# constant "billing-service"; the tenant-migration group is separate and IS
-# configurable — TENANT_MIGRATION_CONSUMER_GROUP below), PROMETHEUS_PORT
-# (actuator serves /billing/actuator/prometheus on the app port).
-# The Go SCHEMA_SEPARATION_* / MIGRATION_* group is replaced by
-# TENANT_MIGRATION_* below, now that com.digit:tenant-migration is integrated.
+# ── Container env ─────────────────────────────────────────────────────────────
+# Configured through Spring properties; only deployment-specific overrides set here.
 env: |
+  # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
     value: "8080"
-  # ── Datasource ──────────────────────────────────────────────────────────
-  - name: SPRING_DATASOURCE_URL
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: db-url
-  - name: SPRING_DATASOURCE_USERNAME
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: SPRING_DATASOURCE_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
-  # Migration is handled by the init container above — app-boot Flyway is off
-  - name: SPRING_FLYWAY_ENABLED
-    value: "false"
-  # ── Service ─────────────────────────────────────────────────────────────
   - name: BILLING_DEMAND_ENABLE_ARREARS
     value: "true"
   - name: BILLING_MAX_INSTRUMENT_DATE_AGE_DAYS
@@ -121,7 +90,14 @@ env: |
     value: bulk-bill-generator
   - name: BILLING_TOPICS_BULK_BILL_GENERATION_DLQ
     value: bulk-bill-generator-dlq
-  # ── Internal service clients (hosts end with "/", paths are relative) ───
+
+  # ── Datasource ───────────────────────────────────────────────────────────
+  # migration handled by the init container above - app-boot Flyway is off
+  - name: SPRING_FLYWAY_ENABLED
+    value: "false"
+
+  # ── Internal service clients ─────────────────────────────────────────────
+  # hosts end with "/", paths are relative
   - name: BILLING_IDGEN_HOST
     valueFrom:
       configMapKeyRef:
@@ -144,8 +120,6 @@ env: |
         name: egov-service-host
   - name: BILLING_APPORTION_BILL_PATH
     value: apportion/v3/bills
-  # Bill / receipt PDFs: upload to filestore, org header from account. Host from the shared
-  # map ends with "/", so the paths are relative (the service default paths start with "/").
   - name: BILLING_FILESTORE_HOST
     valueFrom:
       configMapKeyRef:
@@ -155,14 +129,15 @@ env: |
     value: filestore/v3/files/upload
   - name: BILLING_FILESTORE_DOWNLOAD_PATH
     value: filestore/v3/files/{id}
-  # egov-service-host has no account key (nothing else calls account by host).
+  # egov-service-host has no account key (nothing else calls account by host)
   - name: ACCOUNTS_HOST
     value: http://account.egov.svc.cluster.local:8080
-  # A filestore/account outage must not fail bill generation; POST
-  # /billing/internal/bills/pdf-backfill fills the PDF in later.
+  # a filestore/account outage must not fail bill generation; PDF backfilled later
   - name: BILLING_PDF_FAIL_ON_ERROR
     value: "false"
-  # ── Messaging (bulk-bill pipeline; tracer PubSubClient, kafka backend) ──
+
+  # ── Messaging ────────────────────────────────────────────────────────────
+  # kafka is required - account publishes account-migration to kafka only
   - name: TRACER_PUBSUB_TYPE
     value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
@@ -170,23 +145,20 @@ env: |
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
-  # NB: kafka is required, not a preference — account publishes account-migration
-  # to kafka only, so a redis switch here would silently stop schema provisioning.
-  # ── Per-tenant schemas (com.digit:tenant-migration) ──────────────────────
-  # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above.
-  # Set once at initial deployment; not flipped on a running deployment.
+
+  # ── Per-tenant schemas ───────────────────────────────────────────────────
+  # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above
   - name: TENANT_MIGRATION_ENABLED
     value: "true"
-  # some services spell the same switch SCHEMA_SEPARATION_MODE
   - name: SCHEMA_SEPARATION_MODE
     value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
     value: billing_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
     value: billing
-  # ── Observability: OTel span export and metrics export both disabled ──────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
+
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
+  # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
@@ -197,6 +169,7 @@ env: |
     value: "1.0"
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
     value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
-  # ── Logging (Go chart ran at DEBUG) ──────────────────────────────────────
+
+  # ── Logging ──────────────────────────────────────────────────────────────
   - name: LOGGING_LEVEL_ORG_DIGIT
     value: DEBUG

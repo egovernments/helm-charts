@@ -1,15 +1,15 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "digit-localization"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "localization"
 
-# Init Containers Configs
+# ── Init containers (flyway DB migration) ──────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -46,20 +46,21 @@ initContainers:
         - name: FLYWAY_DEFAULT_SCHEMA
           value: public
 
-# Container Configs
+# ── Container ──────────────────────────────────────────────────────────────────
 image:
   repository: "localization"
 replicas: 1
 appType: "java"
-# OTel span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED) — override per
-# environment via the digit-localization block in environments/<env>.yaml
+
+# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
-tracing-enabled: false # Assuming you want to keep tracing
+tracing-enabled: false
+
 healthChecks:
   enabled: true
   livenessProbePath: "/health"
   readinessProbePath: "/health"
-# Resource configuration for Go service
+
 resources: |
   requests:
     cpu: "150m"
@@ -68,90 +69,38 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# Additional Container Envs
+# ── Container env ──────────────────────────────────────────────────────────────
 env: |
-  # Per-tenant schema separation: consume the account-migration event and run
-  # this service's migrations into the tenant's schema (schema-table and
-  # consumer group are baked into the service defaults).
-  - name: TENANT_MIGRATION_ENABLED
-    value: "true"
-  # tracer's KafkaPubSubClient reads spring.kafka.bootstrap-servers, which this
-  # service's properties do not map from KAFKA_BROKERS — without it the
-  # tenant-migration consumer silently bootstraps against localhost:9092.
-  - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: kafka-brokers
+  # ── Service ──────────────────────────────────────────────────────────────
   - name: HTTP_PORT
     value: "8080"
-  - name: DB_MAX_OPEN_CONNS
-    value: "100"
-  - name: DB_MAX_IDLE_CONNS
-    value: "50"
-  - name: DB_CONN_MAX_LIFETIME
-    value: 15m
-  - name: DB_HOST
-    value: postgresql-lts.egov
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_SSL_MODE
-    value: disable
-  - name: DB_NAME
-    value: postgres
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
-  - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
-  - name: REDIS_PASSWORD
-  - name: REDIS_DB
-    value: "0"
-  - name: OTEL_ENABLED
-    value: "false"
-  - name: OTEL_SERVICE_NAME
-    value: localization-service
-  - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
-  - name: OTEL_METRICS_ENABLED
+
+  # ── Tenant / schema separation ───────────────────────────────────────────
+  # consume account-migration, migrate into the tenant schema
+  - name: TENANT_MIGRATION_ENABLED
     value: "true"
-  - name: PROMETHEUS_PORT
-    value: "9090"
-  - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
-  - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
   - name: SCHEMA_SEPARATION_MODE
     value: "true"
   - name: SCHEMA_SEPARATION_TOPIC
     value: account-migration
+
+  # ── App-level migrations ─────────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations; the filesystem path only ever existed in the Go-era init containers
+    value: classpath:db/migration  # jar-embedded migrations
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
     value: localization_schema
-  - name: PUBSUB_ENABLED
-    value: "true"
-  - name: PUBSUB_TYPE
-    value: "kafka"
-  - name: PUBSUB_TOPIC_CREATE_MESSAGE
-    value: localization-create-message
-  - name: PUBSUB_TOPIC_UPDATE_MESSAGE
-    value: localization-update-message
-  - name: PUBSUB_TOPIC_UPSERT_MESSAGE
-    value: localization-upsert-message
-  - name: PUBSUB_TOPIC_DELETE_MESSAGE
-    value: localization-delete-message
+
+  # ── Kafka ────────────────────────────────────────────────────────────────
+  # tracer reads spring.kafka.bootstrap-servers; not mapped from KAFKA_BROKERS
+  - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: kafka-brokers
   - name: KAFKA_BROKERS
     valueFrom:
       configMapKeyRef:
@@ -165,6 +114,27 @@ env: |
     value: "1"
   - name: KAFKA_CONSUMER_GROUP
     value: localization-service
+
+  # ── PubSub ───────────────────────────────────────────────────────────────
+  - name: PUBSUB_ENABLED
+    value: "true"
+  - name: PUBSUB_TYPE
+    value: "kafka"
+  - name: PUBSUB_TOPIC_CREATE_MESSAGE
+    value: localization-create-message
+  - name: PUBSUB_TOPIC_UPDATE_MESSAGE
+    value: localization-update-message
+  - name: PUBSUB_TOPIC_UPSERT_MESSAGE
+    value: localization-upsert-message
+  - name: PUBSUB_TOPIC_DELETE_MESSAGE
+    value: localization-delete-message
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  - name: REDIS_ADDRESS
+    value: redis.backbone.svc.cluster.local:6379
+  - name: REDIS_PASSWORD
+  - name: REDIS_DB
+    value: "0"
   - name: REDIS_CONSUMER_GROUP
     value: localization-service
   - name: REDIS_CONSUMER_ID
@@ -175,9 +145,23 @@ env: |
     value: "1000000"
   - name: REDIS_CLEANUP_INTERVAL
     value: "86400"
-  # ── Observability: OTel span export disabled ──────────────────────────────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
+
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
+  # span switch is *_EXPORT_ENABLED, not *_ENABLED
+  - name: OTEL_ENABLED
+    value: "false"
+  - name: OTEL_SERVICE_NAME
+    value: localization-service
+  - name: OTEL_SERVICE_VERSION
+    value: 1.0.0
+  - name: OTEL_METRICS_ENABLED
+    value: "true"
+  - name: OTEL_TRACES_SAMPLER_ARG
+    value: "1.0"
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+  - name: PROMETHEUS_PORT
+    value: "9090"
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

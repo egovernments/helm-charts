@@ -1,0 +1,265 @@
+# ── Labels ────────────────────────────────────────────────────────────────────
+labels:
+  app: "keycloak"
+  group: "keycloak"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+# global.namespace (the env file) takes precedence.
+namespace: digit3-core
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  gateway: false
+  context: "keycloak"
+
+# ── Container ──────────────────────────────────────────────────────────────────
+image:
+  repository: "keycloak"
+  # Kargo (digit-core3-0) writes keycloak.image.tag in the env file.
+  tag: "keycloak-spi-custom-build-aardhya-78019f9"
+replicas: "1"
+
+tracing-enabled: "true"
+metrics-enabled: "true"
+events-listeners: "jboss-logging,register-citizen-listener"
+
+cpu_requests: "250m"
+memory_requests: "512Mi"
+cpu_limits: "500m"
+memory_limits: "1024Mi"
+
+resources: |
+  requests:
+    {{- if index .Values "cpu_requests" }}
+    cpu: {{ index .Values "cpu_requests" | quote }}
+    {{- end }}
+    {{- if index .Values "memory_requests" }}
+    memory: {{ .Values.memory_requests | quote }}
+    {{- end }}
+  limits:
+    {{- if index .Values "cpu_limits" }}
+    cpu: {{ index .Values "cpu_limits" | quote }}
+    {{- end }}
+    {{- if index .Values "memory_limits" }}
+    memory: {{ .Values.memory_limits | quote }}
+    {{- end }}
+
+# ── Container env ──────────────────────────────────────────────────────────────
+env: |
+  # ── Server ───────────────────────────────────────────────────────────────
+  - name: SERVER_PORT
+    value: "8080"
+  - name: KC_PROXY
+    value: "edge"
+  - name: KC_HTTP_RELATIVE_PATH
+    value: "/keycloak"
+  - name: KC_FEATURES
+    value: "token-exchange,admin-fine-grained-authz"
+
+  # ── Database ─────────────────────────────────────────────────────────────
+  # KC_DB_URL from egov-config/<dbInit.urlKey> so each env has its own db; db-init creates it.
+  - name: KC_DB_URL
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: {{ .Values.dbInit.urlKey | quote }}
+  - name: KC_DB
+    value: "postgres"
+  - name: DB_PORT
+    value: "5432"
+  - name: KC_DB_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: kc-db
+        key: username
+  - name: KC_DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: kc-db
+        key: password
+  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+    value: "org.postgresql.Driver"
+
+  # ── Admin ────────────────────────────────────────────────────────────────
+  - name: KEYCLOAK_ADMIN
+    valueFrom:
+      secretKeyRef:
+        name: kc-admin
+        key: username
+  - name: KEYCLOAK_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: kc-admin
+        key: password
+
+  # ── Events / Kafka ───────────────────────────────────────────────────────
+  - name: KC_EVENTS_LISTENERS
+    value: {{ index .Values "events-listeners" | quote }}
+  - name: KC_SPI_EVENTS_LISTENER_REGISTER_CITIZEN_LISTENER_ENABLED
+    value: "true"
+  - name: KAFKA_BOOTSTRAP_SERVERS
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: kafka-brokers
+
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
+  # Whole block is gated: tracing/metrics off renders none of these, so adopting an
+  # existing deployment does not roll the pod. Use a real boolean in the env file
+  # (tracing-enabled: false) - in Helm a non-empty string "false" is TRUTHY.
+  {{- if index .Values "tracing-enabled" }}
+  - name: KC_TRACING_ENABLED
+    value: "true"
+  - name: KC_TELEMETRY_ENDPOINT
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-exporter-otlp-endpoint
+  - name: KC_TELEMETRY_PROTOCOL
+    value: "http"
+  - name: KC_TELEMETRY_SERVICE_NAME
+    value: "keycloak"
+  - name: KC_TELEMETRY_SAMPLER_TYPE
+    value: "parentbased_always_on"
+  {{- end }}
+  {{- if index .Values "metrics-enabled" }}
+  # KC_HTTP_MANAGEMENT_PORT left unset so management stays on default 9000 (metrics via
+  # keycloak-management Service); pinning it to 8080 put two servers on one port -> ~1/4
+  # of requests 404'd and exposed /keycloak/metrics through the ingress.
+  - name: KC_METRICS_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if index .Values "tracing-enabled" }}
+  - name: OTEL_SERVICE_NAME
+    value: "keycloak"
+  {{- end }}
+  # Always emitted: Keycloak reads OTEL_TRACES_EXPORTER unconditionally.
+  - name: OTEL_TRACES_EXPORTER
+    value: {{ if index .Values "tracing-enabled" }}"otlp"{{ else }}"none"{{ end }}
+  {{- if index .Values "tracing-enabled" }}
+  # OTEL_EXPORTER_OTLP_ENDPOINT comes from common's otel block; only the protocol is set
+  # here so the SDK uses OTLP/HTTP, matching the :4318 collector port.
+  - name: OTEL_EXPORTER_OTLP_PROTOCOL
+    value: "http/protobuf"
+  {{- end }}
+
+  # ── OTP ──────────────────────────────────────────────────────────────────
+  # DIGIT 3.0 otp in the same namespace. Override per environment with `otp-host`.
+  - name: OTP_HOST
+    value: {{ index .Values "otp-host" | default "http://otp:8080/" | quote }}
+  - name: OTP_GENERATE_PATH
+    value: "otp/v3/generate"
+  - name: OTP_RESEND_PATH
+    value: "otp/v3/resend"
+  - name: OTP_VERIFY_PATH
+    value: "otp/v3/verify"
+  - name: OTP_INVALIDATE_PATH
+    value: "otp/v3/invalidate"
+  - name: OTP_EMAIL_PURPOSE
+    value: "login"
+  - name: OTP_SMS_PURPOSE
+    value: "login"
+  # Citizen self-registration via OTP (present on every running deployment).
+  # *_DEFAULT_OTP is a NON-PRODUCTION convenience; override `otp-default`, never ship a fixed OTP.
+  - name: OTP_EMAIL_DEFAULT_OTP
+    value: {{ index .Values "otp-default" | default "123456" | quote }}
+  - name: OTP_SMS_DEFAULT_OTP
+    value: {{ index .Values "otp-default" | default "123456" | quote }}
+  - name: OTP_REGISTRATION_PURPOSE
+    value: "registration"
+  - name: OTP_REGISTRATION_DEFAULT_OTP
+    value: {{ index .Values "otp-default" | default "123456" | quote }}
+  - name: OTP_REGISTRATION_ROLES
+    value: {{ index .Values "otp-registration-roles" | default "CITIZEN" | quote }}
+  - name: KEYCLOAK_EMAIL_DESTINATION_ATTRIBUTE
+    value: "email"
+  - name: KEYCLOAK_SMS_DESTINATION_ATTRIBUTE
+    value: "mobileNumber"
+  - name: HTTP_CLIENT_CONNECT_TIMEOUT_MS
+    value: "3000"
+  - name: HTTP_CLIENT_REQUEST_TIMEOUT_MS
+    value: "5000"
+
+  # ── Hostname ─────────────────────────────────────────────────────────────
+  # Derived from global.domain so issuer/redirect URLs are correct behind the ingress.
+  - name: KC_HOSTNAME
+    value: "https://{{ .Values.global.domain }}/keycloak"
+  - name: KC_HOSTNAME_STRICT
+    value: {{ index .Values "hostname-strict" | default "true" | quote }}
+
+# ── Service monitor ─────────────────────────────────────────────────────────────
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  honorLabels: true
+
+# ── Database bootstrap (db-init) ────────────────────────────────────────────────
+# Before Keycloak starts, the db-init init container reads the JDBC URL from
+# egov-config/<urlKey>, waits for the server and, as the admin user, creates the kc-db
+# role (or resets its password) and the database owned by it. Idempotent on every start.
+dbInit:
+  enabled: true
+  urlKey: keycloak-db-url
+  image: "postgres:17-alpine"   # psql >= 15 (\getenv); any PostgreSQL server version
+  adminUser: postgres
+  adminSecret:                  # admin password; the role needs CREATEROLE + CREATEDB
+    name: db
+    key: superuserPassword
+
+initContainers:
+  extraInitContainers: |
+    {{- if .Values.dbInit.enabled }}
+    - name: db-init
+      image: {{ .Values.dbInit.image | quote }}
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: KC_DB_URL
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: {{ .Values.dbInit.urlKey | quote }}
+        - name: KC_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: kc-db
+              key: username
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kc-db
+              key: password
+        - name: PGUSER
+          value: {{ .Values.dbInit.adminUser | quote }}
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.dbInit.adminSecret.name | quote }}
+              key: {{ .Values.dbInit.adminSecret.key | quote }}
+      command: ["/bin/sh", "-ec"]
+      args:
+        - |
+          # jdbc:postgresql://host[:port]/database[?params]
+          url="${KC_DB_URL#jdbc:postgresql://}"
+          hostport="${url%%/*}"
+          rest="${url#*/}"
+          export KC_DB_NAME="${rest%%\?*}"
+          export PGHOST="${hostport%%:*}"
+          PGPORT="${hostport##*:}"
+          [ "$PGPORT" = "$hostport" ] && PGPORT=5432
+          export PGPORT
+          echo "db-init: ${PGHOST}:${PGPORT} database ${KC_DB_NAME} role ${KC_DB_USERNAME}"
+          until pg_isready -q -d postgres; do echo "db-init: waiting for ${PGHOST}:${PGPORT}"; sleep 3; done
+          psql -X -q -v ON_ERROR_STOP=1 -d postgres <<'SQL'
+          \getenv kc_user KC_DB_USERNAME
+          \getenv kc_pass KC_DB_PASSWORD
+          \getenv kc_db KC_DB_NAME
+          SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'kc_user', :'kc_pass')
+            WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'kc_user') \gexec
+          SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'kc_user', :'kc_pass') \gexec
+          SELECT format('CREATE DATABASE %I OWNER %I', :'kc_db', :'kc_user')
+            WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'kc_db') \gexec
+          SELECT format('ALTER DATABASE %I OWNER TO %I', :'kc_db', :'kc_user') \gexec
+          SQL
+          echo "db-init: ready"
+    {{- end }}

@@ -1,14 +1,15 @@
-# Common Labels
+# ── Labels ──────────────────────────────────────────────────────────────────
 labels:
   app: "mdms-v2"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "mdms-v2"
 
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: true
@@ -16,21 +17,22 @@ initContainers:
     image:
       repository: "mdms-v2-db"
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "mdms-v2"
 replicas: "1"
-healthChecks:
-  enabled: true
-  livenessProbePath: "/mdms-v2/health"
-  readinessProbePath: "/mdms-v2/health"
-appType: "java-spring"
+appType: "java"
 tracing-enabled: true
 heap: "-Xmx512m -Xms512m"
 java-args: "-Dspring.profiles.active=monitoring"
 egov-mdms-schema-definition-save-topic: "save-mdms-schema-definition"
 egov-mdms-data-save-topic: "save-mdms-data"
-# Resource configuration for Go service
+
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "200m"
@@ -39,8 +41,9 @@ resources: |
     cpu: "200m"
     memory: "512Mi"
 
-# Additional Container Envs
+# ── Container env ─────────────────────────────────────────────────────────────
 env: |
+  # ── Kafka ────────────────────────────────────────────────────────────────
   - name: SPRING_KAFKA_CONSUMER_GROUP_ID
     value: egov-mdms-service-consumer-group
   - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
@@ -49,6 +52,8 @@ env: |
   - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
     value: org.egov.tracer.kafka.serializer.ISTTimeZoneJsonSerializer
   {{- end }}
+
+  # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: JAVA_ARGS
@@ -61,14 +66,13 @@ env: |
     value: "false"
   - name: JAVA_ENABLE_DEBUG
     value: "true"
+
+  # ── MDMS topics ──────────────────────────────────────────────────────────
   - name: EGOV_MDMS_SCHEMA_DEFINITION_SAVE_TOPIC
     value: {{ index .Values "egov-mdms-schema-definition-save-topic" | quote }}
   - name: EGOV_MDMS_DATA_SAVE_TOPIC
     value: {{ index .Values "egov-mdms-data-save-topic" | quote }}
-  # SPRING_DATASOURCE_URL intentionally NOT set here: common's extraEnv.java
-  # already emits the identical value (egov-config/db-url). The duplicate key
-  # broke ServerSideApply diffing, so the app could not sync.
+
+  # ── Observability (OpenTelemetry) ────────────────────────────────────────
   - name: OTEL_TRACES_EXPORTER
     value: "none"
-  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
-    value: "org.postgresql.Driver"

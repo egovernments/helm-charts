@@ -1,27 +1,20 @@
-# Common Labels
+# ── Labels ────────────────────────────────────────────────────────────────────
 labels:
   app: "digit-pg-service"
   group: "core"
 
-# Ingress Configs
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
   gateway: true
   context: "pg-service"
 
-# Init Containers Configs
-# DB migration runs in an init container (preferred strategy) — same as the
-# reference chart. The migration image ships the Flyway SQL + migrate.sh and runs
-# against the elevated flyway credentials before the app starts; the app itself has
-# in-boot Flyway disabled (SPRING_FLYWAY_ENABLED=false below). History table
-# pg_service_schema matches migrate.sh's -table setting and spring.flyway.table.
-#
-# The image lays the scripts out as /flyway/sql/migration + /flyway/sql/quartz and
-# relies on Flyway scanning FLYWAY_LOCATIONS recursively, so the shared
-# egov-config/flyway-locations value must resolve to the /flyway/sql root. Quartz
-# stays a separate folder so the app-side tenant migration
-# (digit.tenant-migration.flyway-locations=classpath:/db/migration) can never pick
-# up the framework tables — those belong in public only.
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+# DB migration runs in an init container; app-boot Flyway is off (SPRING_FLYWAY_ENABLED=false below).
+# History table pg_service_schema matches migrate.sh's -table setting and spring.flyway.table.
+# The image lays scripts out as /flyway/sql/migration + /flyway/sql/quartz; FLYWAY_LOCATIONS must
+# resolve to the /flyway/sql root. Quartz stays separate so app-side tenant migration never picks up
+# the framework tables (those belong in public only).
 initContainers:
   dbMigration:
     enabled: true
@@ -58,18 +51,19 @@ initContainers:
       - name: FLYWAY_DEFAULT_SCHEMA
         value: public
 
-# Container Configs
+# ── Container ─────────────────────────────────────────────────────────────────
 image:
   repository: "pg-service"
 replicas: "1"
 appType: "java"
-tracing-enabled: false
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
+tracing-enabled: false
+
 healthChecks:
   enabled: false
-  livenessProbePath: "/digit-pg-service/actuator/health/liveness"
-  readinessProbePath: "/digit-pg-service/actuator/health/readiness"
-# Resource configuration for the Java service
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
 resources: |
   requests:
     cpu: "150m"
@@ -78,9 +72,9 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# Gateway toggles — a gateway is only advertised by /gateway/v3/_search when its
-# <gateway>.active is true AND its credentials resolve. Set the matching secret
-# keys in egov-pg-service before flipping one on.
+# ── Payment gateways ──────────────────────────────────────────────────────────
+# A gateway is advertised by /gateway/v3/_search only when its <gateway>.active is true
+# AND its credentials resolve. Set the matching secret keys in egov-pg-service before flipping one on.
 axis: false
 payu: false
 paytm: false
@@ -98,63 +92,43 @@ ccavenue-url-cancel: ""
 java-args: "-Dspring.profiles.active=monitoring"
 java-debug: "true"
 
-# Additional Container Envs
-# The service is configured through Spring properties (relaxed env binding), not
-# the reference's env var names. Defaults baked into the image's
-# application.properties are only overridden where the deployment differs.
-#
-# Two naming traps carried over from the reference chart, both fixed here:
-#   - the topic properties are messaging.broker.topic.* (MESSAGING_…), not
-#     message.broker.topic.* — the reference chart set the latter, which this
-#     service never reads;
-#   - SECURITY_BASIC_ENABLED / MANAGEMENT_SECURITY_ENABLED / SPRING_KAFKA_CONSUMER_*
-#     / MANAGEMENT_HEALTH_REDIS_ENABLED are Boot 1.x-era knobs with no binding in
-#     Boot 4 and are dropped rather than carried forward dead.
-# Dropped with the code that never ran: INDIVIDUAL_* and PG_IS_USER_CREATE_ENABLED
-# (the reference's user-creation path is gone), CCAVENUE_* (no gateway
-# implementation in this port).
+# ── Container env ─────────────────────────────────────────────────────────────
+# Configured through Spring properties (relaxed env binding); topic properties are messaging.broker.topic.*
+# (MESSAGING_...), not message.broker.topic.*.
 env: |
+  # ── Service ───────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
     value: "8080"
-  # ── Datasource ──────────────────────────────────────────────────────────
-  - name: SPRING_DATASOURCE_URL
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: db-url
-  - name: SPRING_DATASOURCE_USERNAME
-    valueFrom:
-      secretKeyRef:
-        key: username
-        name: db
-  - name: SPRING_DATASOURCE_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        key: password
-        name: db
-  # Migration is handled by the init container above — app-boot Flyway is off
+
+  # ── Datasource ────────────────────────────────────────────────────────
+  # Migration is handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
     value: "false"
-  # ── Canonical (header-free) API ─────────────────────────────────────────
-  # Path segment of the canonical twins: /transaction/v3/{segment}/_create, etc.
-  # Moving it moves all four canonical routes together.
+
+  # ── Canonical API ─────────────────────────────────────────────────────
+  # path segment of the canonical twins: /transaction/v3/{segment}/_create, etc.
   - name: PG_SERVICE_CANONICAL_PATH
     value: canonical
-  # ── Reconciliation (Quartz jobs; tables live in public with the eg_pg_qrtz_ prefix) ──
+
+  # ── Reconciliation ────────────────────────────────────────────────────
+  # Quartz jobs; tables live in public with the eg_pg_qrtz_ prefix
   - name: PG_EARLYRECONCILEJOBRUNINTERVAL_MINS
     value: "15"
   - name: PG_RECONCILIATION_SYSTEM_USER_UUID
     value: "b405e4d0-99ec-41b1-92e7-2ebda0321e0d"
-  # ── Transaction events (published via the tracer PubSubClient when enabled) ──
+
+  # ── Transaction events ────────────────────────────────────────────────
   - name: MESSAGE_BROKER_ENABLED
     value: "false"
   - name: MESSAGING_BROKER_TOPIC_CREATE_TXN
     value: create-pg-txn
   - name: MESSAGING_BROKER_TOPIC_UPDATE_TXN
     value: update-pg-txn
-  # ── Messaging backend (tracer PubSubClient + tenant-migration consumer) ──
+
+  # ── Messaging backend ─────────────────────────────────────────────────
+  # kafka is required, not a preference - account publishes account-migration to kafka only
   - name: TRACER_PUBSUB_TYPE
     value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
@@ -162,9 +136,9 @@ env: |
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
-  # NB: kafka is required, not a preference — account publishes account-migration
-  # to kafka only, so a redis switch here would silently stop schema provisioning.
-  # ── Internal service clients (hosts end with "/", paths are relative) ───
+
+  # ── Internal service clients ──────────────────────────────────────────
+  # hosts end with "/", paths are relative
   - name: IDGEN_HOST
     valueFrom:
       configMapKeyRef:
@@ -204,9 +178,9 @@ env: |
     value: individual/v3/individuals
   - name: PG_IS_USER_CREATE_ENABLED
     value: "false"
-  # ── Per-tenant schemas (com.digit:tenant-migration) ──────────────────────
-  # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above.
-  # Set once at initial deployment; not flipped on a running deployment.
+
+  # ── Per-tenant schemas ────────────────────────────────────────────────
+  # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above; set once at initial deployment
   - name: TENANT_MIGRATION_ENABLED
     value: "true"
   # some services spell the same switch SCHEMA_SEPARATION_MODE
@@ -216,9 +190,9 @@ env: |
     value: pg_service_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
     value: pg-service
-  # ── Payment gateways ────────────────────────────────────────────────────
-  # Secrets come from the existing egov-pg-service secret; the reference chart's
-  # key names are reused so no new secret has to be created.
+
+  # ── Payment gateways ──────────────────────────────────────────────────
+  # secrets come from the existing egov-pg-service secret; the reference chart's key names are reused
   {{- if .Values.stripe }}
   - name: STRIPE_ACTIVE
     value: "true"
@@ -376,9 +350,9 @@ env: |
   - name: CCAVENUE_ACTIVE
     value: "false"
   {{- end }}
-  # ── Observability: OTel span export and metrics export both disabled ──────
-  # NB: the span switch is MANAGEMENT_TRACING_EXPORT_ENABLED — MANAGEMENT_TRACING_ENABLED
-  # does not gate Boot's OTLP span exporter.
+
+  # ── Observability (OpenTelemetry) ─────────────────────────────────────
+  # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: "false"
   - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
@@ -389,7 +363,8 @@ env: |
     value: "1.0"
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
     value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
-  # ── Logging ─────────────────────────────────────────────────────────────
+
+  # ── Logging ───────────────────────────────────────────────────────────
   - name: LOGGING_LEVEL_ORG_EGOV_PG
     value: DEBUG
   - name: JAVA_ARGS
