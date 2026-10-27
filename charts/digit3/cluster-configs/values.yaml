@@ -1,45 +1,75 @@
 # cluster-configs - DIGIT 3.0
 #
-# One install per product, scoped to the product namespace (e.g. digit3-core).
-# Objects are rendered DYNAMICALLY from the lists below by templates/secrets.yaml and
-# templates/configmaps.yaml - there is no per-object template. To add a new ConfigMap or Secret,
-# add an entry here (or, more usually, in the env/local values file) - no chart change needed:
+# One install per product, scoped to the product namespace (e.g. digit3-core). Objects render
+# dynamically from the lists below (templates/secrets.yaml, templates/configmaps.yaml) - add an
+# entry here or in the env values file, no chart change needed. SAFE defaults: items carry only
+# name + namespace (no data), so nothing renders until a values file supplies data.
 #
 #   cluster-configs:
 #     secrets:
 #       service-x:
-#         name: service-x-secret         # defaults to the key (service-x)
-#         namespace: [ digit3-core ]      # one object per namespace in the list
-#         data:                           # or put keys directly under the item
-#           api-key: "<value>"            # value is base64-encoded automatically
-#
-# SAFE defaults: every item below carries only name + namespace (no data), so nothing renders
-# until a values file supplies data. Default namespace is egov; products override per item.
+#         namespace: [ digit3-core ]     # one object per namespace in the list
+#         data:
+#           api-key: "<value>"           # base64-encoded automatically
 cluster-configs:
 
-  # Namespaces to create. OFF by default; a product sets create: true, values: [ <ns> ].
+  # ── Namespaces ────────────────────────────────────────────────────────────
+  # OFF by default; a product sets create: true, values: [ <ns> ].
   namespaces:
     create: false
     values: []
 
-  # Root ingress (routes the domain root "/" to a UI). OFF by default; a product opts in.
+  # ── Root ingress ──────────────────────────────────────────────────────────
+  # Routes the domain root "/" to a UI. OFF by default; a product opts in.
   root-ingress:
     enabled: false
     name: root-ingress
     namespace: egov
     cert-issuer: "letsencrypt-staging"
-    appRoot: citizen
-    serviceName: citizen
+    appRoot: digit-ui
+    serviceName: digit-ui
     servicePort: 80
 
+  # ── ConfigMaps ────────────────────────────────────────────────────────────
   configmaps:
     egov-config:                 # shared config read by all services (db-url, kafka-brokers, ...)
       name: egov-config
       namespace: [ egov ]
-    egov-service-host:           # internal service URLs
+      data:
+        # DB datasource + Hikari pool (overridable per environment)
+        db-host: "postgresql.backbone"
+        db-port: "5432"
+        db-name: "postgres"
+        db-ssl-mode: "disable"
+        db-url: "jdbc:postgresql://postgresql.backbone:5432/postgres?sslmode=disable"
+        db-pool-max-size: "20"
+        db-pool-min-idle: "2"
+        db-pool-connection-timeout-ms: "1000"
+        # Observability
+        otel-enabled: "false"
+        otel-exporter-otlp-endpoint: "open-telemetry-opentelemetry-collector.monitoring:4318"
+        # Keycloak
+        keycloak-enabled: "false"
+        keycloak-base-url: "http://keycloak.keycloak.svc.cluster.local:8080/keycloak"
+    egov-service-host:           # internal service URLs (overridable per environment)
       name: egov-service-host
       namespace: [ egov ]
+      data:
+        apportion: http://apportion.egov:8080/
+        billing: http://billing.egov:8080/
+        boundary: http://boundary.egov:8080/
+        filestore: http://filestore.egov:8080/
+        idgen: http://idgen.egov:8080/
+        individual: http://individual.egov:8080/
+        localization: http://localization.egov:8080/
+        mdms-v2: http://mdms-v2.egov:8080/
+        notification: http://notification.egov:8080/
+        otp: http://otp.digit3-core:8080/
+        registry: http://registry.egov:8080/
+        template-config: http://template-config.egov:8080/
+        vault: http://vault.vault:8200/
 
+  # ── Secrets ───────────────────────────────────────────────────────────────
   secrets:
     db:                          # username, password, flyway-username, flyway-password
       name: db
