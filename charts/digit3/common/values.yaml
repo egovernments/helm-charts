@@ -147,10 +147,12 @@ resources: |
 # ── Extra env ─────────────────────────────────────────────────────────────────
 ## Allows specification of additional environment variables
 extraEnv:
-  # Datasource + Hikari pool for appType "java" services. Spring Boot reads these names
-  # directly (relaxed binding); values from egov-config, credentials from the db Secret.
-  # Services inherit this - do not redefine the datasource at service level.
-  db: |
+  # Injected into every appType "java" service (one gate, one block). Datasource +
+  # Hikari pool come from egov-config and the db Secret; the platform defaults are
+  # read by digit3 application.properties. Services inherit this - do not redefine
+  # the datasource at service level. (OTel is separate below: it has its own gate.)
+  java: |
+      # -- datasource + Hikari pool --
       - name: SPRING_DATASOURCE_URL
         valueFrom:
           configMapKeyRef:
@@ -183,10 +185,7 @@ extraEnv:
           configMapKeyRef:
             name: egov-config
             key: db-pool-connection-timeout-ms
-  # Platform defaults for appType "java" services (read by digit3 application.properties),
-  # injected alongside db. flyway is off in-app (the db-migration init container owns
-  # migrations). kafka/timezone/jpa resolve from egov-config (seeded per environment).
-  platform: |
+      # -- platform defaults (flyway off in-app; the db-migration init container owns migrations) --
       - name: FLYWAY_ENABLED
         value: "false"
       - name: SPRING_FLYWAY_ENABLED
