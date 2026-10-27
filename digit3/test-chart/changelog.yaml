@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-27"
+    ref: "PR-96"
+    title: "test(test-chart): verify App-token master write-back (expect 3.0.2)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "test-chart"
+        from: "3.0.1"
+        to: "3.0.2"
   - date: "2026-10-26"
     ref: "PR-93"
     title: "test(test-chart): bump to exercise master write-back (expect 3.0.1)"
