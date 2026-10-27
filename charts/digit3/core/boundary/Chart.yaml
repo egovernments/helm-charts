@@ -1,6 +1,6 @@
 apiVersion: v2
 name: boundary
-description: A Helm chart for Kubernetes
+description: Administrative boundaries and hierarchies (GeoJSON) for DIGIT 3.0
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

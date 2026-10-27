@@ -1,6 +1,6 @@
 apiVersion: v2
 name: template-config
-description: A Helm chart for Kubernetes
+description: Template configuration and payload enrichment for DIGIT 3.0
 version: 3.0.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
