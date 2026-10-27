@@ -79,11 +79,24 @@ jobs:
             echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
 
+      # Mint a token for the helm-charts-release GitHub App. It has contents:write and is a
+      # bypass actor on the master ruleset, so the version-sync step can push the Chart.yaml
+      # bumps + tags straight to protected master (the default GITHUB_TOKEN cannot).
+      - name: Generate release App token
+        id: app-token
+        uses: actions/create-github-app-token@v1.11.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.sha }}
+          # persist-credentials (default) stores this token for `origin`, so every push in
+          # this job (master sync, tags, gh-pages) runs as the App.
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Helm & yq
         run: |
