@@ -1,0 +1,27 @@
+{{- if .Values.reconciler.enabled }}
+{{- /*
+Runs on every install/upgrade (post-install,post-upgrade hook) so the app DB/role
+are reconciled immediately when the chart is deployed or its values change.
+The periodic CronJob (digit-reconciler-cronjob.yaml) covers egov-config/db changes
+that happen without a redeploy of this chart.
+*/ -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "postgresql.reconciler.name" . }}
+  namespace: {{ include "cluster.namespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        {{- include "cluster.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "postgresql.reconciler.podSpec" . | nindent 6 }}
+{{- end }}

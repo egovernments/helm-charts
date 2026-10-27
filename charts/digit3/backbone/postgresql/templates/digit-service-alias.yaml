@@ -1,0 +1,15 @@
+{{- /*
+Stable hostname: a plain "<fullname>" Service that CNAMEs to the CNPG read-write
+Service (<fullname>-rw). Lets consumers use <fullname>.<namespace> (the egov-config
+db-host default, e.g. postgresql.backbone) without hard-coding the -rw suffix.
+*/ -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cluster.fullname" . }}
+  namespace: {{ include "cluster.namespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ include "cluster.fullname" . }}-rw.{{ include "cluster.namespace" . }}.svc.cluster.local

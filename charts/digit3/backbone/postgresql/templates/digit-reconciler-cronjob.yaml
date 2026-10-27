@@ -1,0 +1,29 @@
+{{- if and .Values.reconciler.enabled .Values.reconciler.cron.enabled }}
+{{- /*
+Periodic reconcile so changes to egov-config (db-name) or the db secret
+(username/password) are applied even without a redeploy of this chart. Idempotent:
+creates the role/database only if missing, always re-asserts the password + grants.
+*/ -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "postgresql.reconciler.name" . }}-cron
+  namespace: {{ include "cluster.namespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.reconciler.cron.schedule | quote }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            {{- include "cluster.selectorLabels" . | nindent 12 }}
+        spec:
+          {{- include "postgresql.reconciler.podSpec" . | nindent 10 }}
+{{- end }}
