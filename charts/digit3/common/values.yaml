@@ -1,15 +1,19 @@
 # Default values for commons.
 # This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
+
+# ── Global ────────────────────────────────────────────────────────────────────
 global:
     mode: prod                 # prod | dev  (dev allows image.tag override; see common.image)
     containerRegistry: egovio
 
+# ── Workload defaults ───────────────────────────────────────────────────────────
 namespace: egov
 replicas: 1
 httpPort: 8080
 appType: ""
 
+# ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: false
   gateway: false
@@ -25,12 +29,15 @@ ingress:
       nginx.ingress.kubernetes.io/lua-resty-waf-allow-unknown-content-types: "true"
       nginx.ingress.kubernetes.io/lua-resty-waf-process-multipart-body: "false"
 
+# ── Image ─────────────────────────────────────────────────────────────────────
 image:
   pullPolicy: IfNotPresent
 
+# ── Affinity ──────────────────────────────────────────────────────────────────
 affinity:
     preferSpreadAcrossAZ: true
 
+# ── Init containers ─────────────────────────────────────────────────────────────
 initContainers:
   dbMigration:
     enabled: false
@@ -39,17 +46,10 @@ initContainers:
       tag: latest
     env: |
         - name: "DB_URL"
-        {{- if eq .Values.namespace "health" }}
-          valueFrom:
-            configMapKeyRef:
-              name: egov-config
-              key: health-db-url
-        {{- else }}
           valueFrom:
             configMapKeyRef:
               name: egov-config
               key: db-url
-        {{- end }}
         - name: "SCHEMA_TABLE"
           value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
         - name: "FLYWAY_USER"
@@ -90,6 +90,7 @@ initContainers:
         - name: "GIT_SYNC_ROOT"
           value: "/work-dir"
 
+# ── Health checks ───────────────────────────────────────────────────────────────
 healthChecks:
     enabled: false
     livenessProbe: |
@@ -111,6 +112,7 @@ healthChecks:
         successThreshold: 1
         failureThreshold: 5
 
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
 lifecycle:
     preStop:
         exec:
@@ -119,12 +121,13 @@ lifecycle:
             - -c
             - "sleep 10"
 
+# ── Resources ─────────────────────────────────────────────────────────────────
 cpu_requests: "100m"
 memory_requests: "256Mi"
 cpu_limits: "300m"
 memory_limits: "512Mi"
 resources: |
-  {{- if eq .Values.appType "java-spring" -}}
+  {{- if eq .Values.appType "java" -}}
   requests:
     {{- if index .Values "cpu_requests" }}
     cpu: {{ index .Values "cpu_requests" | quote }}
@@ -141,21 +144,48 @@ resources: |
     {{- end }}
   {{- end -}}
 
+# ── Extra env ─────────────────────────────────────────────────────────────────
 ## Allows specification of additional environment variables
 extraEnv:
+  # Injected into every appType "java" service (one gate, one block). Datasource +
+  # Hikari pool come from egov-config and the db Secret; the platform defaults are
+  # read by digit3 application.properties. Services inherit this - do not redefine
+  # the datasource at service level. (OTel is separate below: it has its own gate.)
   java: |
+      # -- datasource + Hikari pool --
       - name: SPRING_DATASOURCE_URL
-      {{- if eq .Values.namespace "health" }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: health-db-url
-      {{- else }}
         valueFrom:
           configMapKeyRef:
             name: egov-config
             key: db-url
-      {{- end }}
+      - name: SPRING_DATASOURCE_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: db
+            key: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: db
+            key: password
+      - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        value: "org.postgresql.Driver"
+      - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: db-pool-max-size
+      - name: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: db-pool-min-idle
+      - name: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: db-pool-connection-timeout-ms
+      # -- platform defaults (flyway off in-app; the db-migration init container owns migrations) --
       - name: FLYWAY_ENABLED
         value: "false"
       - name: SPRING_FLYWAY_ENABLED
@@ -167,74 +197,6 @@ extraEnv:
           configMapKeyRef:
             name: egov-config
             key: timezone
-      - name: FLYWAY_URL
-      {{- if eq .Values.namespace "health" }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: health-db-url
-      {{- else }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: db-url
-      {{- end }}
-      - name: SPRING_DATASOURCE_USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: db
-            key: username
-      - name: SPRING_DATASOURCE_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: db
-            key: password
-      - name: SPRING_DATASOURCE_TOMCAT_INITIAL_SIZE
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: spring-datasource-tomcat-initialSize
-      - name: SERVER_TOMCAT_MAX_THREADS
-      {{- if index .Values "server-tomcat-max-threads" }}
-        value: {{ index .Values "server-tomcat-max-threads" | quote }}
-      {{- else }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: server-tomcat-max-threads
-      {{- end }}
-      - name: SERVER_TOMCAT_MAX_CONNECTIONS
-      {{- if index .Values "server-tomcat-max-connections" }}
-        value: {{ index .Values "server-tomcat-max-connections" | quote }}
-      {{- else }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: server-tomcat-max-connections
-      {{- end }}
-      - name: SPRING_DATASOURCE_TOMCAT_MAX_ACTIVE
-      {{- if index .Values "spring-datasource-tomcat-max-active" }}
-        value: {{ index .Values "spring-datasource-tomcat-max-active" | quote }}
-      {{- else }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: spring-datasource-tomcat-max-active
-      {{- end }}
-      - name: SPRING_DATASOURCE_HIKARI_MAXIMUM-POOL-SIZE
-      {{- if index .Values "spring-datasource-tomcat-max-active" }}
-        value: {{ index .Values "spring-datasource-tomcat-max-active" | quote }}
-      {{- else }}
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: spring-datasource-tomcat-max-active
-      {{- end }}
-      - name: KAFKA_CONFIG_BOOTSTRAP_SERVER_CONFIG
-        valueFrom:
-          configMapKeyRef:
-            name: egov-config
-            key: kafka-brokers
       - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
         valueFrom:
           configMapKeyRef:
@@ -247,30 +209,33 @@ extraEnv:
             key: spring-jpa-show-sql
       - name: IS_ENVIRONMENT_CENTRAL_INSTANCE
         value: "false"
-
-  jaeger: |
-      - name: JAEGER_SERVICE_NAME
-        value: {{ template "common.name" . }}
-      - name: JAEGER_SAMPLER_TYPE
-        value: remote
-      - name: JAEGER_AGENT_HOST
-      {{- if and (index .Values "jaeger") (index .Values "jaeger" "host") }}
-        value: {{ index .Values "jaeger" "host" | quote }}
-      {{- else }}
+      # -- embedded Tomcat web server (native Spring Boot server.tomcat.* props) --
+      - name: SERVER_TOMCAT_THREADS_MAX
         valueFrom:
-          fieldRef:
-            fieldPath: status.hostIP
-      {{- end }}
-      - name: JAEGER_AGENT_PORT
-      {{- if and (index .Values "jaeger") (index .Values "jaeger" "port") }}
-        value: {{ index .Values "jaeger" "port" | quote }}
-      {{- else }}
-        value: "6831"
-      {{- end }}
-      - name: JAEGER_SAMPLER_MANAGER_HOST_PORT
-        value: "$(JAEGER_AGENT_HOST):5778"
-      - name: TRACER_OPENTRACING_ENABLED
-        value: "true"
+          configMapKeyRef:
+            name: egov-config
+            key: server-tomcat-threads-max
+      - name: SERVER_TOMCAT_MAX_CONNECTIONS
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: server-tomcat-max-connections
+  # OpenTelemetry: injected only when tracing is enabled. Toggle + endpoint from egov-config
+  # (otel-enabled defaults "false"); service-name/version/sampling keep the app's own defaults.
+  otel: |
+      - name: OTEL_ENABLED
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: otel-enabled
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: otel-exporter-otlp-endpoint
+  # promote (optional, per service): appended LAST so its entries override earlier duplicates.
+
+# ── Extra containers / volumes ──────────────────────────────────────────────────
 ## Additional init containers
 extraInitContainers: |
 
@@ -283,6 +248,7 @@ extraVolumeMounts: |
 
 additionalLabels: {}
 
+# ── Security ──────────────────────────────────────────────────────────────────
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -294,6 +260,7 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# ── Service ───────────────────────────────────────────────────────────────────
 service:
   additionalAnnotations: {}
 
@@ -301,6 +268,7 @@ serviceMonitor:
   honorLabels: true
   # interval: 2m
 
+# ── Cron ──────────────────────────────────────────────────────────────────────
 cron:
   namespace: egov
   concurrencyPolicy: Forbid
