@@ -49,6 +49,8 @@ cluster-configs:
         kafka-brokers: "kafka-controller-headless.backbone:9092"
         timezone: "Asia/Kolkata"
         spring-jpa-show-sql: "false"
+        server-tomcat-threads-max: "200"
+        server-tomcat-max-connections: "8192"
         # Observability
         otel-enabled: "false"
         otel-exporter-otlp-endpoint: "open-telemetry-opentelemetry-collector.monitoring:4318"
