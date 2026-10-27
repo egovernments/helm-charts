@@ -2,5 +2,5 @@ apiVersion: v2
 name: test-chart
 description: Throwaway chart to validate the release pipeline's version-bump + master write-back. Delete after testing.
 type: application
-version: 3.0.0
+version: 3.0.2
 appVersion: "1.0.0"
