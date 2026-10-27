@@ -45,6 +45,10 @@ cluster-configs:
         db-pool-max-size: "20"
         db-pool-min-idle: "2"
         db-pool-connection-timeout-ms: "1000"
+        # Platform (read by appType java services via common.extraEnv.java)
+        kafka-brokers: "kafka-controller-headless.backbone:9092"
+        timezone: "UTC"
+        spring-jpa-show-sql: "false"
         # Observability
         otel-enabled: "false"
         otel-exporter-otlp-endpoint: "open-telemetry-opentelemetry-collector.monitoring:4318"
