@@ -79,7 +79,7 @@ Service charts declare `common` as a dependency pulled from the registry:
 # charts/digit3/core/localization/Chart.yaml
 dependencies:
   - name: common
-    version: 1.0.0
+    version: 3.1.0
     repository: https://helm.digit.org/digit3/common
 ```
 
@@ -87,18 +87,40 @@ At release time CI runs `helm dependency build`, which downloads the pinned `com
 from the registry. This means **`common` must be published before any chart that depends on it**,
 and a dependent's `version:` must point at a `common` version that already exists in the registry.
 
-### Image tags come from values, defaulted to the service's appVersion
+### What `common` provides
 
-The `common` library's `common.image` helper **requires** an image tag (`required "Tag is mandatory"`).
-It does not fall back to `appVersion` on its own. The convention is:
+`common` is more than shared templates - it **centralises runtime config** so every service is wired
+the same way. For a chart with `appType: "java"` it injects (via `extraEnv.java`) the datasource
+(`SPRING_DATASOURCE_*` from `egov-config`/the `db` Secret), the Hikari pool, the Kafka brokers, the
+timezone, flyway/JPA/Tomcat settings and the actuator base-path - all read from the `egov-config`
+ConfigMap and the `db` Secret. A separate `extraEnv.otel` block adds OpenTelemetry env when tracing
+is enabled. Services therefore **do not** redefine their datasource, broker or pool; they inherit
+them. See [onboarding-a-service.md](onboarding-a-service.md) for the exact fields.
 
-- set the chart's `appVersion` to the image tag you want (e.g. `flyway-branch-18c74fe`), and
-- set `image.tag` (and any init-container image tag) in `values.yaml` to the same value.
+### Shared config: `cluster-configs`
 
-Both are plain `values.yaml` defaults, so a values file supplied at install time overrides them:
+The values those env vars read from are defined in one place - the `cluster-configs` chart
+(`charts/digit3/cluster-configs`). It renders the shared `egov-config` ConfigMap (db URL, pool,
+Kafka brokers, timezone, OTel toggle, Keycloak), the `egov-service-host` ConfigMap (internal service
+URLs), and declares the named Secrets (`db`, `minio`, …). It is installed once per product namespace,
+before the services. Platform-neutral defaults live here; environment-specific values are overridden
+in `environments/<env>.yaml`.
+
+### Image tags: the `global.mode` mechanism
+
+`common.image` resolves the tag from `global.mode` (default `prod`, set in `common`):
+
+- **prod** (default): the image tag is always the chart's `Chart.AppVersion`. `image.tag` in
+  `values.yaml` is ignored. Set `appVersion` to the real tag (e.g. `flyway-branch-18c74fe`); it
+  drives both the service image and the `<service>-db` init-image.
+- **dev**: uses `.Values.image.tag` if set, else falls back to `appVersion`.
+
+So in normal operation you set `appVersion` and leave `image.tag` out. To override per environment,
+install with `global.mode=dev` and an `image.tag`:
 
 ```bash
-helm install my-release digit3-core/localization -f my-values.yaml   # my-values.yaml image.tag wins
+helm install my-release digit3-core/localization \
+  --set global.mode=dev --set image.tag=my-xyz
 ```
 
 See [onboarding-a-service.md](onboarding-a-service.md) for the exact fields.
