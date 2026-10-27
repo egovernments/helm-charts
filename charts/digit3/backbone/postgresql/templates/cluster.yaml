@@ -1,160 +1,184 @@
-{{- $v := include "pg18.values" . | fromYaml }}
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "pg18.name" . }}
-  namespace: {{ $v.namespace }}
-  labels:
-    {{- include "pg18.labels" . | nindent 4 }}
-spec:
-  instances: {{ $v.instances }}
-  imageName: {{ printf "%s:%s" $v.image.repository $v.image.tag | quote }}
-  imagePullPolicy: {{ $v.image.pullPolicy | default "IfNotPresent" }}
-  {{- with $v.imagePullSecrets }}
-  imagePullSecrets:
+  name: {{ include "cluster.fullname" . }}
+  namespace: {{ include "cluster.namespace" . }}
+  {{- with .Values.cluster.annotations }}
+  annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-
-  ## switchover promotes a standby before touching the primary, so a
-  ## multi-instance cluster updates with seconds of downtime instead of a full
-  ## restart. No effect at instances: 1.
-  primaryUpdateStrategy: {{ $v.primaryUpdateStrategy | default "unsupervised" }}
-  primaryUpdateMethod: {{ $v.primaryUpdateMethod | default "switchover" }}
-
-  enableSuperuserAccess: {{ $v.enableSuperuserAccess }}
-  {{- if and $v.enableSuperuserAccess $v.auth.superuserSecret }}
-  ## Rendered by cluster-configs from environments/<env>-secrets.yaml. Unlike
-  ## the owner password below, this one IS reconciled onto the running database
-  ## whenever the Secret changes.
-  superuserSecret:
-    name: {{ $v.auth.superuserSecret }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.cluster.instances }}
+  {{- include "cluster.image" . | trim | nindent 2 }}
+  imagePullPolicy: {{ .Values.cluster.imagePullPolicy }}
+  {{- with .Values.cluster.imagePullSecrets }}
+  imagePullSecrets:
+    {{- . | toYaml | nindent 4 }}
   {{- end }}
-  enablePDB: {{ $v.enablePDB }}
-
+  postgresUID: {{ include "cluster.postgresUID" . }}
+  postgresGID: {{ include "cluster.postgresGID" . }}
   storage:
-    size: {{ $v.storage.size }}
-    {{- if $v.storage.storageClass }}
-    storageClass: {{ $v.storage.storageClass }}
+    size: {{ .Values.cluster.storage.size }}
+    {{- if not (empty .Values.cluster.storage.storageClass) }}
+    storageClass: {{ .Values.cluster.storage.storageClass }}
     {{- end }}
-    ## Omitted when empty ON PURPOSE: the operator then uses the cluster's
-    ## default StorageClass, which is what keeps this portable across AKS,
-    ## EKS, k3s and bare metal.
-
-  {{- if $v.walStorage.enabled }}
+  {{- if .Values.cluster.walStorage.enabled }}
   walStorage:
-    size: {{ $v.walStorage.size }}
-    {{- if $v.walStorage.storageClass }}
-    storageClass: {{ $v.walStorage.storageClass }}
+    size: {{ .Values.cluster.walStorage.size }}
+    {{- if not (empty .Values.cluster.walStorage.storageClass) }}
+    storageClass: {{ .Values.cluster.walStorage.storageClass }}
     {{- end }}
   {{- end }}
-
-  {{- with $v.resources }}
+  {{- with .Values.cluster.ephemeralVolumeSource }}
+  ephemeralVolumeSource:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.cluster.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-
+  {{- with .Values.cluster.affinity }}
   affinity:
-    enablePodAntiAffinity: {{ $v.affinity.enablePodAntiAffinity }}
-    topologyKey: {{ $v.affinity.topologyKey }}
-    podAntiAffinityType: {{ $v.affinity.podAntiAffinityType | default "preferred" }}
-    {{- with $v.nodeSelector }}
-    nodeSelector:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-    {{- with $v.tolerations }}
-    tolerations:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-  {{- with $v.priorityClassName }}
-  priorityClassName: {{ . }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.cluster.env }}
+  env:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.cluster.envFrom }}
+  envFrom:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.cluster.priorityClassName }}
+  priorityClassName: {{ .Values.cluster.priorityClassName }}
   {{- end }}
 
+  primaryUpdateMethod: {{ .Values.cluster.primaryUpdateMethod }}
+  primaryUpdateStrategy: {{ .Values.cluster.primaryUpdateStrategy }}
+  {{- with .Values.cluster.stopDelay }}
+  stopDelay: {{ . }}
+  {{- end }}
+  logLevel: {{ .Values.cluster.logLevel }}
+  {{- with .Values.cluster.certificates }}
+  certificates:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  enableSuperuserAccess: {{ .Values.cluster.enableSuperuserAccess }}
+  {{- with .Values.cluster.superuserSecret }}
+  superuserSecret:
+    name: {{ . }}
+  {{- end }}
+  enablePDB: {{ .Values.cluster.enablePDB }}
   postgresql:
-    {{- with $v.postgresql.parameters }}
-    parameters:
+    {{- if or (eq .Values.type "timescaledb") (not (empty .Values.cluster.postgresql.shared_preload_libraries)) .Values.cluster.monitoring.instrumentation.pgStatStatements }}
+    shared_preload_libraries:
+      {{- if eq .Values.type "timescaledb" }}
+      - timescaledb
+      {{- end }}
+      {{- if .Values.cluster.monitoring.instrumentation.pgStatStatements }}
+      - pg_stat_statements
+      {{- end }}
+      {{- with .Values.cluster.postgresql.shared_preload_libraries }}
       {{- toYaml . | nindent 6 }}
+      {{- end }}
     {{- end }}
-    {{- with $v.postgresql.pg_hba }}
+    {{- with .Values.cluster.postgresql.pg_hba }}
     pg_hba:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-    {{- with $v.postgresql.shared_preload_libraries }}
-    shared_preload_libraries:
+    {{- with .Values.cluster.postgresql.pg_ident }}
+    pg_ident:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.cluster.postgresql.ldap  }}
+    ldap:
+      {{- toYaml . | nindent 6 }}
+    {{- end}}
+    {{- with .Values.cluster.postgresql.synchronous }}
+    synchronous:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.cluster.postgresql.parameters }}
+    parameters:
       {{- toYaml . | nindent 6 }}
     {{- end }}
 
-  monitoring:
-    enablePodMonitor: {{ $v.monitoring.enabled }}
+  {{- with .Values.cluster.replicationSlots }}
+  replicationSlots:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 
-{{- /*
-  Declarative roles. Unlike bootstrap.initdb.secret -- which the operator reads
-  once, when PGDATA is empty, and never again -- spec.managed.roles is
-  reconciled on every pass. That is the difference between a password that can
-  be rotated from SOPS and one that is frozen at bootstrap.
-
-  The owner is included automatically so the credentials in auth.existingSecret
-  stay authoritative for the life of the cluster, not just its first second.
-*/}}
-{{- $roles := list }}
-{{- if and $v.managedRoles.ownerFromSecret $v.auth.existingSecret }}
-{{- $roles = append $roles (dict
-      "name" $v.bootstrap.owner
-      "ensure" "present"
-      "login" true
-      "passwordSecret" (dict "name" $v.auth.existingSecret)) }}
-{{- end }}
-{{- range $r := ($v.managedRoles.extra | default list) }}
-{{- if not $r.name }}
-{{- fail "postgresql: every entry in managedRoles.extra needs a name" }}
-{{- end }}
-{{- if eq $r.name $v.bootstrap.owner }}
-{{- fail (printf "postgresql: managedRoles.extra redefines %q, which is already managed via managedRoles.ownerFromSecret -- two entries for one role make the applied password order-dependent" $r.name) }}
-{{- end }}
-{{- $roles = append $roles $r }}
-{{- end }}
-{{- if $roles }}
+  {{- if not (and (empty .Values.cluster.roles) (empty .Values.cluster.services)) }}
   managed:
+    {{- with .Values.cluster.services }}
+    services:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.cluster.roles }}
     roles:
-      {{- toYaml $roles | nindent 6 }}
-{{- end }}
-
-  ## initdb runs ONCE, on first bootstrap. Editing these afterwards does not
-  ## rename or recreate anything in an existing cluster.
-  bootstrap:
-    initdb:
-      database: {{ $v.bootstrap.database }}
-      owner: {{ $v.bootstrap.owner }}
-      {{- if $v.auth.existingSecret }}
-      ## Consumed ONCE, at bootstrap. Its `username` must equal owner above --
-      ## otherwise the database is created owned by a role these credentials
-      ## cannot authenticate as, and the app connects with the wrong identity.
-      secret:
-        name: {{ $v.auth.existingSecret }}
-      {{- end }}
-
-  {{- if $v.backup.enabled }}
-  {{- if not $v.backup.destinationPath }}
-  {{- fail "postgresql: backup.enabled is true but backup.destinationPath is empty -- backups would silently never run" }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   {{- end }}
-  {{- if not $v.backup.credentialsSecret }}
-  {{- fail "postgresql: backup.enabled is true but backup.credentialsSecret is empty -- create it from environments/<env>-secrets.yaml, never inline the keys" }}
+
+  {{- with .Values.cluster.serviceAccountTemplate }}
+  serviceAccountTemplate:
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  backup:
-    retentionPolicy: {{ $v.backup.retentionPolicy }}
-    barmanObjectStore:
-      destinationPath: {{ $v.backup.destinationPath }}
-      {{- with $v.backup.endpointURL }}
-      endpointURL: {{ . }}
-      {{- end }}
-      s3Credentials:
-        accessKeyId:
-          name: {{ $v.backup.credentialsSecret }}
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: {{ $v.backup.credentialsSecret }}
-          key: ACCESS_SECRET_KEY
-      wal:
-        compression: {{ $v.backup.wal.compression }}
-      data:
-        compression: {{ $v.backup.data.compression }}
+
+  {{- with .Values.cluster.podSecurityContext }}
+  podSecurityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.cluster.securityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.cluster.projectedVolumeTemplate }}
+  projectedVolumeTemplate:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  monitoring:
+    disableDefaultQueries: {{ .Values.cluster.monitoring.disableDefaultQueries }}
+    {{- if not (empty .Values.cluster.monitoring.customQueries) }}
+    customQueriesConfigMap:
+      - name: {{ include "cluster.fullname" . }}-monitoring
+        key: custom-queries
+    {{- end }}
+    {{- if not (empty .Values.cluster.monitoring.customQueriesSecret) }}
+    {{- with .Values.cluster.monitoring.customQueriesSecret }}
+    customQueriesSecret:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
+    tls:
+      enabled: {{ .Values.cluster.monitoring.tls.enabled }}
+
+  {{ include "cluster.bootstrap" . | nindent 2 -}}
+  {{ include "cluster.externalClusters" . | nindent 2 -}}
+  {{ include "cluster.backup" . | nindent 2 -}}
+
+  {{- if or (gt (len .Values.cluster.plugins) 0) (eq (include "cluster.barmanPluginRequired" .) "true") }}
+  plugins:
+    {{- $pluginsWithoutBarman := include "helpers.omitKeyValue" (list .Values.cluster.plugins (list (list "name" "barman-cloud.cloudnative-pg.io"))) | fromYamlArray }}
+    {{- with $pluginsWithoutBarman }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if or (eq (include "helpers.hasKeyValue" (list .Values.cluster.plugins (list (list "name" "barman-cloud.cloudnative-pg.io")))) "true") (eq (include "cluster.barmanPluginRequired" .) "true") }}
+    {{- $barmanPlugin := include "helpers.fetchKeyValue" (list .Values.cluster.plugins (list (list "name" "barman-cloud.cloudnative-pg.io"))) | fromYaml }}
+    - name: barman-cloud.cloudnative-pg.io
+      enabled: {{ eq $barmanPlugin.enabled nil | ternary (eq (include "cluster.barmanPluginRequired" .) "true") $barmanPlugin.enabled }}
+      isWALArchiver: {{ eq $barmanPlugin.isWALArchiver nil | ternary (eq (include "cluster.barmanPluginRequired" .) "true") $barmanPlugin.isWALArchiver }}
+      parameters:
+        {{- $parameters := (coalesce $barmanPlugin.parameters dict) -}}
+        {{- $parametersWithoutObjectName := (omit $parameters "barmanObjectName") }}
+        {{ with $parametersWithoutObjectName }}
+          {{- toYaml . | indent 8 | trim }}
+        {{- end }}
+        barmanObjectName: {{ include "cluster.barmanObjectName" (dict "context" . "suffix" "backups") | quote }}
+    {{- end }}
   {{- end }}

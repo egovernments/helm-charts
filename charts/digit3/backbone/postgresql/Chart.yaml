@@ -1,39 +1,31 @@
 apiVersion: v2
 name: postgresql
 description: >-
-  PostgreSQL 18 managed by the CloudNativePG operator. Renders a single
-  Cluster resource (plus optional ScheduledBackup) from values, so environment
-  overrides come from environments/<env>.yaml like every other chart here.
+  PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official
+  cloudnative-pg/cluster chart, with a reconciler that provisions the application
+  database + role (from egov-config and the db secret) after the cluster is ready.
 type: application
 
-# Chart version. Bump on any change to templates or default values.
+# Chart version follows this repo's digit3 3.x convention, not the upstream
+# cluster chart version (see the digit.org/upstream-* annotations below).
 version: 3.0.0
-
-# PostgreSQL major version delivered. The actual image is pinned in values.yaml.
 appVersion: "18"
+kubeVersion: ">=1.29.0-0"
 
+icon: https://raw.githubusercontent.com/cloudnative-pg/artwork/main/cloudnativepg-logo.svg
+home: https://cloudnative-pg.io
+sources:
+  - https://github.com/cloudnative-pg/charts
 keywords:
   - postgresql
+  - postgres
   - database
   - cloudnative-pg
 
-# Upstream provenance: authored on the CloudNativePG operator (renders a Cluster CRD),
-# NOT vendored from a parent Helm chart - so there is no upstream chart version to map.
-# The parent is the CNPG operand image below; appVersion tracks the PostgreSQL major.
 annotations:
-  digit.org/upstream-chart: cloudnative-pg (authored; no vendored parent chart)
-  digit.org/upstream-chart-version: "n/a"
+  # Upstream provenance: vendored from the official CloudNativePG cluster chart,
+  # so the parent chart + app versions are easy to map and re-sync.
+  digit.org/upstream-chart: cloudnative-pg/cluster
+  digit.org/upstream-chart-version: "0.9.0"
   digit.org/upstream-app-version: "18"
   digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
-
-# NOTE: cnpg/cluster is deliberately NOT declared as a dependency.
-#
-# Helm resolves subchart values before templates render, so values from
-# environments/<env>.yaml could never be mapped into a subchart's scope. The
-# Cluster resource is a small, stable CRD, so this chart renders it directly --
-# which keeps the environment-override contract identical to every other chart
-# in backbone-services, and removes the `helm dependency build` step that Argo
-# CD would otherwise run on every sync.
-#
-# The CloudNativePG OPERATOR is installed separately (see README) because its
-# CRDs must exist before any Cluster resource is applied.

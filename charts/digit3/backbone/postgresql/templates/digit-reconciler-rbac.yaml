@@ -1,0 +1,47 @@
+{{- if .Values.reconciler.enabled }}
+{{- /*
+ServiceAccount lives with the reconciler (this chart's namespace, e.g. backbone).
+The Role + RoleBinding are created in the APP namespace (egov-config + db secret
+live there), granting the reconciler read-only access to just those two objects.
+*/ -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "postgresql.reconciler.name" . }}
+  namespace: {{ include "cluster.namespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "postgresql.reconciler.name" . }}-read
+  namespace: {{ include "postgresql.appNamespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["{{ .Values.reconciler.egovConfig.name }}"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["{{ .Values.reconciler.dbSecret.name }}"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "postgresql.reconciler.name" . }}-read
+  namespace: {{ include "postgresql.appNamespace" . }}
+  labels:
+    {{- include "cluster.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "postgresql.reconciler.name" . }}
+    namespace: {{ include "cluster.namespace" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "postgresql.reconciler.name" . }}-read
+{{- end }}
