@@ -1,0 +1,60 @@
+apiVersion: v1
+entries:
+  postgresql:
+    - annotations:
+        digit.org/upstream-app-version: "18"
+        digit.org/upstream-chart: cloudnative-pg/cluster
+        digit.org/upstream-chart-version: 0.9.0
+        digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
+      apiVersion: v2
+      appVersion: "18"
+      created: "2026-10-27T14:24:51.789766598Z"
+      description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
+      digest: 95669edcfdc9faf0171de5b9d3263865a12cca2176d2f98830ef0a30b8b4638d
+      home: https://cloudnative-pg.io
+      icon: https://raw.githubusercontent.com/cloudnative-pg/artwork/main/cloudnativepg-logo.svg
+      keywords:
+        - postgresql
+        - postgres
+        - database
+        - cloudnative-pg
+      kubeVersion: '>=1.29.0-0'
+      name: postgresql
+      sources:
+        - https://github.com/cloudnative-pg/charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/postgresql/postgresql-3.0.0.tgz
+      version: 3.0.0
+  vault:
+    - annotations:
+        charts.openshift.io/name: HashiCorp Vault
+        digit.org/upstream-app-version: 1.18.1
+        digit.org/upstream-chart: hashicorp/vault-helm
+        digit.org/upstream-chart-version: 0.29.1
+      apiVersion: v2
+      appVersion: 1.18.1
+      created: "2026-10-27T14:24:51.791621697Z"
+      description: Official HashiCorp Vault Chart
+      digest: 46848aa08022feb337239da699dae8aaa575a4d3b850a7915deec1b5a84e9ec3
+      home: https://www.vaultproject.io
+      icon: https://github.com/hashicorp/vault/raw/f22d202cde2018f9455dec755118a9b84586e082/Vault_PrimaryLogo_Black.png
+      keywords:
+        - vault
+        - security
+        - encryption
+        - secrets
+        - management
+        - automation
+        - infrastructure
+      kubeVersion: '>= 1.20.0-0'
+      name: vault
+      sources:
+        - https://github.com/hashicorp/vault
+        - https://github.com/hashicorp/vault-helm
+        - https://github.com/hashicorp/vault-k8s
+        - https://github.com/hashicorp/vault-csi-provider
+      urls:
+        - https://helm.digit.org/digit3/backbone/vault/vault-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-27T14:24:51.787898699Z"
