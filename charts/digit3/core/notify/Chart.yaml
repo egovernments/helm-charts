@@ -2,7 +2,7 @@ apiVersion: v2
 name: notify
 description: Multi-channel notifications (SMS, email, WhatsApp, push)
 type: application
-version: 3.2.0
+version: 3.2.1
 appVersion: flyway-branch-18c74fe
 dependencies:
   - name: common
