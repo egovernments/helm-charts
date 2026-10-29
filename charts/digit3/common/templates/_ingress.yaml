@@ -36,9 +36,9 @@ spec:
       - backend:
 {{- if .Values.ingress.gateway }}
           service:
-            name: kong-proxy
+            name: {{ .Values.ingress.gatewayServiceName | default "kong-proxy" }}
             port:
-              number: 8000
+              number: {{ .Values.ingress.gatewayServicePort | default 8000 }}
 {{ else }}
           service:
             name: {{ .Values.ingress.serviceName | default (include "common.name" .) }}
