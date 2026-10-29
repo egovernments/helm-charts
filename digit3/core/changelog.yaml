@@ -1,364 +1,227 @@
 releases:
-  - date: "2026-10-29"
-    ref: "PR-108"
-    title: "Revert #105 (re-cut core as patch)"
-    author: "shivam-eGov"
-    release_type: "patch"
-    charts:
-      - name: "account"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "apportion"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "billing"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "boundary"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "boundary-management"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "employee"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "filestore"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "idgen"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "individual"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "keycloak"
-        from: "3.1.0"
-        to: "3.1.1"
-      - name: "kong"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "localization"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "mdms-v2"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "notification"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "notify"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "otp"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "pg-service"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "registry"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "template-config"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "url-shortener"
-        from: "3.2.0"
-        to: "3.2.1"
-      - name: "workflow"
-        from: "3.2.0"
-        to: "3.2.1"
-  - date: "2026-10-29"
-    ref: "PR-105"
-    title: "core: make all service env vars overridable + per-chart READMEs"
-    author: "shivam-eGov"
-    release_type: "minor"
-    charts:
-      - name: "account"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "apportion"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "billing"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "boundary"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "boundary-management"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "employee"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "filestore"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "idgen"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "individual"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "keycloak"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "kong"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "localization"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "mdms-v2"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "notification"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "notify"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "otp"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "pg-service"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "registry"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "template-config"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "url-shortener"
-        from: "3.1.0"
-        to: "3.2.0"
-      - name: "workflow"
-        from: "3.1.0"
-        to: "3.2.0"
-  - date: "2026-10-27"
-    ref: "PR-99"
-    title: "feat(core): adopt common 3.1.0, standardize health probes, onboard keycloak"
-    author: "shivam-eGov"
-    release_type: "minor"
-    charts:
-      - name: "account"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "apportion"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "billing"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "boundary"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "boundary-management"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "employee"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "filestore"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "idgen"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "individual"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "keycloak"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "kong"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "localization"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "mdms-v2"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "notification"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "notify"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "otp"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "pg-service"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "registry"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "template-config"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "url-shortener"
-        from: "3.0.0"
-        to: "3.1.0"
-      - name: "workflow"
-        from: "3.0.0"
-        to: "3.1.0"
-  - date: "2026-10-26"
-    ref: "PR-92"
-    title: "fix(core): correct appVersion (image tag) -> flyway-branch-18c74fe for all services"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "account"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "apportion"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "billing"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "boundary"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "boundary-management"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "employee"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "filestore"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "idgen"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "individual"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "mdms-v2"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "notification"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "notify"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "otp"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "pg-service"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "registry"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "template-config"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "url-shortener"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "workflow"
-        from: "0.0.0"
-        to: "3.0.0"
-  - date: "2026-10-26"
-    ref: "PR-91"
-    title: "feat(core): onboard notify + mdms-v2 v3.0.0"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "mdms-v2"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "notify"
-        from: "0.0.0"
-        to: "3.0.0"
-  - date: "2026-10-26"
-    ref: "PR-90"
-    title: "fix(core): correct chart names filestore / pg-service (drop digit-)"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "filestore"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "pg-service"
-        from: "0.0.0"
-        to: "3.0.0"
-  - date: "2026-10-26"
-    ref: "PR-88"
-    title: "feat(core): onboard 16 digit3 service charts v3.0.0"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "account"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "apportion"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "billing"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "boundary"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "boundary-management"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "employee"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "filestore"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "idgen"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "individual"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "notification"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "otp"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "pg-service"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "registry"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "template-config"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "url-shortener"
-        from: "0.0.0"
-        to: "3.0.0"
-      - name: "workflow"
-        from: "0.0.0"
-        to: "3.0.0"
-  - date: "2026-10-26"
-    ref: "PR-81"
-    title: "feat(localization): onboard v3.0.0"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "localization"
-        from: "0.0.0"
-        to: "3.0.0"
-  - date: "2026-10-26"
-    ref: "dispatch-116"
-    title: "manual dispatch"
-    author: "shivam-eGov"
-    release_type: "major"
-    charts:
-      - name: "kong"
-        from: "0.0.0"
-        to: "3.0.0"
+- date: '2026-10-27'
+  ref: PR-99
+  title: 'feat(core): adopt common 3.1.0, standardize health probes, onboard keycloak'
+  author: shivam-eGov
+  release_type: minor
+  charts:
+  - name: account
+    from: 3.0.0
+    to: 3.1.0
+  - name: apportion
+    from: 3.0.0
+    to: 3.1.0
+  - name: billing
+    from: 3.0.0
+    to: 3.1.0
+  - name: boundary
+    from: 3.0.0
+    to: 3.1.0
+  - name: boundary-management
+    from: 3.0.0
+    to: 3.1.0
+  - name: employee
+    from: 3.0.0
+    to: 3.1.0
+  - name: filestore
+    from: 3.0.0
+    to: 3.1.0
+  - name: idgen
+    from: 3.0.0
+    to: 3.1.0
+  - name: individual
+    from: 3.0.0
+    to: 3.1.0
+  - name: keycloak
+    from: 0.0.0
+    to: 3.0.0
+  - name: kong
+    from: 3.0.0
+    to: 3.1.0
+  - name: localization
+    from: 3.0.0
+    to: 3.1.0
+  - name: mdms-v2
+    from: 3.0.0
+    to: 3.1.0
+  - name: notification
+    from: 3.0.0
+    to: 3.1.0
+  - name: notify
+    from: 3.0.0
+    to: 3.1.0
+  - name: otp
+    from: 3.0.0
+    to: 3.1.0
+  - name: pg-service
+    from: 3.0.0
+    to: 3.1.0
+  - name: registry
+    from: 3.0.0
+    to: 3.1.0
+  - name: template-config
+    from: 3.0.0
+    to: 3.1.0
+  - name: url-shortener
+    from: 3.0.0
+    to: 3.1.0
+  - name: workflow
+    from: 3.0.0
+    to: 3.1.0
+- date: '2026-10-26'
+  ref: PR-92
+  title: 'fix(core): correct appVersion (image tag) -> flyway-branch-18c74fe for all
+    services'
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: account
+    from: 0.0.0
+    to: 3.0.0
+  - name: apportion
+    from: 0.0.0
+    to: 3.0.0
+  - name: billing
+    from: 0.0.0
+    to: 3.0.0
+  - name: boundary
+    from: 0.0.0
+    to: 3.0.0
+  - name: boundary-management
+    from: 0.0.0
+    to: 3.0.0
+  - name: employee
+    from: 0.0.0
+    to: 3.0.0
+  - name: filestore
+    from: 0.0.0
+    to: 3.0.0
+  - name: idgen
+    from: 0.0.0
+    to: 3.0.0
+  - name: individual
+    from: 0.0.0
+    to: 3.0.0
+  - name: mdms-v2
+    from: 0.0.0
+    to: 3.0.0
+  - name: notification
+    from: 0.0.0
+    to: 3.0.0
+  - name: notify
+    from: 0.0.0
+    to: 3.0.0
+  - name: otp
+    from: 0.0.0
+    to: 3.0.0
+  - name: pg-service
+    from: 0.0.0
+    to: 3.0.0
+  - name: registry
+    from: 0.0.0
+    to: 3.0.0
+  - name: template-config
+    from: 0.0.0
+    to: 3.0.0
+  - name: url-shortener
+    from: 0.0.0
+    to: 3.0.0
+  - name: workflow
+    from: 0.0.0
+    to: 3.0.0
+- date: '2026-10-26'
+  ref: PR-91
+  title: 'feat(core): onboard notify + mdms-v2 v3.0.0'
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: mdms-v2
+    from: 0.0.0
+    to: 3.0.0
+  - name: notify
+    from: 0.0.0
+    to: 3.0.0
+- date: '2026-10-26'
+  ref: PR-90
+  title: 'fix(core): correct chart names filestore / pg-service (drop digit-)'
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: filestore
+    from: 0.0.0
+    to: 3.0.0
+  - name: pg-service
+    from: 0.0.0
+    to: 3.0.0
+- date: '2026-10-26'
+  ref: PR-88
+  title: 'feat(core): onboard 16 digit3 service charts v3.0.0'
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: account
+    from: 0.0.0
+    to: 3.0.0
+  - name: apportion
+    from: 0.0.0
+    to: 3.0.0
+  - name: billing
+    from: 0.0.0
+    to: 3.0.0
+  - name: boundary
+    from: 0.0.0
+    to: 3.0.0
+  - name: boundary-management
+    from: 0.0.0
+    to: 3.0.0
+  - name: employee
+    from: 0.0.0
+    to: 3.0.0
+  - name: filestore
+    from: 0.0.0
+    to: 3.0.0
+  - name: idgen
+    from: 0.0.0
+    to: 3.0.0
+  - name: individual
+    from: 0.0.0
+    to: 3.0.0
+  - name: notification
+    from: 0.0.0
+    to: 3.0.0
+  - name: otp
+    from: 0.0.0
+    to: 3.0.0
+  - name: pg-service
+    from: 0.0.0
+    to: 3.0.0
+  - name: registry
+    from: 0.0.0
+    to: 3.0.0
+  - name: template-config
+    from: 0.0.0
+    to: 3.0.0
+  - name: url-shortener
+    from: 0.0.0
+    to: 3.0.0
+  - name: workflow
+    from: 0.0.0
+    to: 3.0.0
+- date: '2026-10-26'
+  ref: PR-81
+  title: 'feat(localization): onboard v3.0.0'
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: localization
+    from: 0.0.0
+    to: 3.0.0
+- date: '2026-10-26'
+  ref: dispatch-116
+  title: manual dispatch
+  author: shivam-eGov
+  release_type: major
+  charts:
+  - name: kong
+    from: 0.0.0
+    to: 3.0.0
