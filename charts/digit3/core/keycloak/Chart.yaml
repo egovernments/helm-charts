@@ -2,13 +2,11 @@ apiVersion: v2
 name: keycloak
 description: Keycloak for DIGIT 3.0 (custom citizen-registration SPI build)
 type: application
-
 # 1.x: database URL from egov-config, and a db-init init container that creates the
 # role and database before Keycloak starts. See values.yaml (dbInit).
-version: 3.0.0
+version: 3.1.0
 appVersion: "keycloak-spi-custom-build-aardhya-78019f9"
-
 dependencies:
-- name: common
-  version: 3.1.0
-  repository: https://helm.digit.org/digit3/common
+  - name: common
+    version: 3.1.0
+    repository: https://helm.digit.org/digit3/common

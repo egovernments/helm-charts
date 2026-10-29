@@ -12,7 +12,7 @@ description: Configurable JSON registry (dynamic schemas + JSONB data)
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 3.1.0
+version: 3.2.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
 appVersion: flyway-branch-18c74fe
