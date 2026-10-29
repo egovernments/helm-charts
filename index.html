@@ -2,188 +2,250 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DIGIT Community Kubernetes Helm Charts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DIGIT - Helm Charts</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
   <style>
     :root {
-      --bg:#0b1220; --panel:#0a111d; --border:#2a3444; --text:#e8edf5; --muted:#8b95a5;
-      --line:#273243; --link:#4ea1ff; --code:#0f1c2d; --badge-blue:#2c8fe8; --badge-green:#2ea043;
-      --badge-orange:#d18616; --badge-purple:#8b5cf6; --accent:#ff8b6a;
-      --card-bg:#0d1829; --card-border:#1e2d3d; --card-hover:#111f33;
+      --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eceff4; --raise:#ffffff;
+      --border:#e1e6ee; --border-strong:#cfd6e2;
+      --fg:#101827; --fg-soft:#36414f; --muted:#64718a;
+      --accent:#e8622a; --accent-soft:#fbe7dc; --accent-ink:#b84a1c;
+      --blue:#1f6bf0; --green:#118a53; --purple:#6d4cf0; --cyan:#0e8aa8;
+      --shadow:0 1px 2px rgba(16,24,39,.04), 0 10px 30px rgba(16,24,39,.06);
+      --font-display:"Archivo", system-ui, sans-serif;
+      --font-body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      --font-mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radius:16px; --radius-sm:10px;
+      color-scheme:light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135;
+        --border:#213049; --border-strong:#2c3f5c;
+        --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+        --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68;
+        --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+        --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45);
+        color-scheme:dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135;
+      --border:#213049; --border-strong:#2c3f5c;
+      --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+      --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68;
+      --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45);
+      color-scheme:dark;
     }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; padding:28px; }
-    .frame { width:min(1360px,100%); margin:0 auto; border:1px solid var(--border); border-radius:18px; background:linear-gradient(180deg,#08111d,#07101a); overflow:hidden; box-shadow:0 12px 36px rgba(0,0,0,.28); }
-    .topbar { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 0 22px; border-bottom:1px solid var(--border); }
-    .tab { display:flex; align-items:center; gap:12px; padding:0 0 16px 0; font-weight:700; letter-spacing:.02em; font-size:18px; position:relative; }
-    .tab::after { content:""; position:absolute; left:-10px; bottom:-1px; width:150px; height:3px; border-radius:3px; background:var(--accent); }
-    .book { width:24px; height:24px; opacity:.9; }
-    .icons { display:flex; align-items:center; gap:22px; padding-bottom:12px; }
-    .icons svg { width:22px; height:22px; stroke:#d9e0ea; opacity:.88; }
-    .content { padding:48px 48px 56px 48px; }
-    h1 { font-size:52px; line-height:1.1; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px; }
-    h2 { margin:48px 0 12px 0; font-size:32px; font-weight:800; letter-spacing:-0.02em; }
-    h3 { margin:32px 0 16px 0; font-size:22px; font-weight:700; }
-    hr { border:none; border-top:1px solid var(--line); margin:20px 0 24px 0; }
-    p { margin:0 0 20px 0; font-size:18px; line-height:1.7; }
-    a { color:var(--link); text-decoration:underline; text-underline-offset:3px; }
-    .badges { display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 30px 0; }
-    .badge { display:inline-flex; align-items:center; border-radius:6px; font-size:14px; line-height:1; color:#fff; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
-    .badge .label { background:#4c5563; padding:6px 10px; }
-    .badge .value { padding:6px 12px; }
-    .badge .value.blue { background:var(--badge-blue); } .badge .value.green { background:var(--badge-green); }
-    .badge .value.orange { background:var(--badge-orange); } .badge .value.purple { background:var(--badge-purple); }
-    .codeblock { background:var(--code); padding:24px 28px; margin:16px 0 24px 0; border-radius:8px; overflow:auto; }
-    code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:15px; color:#77b9ff; white-space:pre; }
-    .inline { display:inline-block; background:#2b3440; color:#f0f4fa; border-radius:6px; padding:3px 8px; font-size:15px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
-    .category { margin:28px 0 24px 0; border:1px solid var(--card-border); border-radius:14px; background:var(--card-bg); overflow:hidden; }
-    .category-header { display:flex; align-items:center; justify-content:space-between; padding:20px 28px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--card-border); }
-    .category-title { display:flex; align-items:center; gap:14px; font-size:24px; font-weight:800; }
-    .category-title .icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; }
-    .category-title a { color:var(--text); text-decoration:none; }
-    .category-count { font-size:14px; color:var(--muted); background:rgba(255,255,255,.06); padding:4px 14px; border-radius:20px; }
-    .category-desc { padding:16px 28px; font-size:15px; color:var(--muted); border-bottom:1px solid var(--card-border); }
-    .category-error { padding:20px 28px; font-size:15px; color:var(--muted); font-style:italic; }
-    .mods-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:0; }
-    .mod-card { padding:18px 28px; border-bottom:1px solid var(--card-border); border-right:1px solid var(--card-border); transition:background .15s; display:flex; align-items:center; justify-content:space-between; }
-    .mod-card:hover { background:var(--card-hover); }
-    .mod-name { font-size:17px; font-weight:700; }
-    .mod-name a { color:var(--text); text-decoration:none; }
-    .mod-name a:hover { color:var(--link); }
-    .mod-count { font-size:13px; color:var(--muted); background:rgba(255,255,255,.06); padding:3px 10px; border-radius:20px; }
-    .stats { display:flex; gap:32px; flex-wrap:wrap; margin:24px 0 32px 0; padding:20px 28px; background:rgba(255,255,255,.02); border:1px solid var(--card-border); border-radius:12px; }
-    .stat { text-align:center; } .stat-num { font-size:32px; font-weight:800; color:var(--link); } .stat-label { font-size:14px; color:var(--muted); margin-top:4px; }
-    .loader { display:flex; align-items:center; gap:12px; padding:24px 28px; color:var(--muted); font-size:15px; }
-    .spinner { width:20px; height:20px; border:2px solid var(--card-border); border-top-color:var(--link); border-radius:50%; animation:spin .8s linear infinite; }
+    body { background:var(--bg); color:var(--fg); font-family:var(--font-body); line-height:1.6; -webkit-font-smoothing:antialiased; padding-block:0; }
+    body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--surface); }
+    a { color:var(--blue); text-decoration:none; }
+    img { max-width:100%; }
+    h1,h2,h3 { font-family:var(--font-display); line-height:1.1; text-wrap:balance; }
+    code,.mono { font-family:var(--font-mono); }
+    .wrap { width:min(1200px,100%); margin:0 auto; padding-left:max(20px,env(safe-area-inset-left,0px)); padding-right:max(20px,env(safe-area-inset-right,0px)); }
+
+    header.site { position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block:12px; }
+    .brand { display:flex; align-items:center; gap:11px; min-width:0; }
+    .brand img { width:30px; height:30px; border-radius:7px; display:block; }
+    .brand .wm { font-family:var(--font-display); font-weight:800; font-size:17px; letter-spacing:-.01em; white-space:nowrap; color:var(--fg); }
+    .brand .wm span { color:var(--accent); }
+    .nav-right { display:flex; align-items:center; gap:8px; }
+    .nav-link { color:var(--fg-soft); font-weight:500; font-size:14px; padding:8px 12px; border-radius:9px; }
+    .nav-link:hover { background:var(--surface-2); color:var(--fg); }
+    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--fg-soft); cursor:pointer; }
+    .icon-btn:hover { border-color:var(--border-strong); color:var(--fg); }
+    .icon-btn svg { width:18px; height:18px; }
+
+    .hero { position:relative; margin-top:26px; border:1px solid var(--border); border-radius:calc(var(--radius) + 4px); background:
+        radial-gradient(900px 300px at 85% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+        radial-gradient(700px 320px at 8% 120%, color-mix(in srgb, var(--blue) 12%, transparent), transparent 55%),
+        var(--surface); overflow:hidden; }
+    .hero-inner { padding:46px 40px 40px; display:grid; grid-template-columns:1.25fr .95fr; gap:40px; align-items:center; }
+    .eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding:5px 11px; border-radius:999px; }
+    .hero h1 { font-size:clamp(32px,4.6vw,52px); font-weight:800; letter-spacing:-.03em; margin:18px 0 12px; }
+    .hero h1 em { font-style:normal; color:var(--accent); }
+    .hero p.lede { color:var(--fg-soft); font-size:17px; max-width:46ch; margin:0 0 24px; }
+    .hero-cta { display:flex; gap:12px; flex-wrap:wrap; }
+    .btn { display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:600; font-size:14.5px; padding:11px 18px; border-radius:11px; cursor:pointer; border:1px solid transparent; }
+    .btn.primary { background:var(--accent); color:#fff; } .btn.primary:hover { filter:brightness(1.05); }
+    .btn.ghost { background:var(--surface); color:var(--fg); border-color:var(--border-strong); } .btn.ghost:hover { background:var(--surface-2); }
+
+    .cmd { background:var(--raise); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; min-width:0; }
+    .cmd-head { display:flex; align-items:center; gap:7px; padding:12px 16px; border-bottom:1px solid var(--border); }
+    .dot { width:11px; height:11px; border-radius:50%; } .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+    .cmd-head .fname { margin-left:8px; font-size:12px; color:var(--muted); font-family:var(--font-mono); }
+    .cmd pre { margin:0; padding:18px; overflow-x:auto; font-family:var(--font-mono); font-size:13.5px; line-height:1.8; color:var(--fg-soft); }
+    .cmd pre .c { color:var(--muted); } .cmd pre .k { color:var(--accent-ink); font-weight:600; } .cmd pre .s { color:var(--green); }
+    .copy { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface-2); }
+    .copy span { font-size:12px; color:var(--muted); } .copy span code { color:var(--fg); }
+    .copy button { font-family:var(--font-body); font-size:12.5px; font-weight:600; color:var(--fg); background:var(--surface); border:1px solid var(--border-strong); padding:6px 12px; border-radius:8px; cursor:pointer; white-space:nowrap; }
+
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:22px; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+    .stat .n { font-family:var(--font-display); font-weight:800; font-size:30px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+    .stat .n.accent { color:var(--accent); }
+    .stat .l { font-size:13px; color:var(--muted); margin-top:2px; }
+
+    .sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin:44px 0 18px; }
+    .sec-head h2 { font-size:24px; font-weight:800; letter-spacing:-.02em; }
+    .sec-head p { color:var(--muted); font-size:14px; }
+
+    .project { border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); overflow:hidden; margin-bottom:20px; }
+    .project-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 22px; border-bottom:1px solid var(--border); background:var(--surface-2); }
+    .project-title { display:flex; align-items:center; gap:13px; min-width:0; }
+    .project-title .glyph { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:800; color:#fff; }
+    .project-title a { font-family:var(--font-mono); font-weight:600; font-size:18px; color:var(--fg); }
+    .project-count { font-size:13px; color:var(--muted); }
+    .mods-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:0; }
+    .mod-cell { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 22px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); min-width:0; }
+    .mod-cell a { font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--fg); }
+    .mod-cell a:hover { color:var(--accent); }
+    .mod-cell .mc { font-size:12px; color:var(--muted); background:var(--surface-2); border-radius:999px; padding:3px 10px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .cat-error { padding:18px 22px; color:var(--muted); font-style:italic; font-size:14px; }
+
+    .loader { display:flex; align-items:center; gap:12px; padding:22px; color:var(--muted); font-size:15px; }
+    .spinner { width:20px; height:20px; border:2px solid var(--border-strong); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
-    @media (max-width:900px) { body{padding:14px;} .content{padding:24px 18px 32px;} h1{font-size:34px;} h2{font-size:24px;} .mods-grid{grid-template-columns:1fr;} .stats{gap:20px;} }
+
+    footer.site { margin-top:56px; border-top:1px solid var(--border); padding-block:28px; color:var(--muted); font-size:13.5px; }
+    .foot-row { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center; }
+    .foot-row a { color:var(--fg-soft); }
+
+    @media (max-width:860px) { .hero-inner { grid-template-columns:1fr; gap:26px; padding:30px 22px; } }
+    @media (max-width:560px) { .stats { grid-template-columns:1fr; } }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
   </style>
 </head>
 <body>
-  <div class="frame">
-    <div class="topbar">
-      <div class="tab">
-        <svg class="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5v-13A2.5 2.5 0 0 1 6.5 2z"></path><path d="M12 6.5v11"></path>
-        </svg>
-        <span>Helm Charts Registry</span>
+  <header class="site">
+    <div class="wrap nav">
+      <div class="brand"><img src="/favicon.png" alt="DIGIT"><div class="wm">DIGIT <span>Helm Charts</span></div></div>
+      <div class="nav-right">
+        <a class="nav-link" href="https://docs.digit.org" target="_blank" rel="noopener">Docs</a>
+        <a class="nav-link" href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">Repository</a>
+        <button class="icon-btn" id="theme" aria-label="Toggle theme" title="Toggle theme"></button>
       </div>
-      <div class="icons">
-        <a href="https://github.com/egovernments/helm-charts" aria-label="GitHub">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-        </a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <div class="hero-inner">
+        <div>
+          <span class="eyebrow">Production-ready - Helm v3</span>
+          <h1>The DIGIT platform, <em>packaged.</em></h1>
+          <p class="lede">Install and upgrade DIGIT services with Helm. Charts are organized as projects, modules and service charts - each module is its own Helm repository.</p>
+          <div class="hero-cta">
+            <a class="btn primary" href="#projects">Browse projects</a>
+            <a class="btn ghost" href="https://docs.digit.org" target="_blank" rel="noopener">Read the docs</a>
+          </div>
+        </div>
+        <div class="cmd">
+          <div class="cmd-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="fname">add a module</span></div>
+          <pre id="cmd-text"><span class="c"># each module is a Helm repository</span>
+<span class="k">helm</span> repo add digit3-core <span class="s">https://helm.digit.org/digit3/core</span>
+<span class="k">helm</span> repo update
+<span class="k">helm</span> install my-release digit3-core/&lt;chart&gt; \
+  -n &lt;namespace&gt; -f values.yaml</pre>
+          <div class="copy"><span>Repository pattern: <code>helm.digit.org/&lt;project&gt;/&lt;module&gt;</code></span><button id="copy-cmd">Copy</button></div>
+        </div>
       </div>
     </div>
 
-    <div class="content">
-      <h1>DIGIT Community Kubernetes Helm Charts</h1>
-      <hr>
-      <div class="badges">
-        <div class="badge"><span class="label">License</span><span class="value blue">Apache 2.0</span></div>
-        <div class="badge"><span class="label">Helm</span><span class="value green">v3</span></div>
-        <div class="badge"><span class="label">Projects</span><span class="value purple" id="badge-projects">...</span></div>
-        <div class="badge"><span class="label">Total Charts</span><span class="value orange" id="badge-total">...</span></div>
-      </div>
-      <p>Production-ready Helm charts for the DIGIT platform, organized as <strong>projects</strong> &rarr; <strong>modules</strong> &rarr; <strong>service charts</strong>. Each module is an independent Helm repository.</p>
-
-      <div class="stats" id="stats-bar"><div class="loader"><div class="spinner"></div> Loading projects...</div></div>
-
-      <h2>Projects</h2><hr>
-      <div id="projects-container"><div class="loader"><div class="spinner"></div> Loading projects...</div></div>
-
-      <h2 id="usage">Usage</h2><hr>
-      <p><a href="https://helm.sh">Helm</a> v3 must be installed. Each module is a repository at <span class="inline">https://helm.digit.org/&lt;project&gt;/&lt;module&gt;</span>:</p>
-      <div class="codeblock"><code>helm repo add digit3-core https://helm.digit.org/digit3/core
-helm repo update
-helm install my-release digit3-core/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml</code></div>
-      <p>Open a project above to see its modules, then a module to browse its charts, versions and release history.</p>
-
-      <h2>Contributing</h2><hr>
-      <p>See the <a href="https://github.com/egovernments/helm-charts">repository</a>. Releases are label/form-driven: open a PR, pick a release type, merge to publish.</p>
-      <h2>License</h2><hr>
-      <p><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a></p>
+    <div class="stats">
+      <div class="stat"><div class="n accent" id="st-projects">-</div><div class="l">Projects</div></div>
+      <div class="stat"><div class="n" id="st-modules">-</div><div class="l">Modules</div></div>
+      <div class="stat"><div class="n" id="st-charts">-</div><div class="l">Charts</div></div>
     </div>
-  </div>
+
+    <div class="sec-head" id="projects"><h2>Projects</h2><p>Open a project to browse its modules and charts</p></div>
+    <div id="projects-container"><div class="loader"><div class="spinner"></div> Loading projects...</div></div>
+
+    <div class="sec-head"><h2>Usage</h2></div>
+    <div class="cmd" style="max-width:720px">
+      <div class="cmd-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="fname">quick start</span></div>
+      <pre><span class="k">helm</span> repo add digit3-core <span class="s">https://helm.digit.org/digit3/core</span>
+<span class="k">helm</span> repo update
+<span class="k">helm</span> install my-release digit3-core/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml</pre>
+    </div>
+  </main>
+
+  <footer class="site">
+    <div class="wrap foot-row">
+      <div>Apache 2.0 - releases are label and form driven: open a PR, pick a release type, merge to publish.</div>
+      <div style="display:flex;gap:18px"><a href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">GitHub</a><a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">License</a></div>
+    </div>
+  </footer>
 
   <script>
-    const ICON_COLORS = ['linear-gradient(135deg,#3b82f6,#1d4ed8)','linear-gradient(135deg,#8b5cf6,#6d28d9)','linear-gradient(135deg,#f59e0b,#d97706)','linear-gradient(135deg,#10b981,#059669)','linear-gradient(135deg,#ef4444,#dc2626)','linear-gradient(135deg,#06b6d4,#0891b2)'];
+    const ICON_COLORS = ['linear-gradient(135deg,#1f6bf0,#0e8aa8)','linear-gradient(135deg,#6d4cf0,#9333ea)','linear-gradient(135deg,#e8622a,#f0a020)','linear-gradient(135deg,#118a53,#0e8aa8)','linear-gradient(135deg,#0e8aa8,#1f6bf0)'];
 
-    function countCharts(yamlText) {
-      try { const d = jsyaml.load(yamlText); return d && d.entries ? Object.keys(d.entries).length : 0; } catch { return 0; }
-    }
+    function countCharts(yamlText){ try { const d = jsyaml.load(yamlText); return d && d.entries ? Object.keys(d.entries).length : 0; } catch { return 0; } }
+    async function moduleChartCount(project, module){ try { const r = await fetch(`./${project}/${module}/index.yaml`); if (!r.ok) return 0; return countCharts(await r.text()); } catch { return 0; } }
 
-    async function moduleChartCount(project, module) {
-      try {
-        const r = await fetch(`./${project}/${module}/index.yaml`);
-        if (!r.ok) return 0;
-        return countCharts(await r.text());
-      } catch { return 0; }
-    }
-
-    function renderProject(project, colorIdx, modules, counts) {
-      const total = modules.reduce((s, m) => s + (counts[m] || 0), 0);
+    function renderProject(project, colorIdx, modules, counts){
+      const total = modules.reduce((s,m)=>s+(counts[m]||0),0);
       const color = ICON_COLORS[colorIdx % ICON_COLORS.length];
-      const cards = modules.length === 0
-        ? '<div class="category-error">No modules published yet.</div>'
-        : `<div class="mods-grid">${modules.map(m => `
-            <div class="mod-card">
-              <div class="mod-name"><a href="./${project}/${m}/">${m}/</a></div>
-              <div class="mod-count">${counts[m] || 0} chart${(counts[m]||0)===1?'':'s'}</div>
-            </div>`).join('')}</div>`;
-      return `
-        <div class="category" id="${project}">
-          <div class="category-header">
-            <div class="category-title"><div class="icon" style="background:${color}">&#128230;</div><a href="./${project}/">${project}/</a></div>
-            <div style="display:flex;align-items:center;gap:12px">
-              <div class="category-count">${modules.length} module${modules.length===1?'':'s'} &middot; ${total} chart${total===1?'':'s'}</div>
-              <a href="./${project}/" style="font-size:14px;color:var(--link);text-decoration:none">Open &rarr;</a>
-            </div>
-          </div>
-          <div class="category-desc">Project <strong>${project}</strong>. Modules are independent Helm repositories under <span class="inline">helm.digit.org/${project}/&lt;module&gt;</span>.</div>
-          ${cards}
-        </div>`;
+      const cells = modules.length === 0
+        ? '<div class="cat-error">No modules published yet.</div>'
+        : `<div class="mods-grid">${modules.map(m=>`
+            <div class="mod-cell"><a href="./${project}/${m}/">${m}/</a><span class="mc">${counts[m]||0} chart${(counts[m]||0)===1?'':'s'}</span></div>`).join('')}</div>`;
+      return `<div class="project" id="${project}">
+        <div class="project-head">
+          <div class="project-title"><div class="glyph" style="background:${color}">${project.slice(0,2)}</div><a href="./${project}/">${project}/</a></div>
+          <div style="display:flex;align-items:center;gap:14px"><span class="project-count">${modules.length} module${modules.length===1?'':'s'} - ${total} chart${total===1?'':'s'}</span><a href="./${project}/" style="font-size:14px">Open &rarr;</a></div>
+        </div>${cells}</div>`;
     }
 
-    async function main() {
+    async function main(){
       const container = document.getElementById('projects-container');
-      const statsBar = document.getElementById('stats-bar');
       let projects = [];
-      try {
-        const r = await fetch('./projects.json');
-        if (!r.ok) throw new Error();
-        projects = await r.json();
-      } catch {
-        container.innerHTML = '<div class="category-error">Could not load projects.json. Nothing published yet.</div>';
-        statsBar.innerHTML = ''; return;
-      }
-      if (!Array.isArray(projects) || projects.length === 0) {
-        container.innerHTML = '<div class="category-error">No projects found.</div>'; statsBar.innerHTML = ''; return;
-      }
+      try { const r = await fetch('./projects.json'); if (!r.ok) throw new Error(); projects = await r.json(); }
+      catch { container.innerHTML = '<div class="cat-error">Could not load projects.json. Nothing published yet.</div>'; return; }
+      if (!Array.isArray(projects) || !projects.length) { container.innerHTML = '<div class="cat-error">No projects found.</div>'; return; }
 
-      let totalCharts = 0, totalModules = 0;
-      const sections = [], perProject = {};
-      for (let i = 0; i < projects.length; i++) {
-        const p = projects[i];
-        let modules = [];
+      let totalCharts = 0, totalModules = 0; const sections = [];
+      for (let i=0;i<projects.length;i++){
+        const p = projects[i]; let modules = [];
         try { const r = await fetch(`./${p}/modules.json`); if (r.ok) modules = await r.json(); } catch {}
         const counts = {};
         await Promise.all(modules.map(async m => { counts[m] = await moduleChartCount(p, m); }));
-        const pCharts = modules.reduce((s, m) => s + (counts[m] || 0), 0);
-        totalCharts += pCharts; totalModules += modules.length;
-        perProject[p] = { modules: modules.length, charts: pCharts };
+        totalCharts += modules.reduce((s,m)=>s+(counts[m]||0),0); totalModules += modules.length;
         sections.push(renderProject(p, i, modules, counts));
       }
       container.innerHTML = sections.join('');
-
-      statsBar.innerHTML = projects.map(p => `
-        <div class="stat"><div class="stat-num">${perProject[p].charts}</div><div class="stat-label">${p}</div></div>`).join('') +
-        `<div class="stat"><div class="stat-num">${totalModules}</div><div class="stat-label">Modules</div></div>
-         <div class="stat"><div class="stat-num">${totalCharts}</div><div class="stat-label">Total Charts</div></div>`;
-      document.getElementById('badge-projects').textContent = projects.length;
-      document.getElementById('badge-total').textContent = totalCharts;
+      document.getElementById('st-projects').textContent = projects.length;
+      document.getElementById('st-modules').textContent = totalModules;
+      document.getElementById('st-charts').textContent = totalCharts;
     }
     main();
+
+    document.getElementById('copy-cmd').addEventListener('click', async (e)=>{
+      const txt = document.getElementById('cmd-text').innerText;
+      try { await navigator.clipboard.writeText(txt); e.target.textContent='Copied'; setTimeout(()=>e.target.textContent='Copy',1400); }
+      catch { const r=document.createRange(); r.selectNode(document.getElementById('cmd-text')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
+    });
+
+    (function themeToggle(){
+      const root=document.documentElement, b=document.getElementById('theme');
+      const sysDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+      let stored=null; try { stored=localStorage.getItem('digit-theme'); } catch {}
+      if (stored) root.setAttribute('data-theme', stored);
+      const sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>';
+      const moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      const paint=()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); b.innerHTML=dark?sun:moon; };
+      paint();
+      b.addEventListener('click',()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); const next=dark?'light':'dark'; root.setAttribute('data-theme',next); try{localStorage.setItem('digit-theme',next);}catch{} paint(); });
+    })();
   </script>
 </body>
 </html>
