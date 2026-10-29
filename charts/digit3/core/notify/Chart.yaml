@@ -3,7 +3,7 @@ name: notify
 description: Multi-channel notifications (SMS, email, WhatsApp, push)
 type: application
 version: 3.2.1
-appVersion: flyway-branch-18c74fe
+appVersion: dev-flyway-7068862
 dependencies:
   - name: common
     version: 3.1.1
