@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-29"
+    ref: "PR-104"
+    title: "cluster-configs: shared config key updates + README"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "cluster-configs"
+        from: "3.1.0"
+        to: "3.1.1"
   - date: "2026-10-27"
     ref: "PR-98"
     title: "feat(cluster-configs): seed egov-config datasource/OTel/keycloak defaults + service hosts"
