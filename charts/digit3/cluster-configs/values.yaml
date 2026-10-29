@@ -45,34 +45,57 @@ cluster-configs:
         db-pool-max-size: "20"
         db-pool-min-idle: "2"
         db-pool-connection-timeout-ms: "1000"
+        flyway-locations: "filesystem:/flyway/sql"
         # Platform (read by appType java services via common.extraEnv.java)
         kafka-brokers: "kafka-controller-headless.backbone:9092"
         timezone: "Asia/Kolkata"
         spring-jpa-show-sql: "false"
         server-tomcat-threads-max: "200"
         server-tomcat-max-connections: "8192"
-        # Observability
+        # Observability (OpenTelemetry). Two endpoint forms the services expect:
+        #   otel-exporter-otlp-endpoint          -> OTEL_EXPORTER_OTLP_ENDPOINT (bare host:port)
+        #   otel-tracing-export-otlp-endpoint    -> MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT (full URL)
         otel-enabled: "false"
         otel-exporter-otlp-endpoint: "open-telemetry-opentelemetry-collector.monitoring:4318"
+        otel-tracing-export-otlp-endpoint: "http://open-telemetry-opentelemetry-collector.monitoring:4318/v1/traces"
+        # Redis (backbone), overridable per environment
+        redis-address: "redis.backbone:6379"
+        redis-host: "redis.backbone"
+        redis-port: "6379"
+        # Email (SMTP) + SMS provider host/url (credentials stay in secrets), overridable per environment
+        smtp-host: "smtp.gmail.com"
+        smtp-port: "587"
+        mail-sender-name: "eGov Foundation"
+        sms-provider-url: "http://api.smscountry.com/SMSCwebservice_bulk.aspx"
+        # Platform
+        platform-tenant: "default"
         # Keycloak
         keycloak-enabled: "false"
         keycloak-base-url: "http://keycloak.keycloak.svc.cluster.local:8080/keycloak"
+        keycloak-db-url: "jdbc:postgresql://postgresql.backbone:5432/keycloak"
     egov-service-host:           # internal service URLs (overridable per environment)
       name: egov-service-host
       namespace: [ egov ]
       data:
+        account: http://account.egov:8080/
         apportion: http://apportion.egov:8080/
         billing: http://billing.egov:8080/
         boundary: http://boundary.egov:8080/
+        boundary-management: http://boundary-management.egov:8080/
+        employee: http://employee.egov:8080/
         filestore: http://filestore.egov:8080/
         idgen: http://idgen.egov:8080/
         individual: http://individual.egov:8080/
         localization: http://localization.egov:8080/
         mdms-v2: http://mdms-v2.egov:8080/
         notification: http://notification.egov:8080/
+        notify: http://notify.egov:8080/
         otp: http://otp.digit3-core:8080/
+        pg-service: http://pg-service.egov:8080/
         registry: http://registry.egov:8080/
         template-config: http://template-config.egov:8080/
+        url-shortener: http://url-shortener.egov:8080/
+        workflow: http://workflow.egov:8080/
         vault: http://vault.vault:8200/
 
   # ── Secrets ───────────────────────────────────────────────────────────────
