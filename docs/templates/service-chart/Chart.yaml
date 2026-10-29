@@ -1,0 +1,16 @@
+apiVersion: v2
+name: __SERVICE__                       # MUST equal the directory name and the registry name
+description: __One short sentence describing the service__
+type: application
+
+version: 3.0.0                          # seed baseline. First publish uses this as-is;
+                                        # later releases bump it from the registry, never by hand.
+
+appVersion: "dev-flyway-7068862"        # the REAL image tag (the CI build tag, e.g. dev-flyway-<build>).
+                                        # In prod mode this drives BOTH the <service> image and the
+                                        # <service>-db init image. Do NOT leave a helm-create default.
+
+dependencies:
+  - name: common
+    version: 3.1.1                      # a common version that is ALREADY published in the registry
+    repository: https://helm.digit.org/digit3/common

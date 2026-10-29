@@ -1,0 +1,92 @@
+# Scaffold values for a java service chart. Replace every __SERVICE__ and fill in your own
+# app config keys. Delete the dbMigration block if the service has no database.
+
+# ── Labels ────────────────────────────────────────────────────────────────────
+labels:
+  app: "__SERVICE__"
+  group: "core"
+
+# ── Ingress / gateway ───────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  gateway: true            # route through the API gateway (kong-proxy)
+  context: "__SERVICE__"   # gateway route segment; NO "digit-" prefix
+
+# ── Container ───────────────────────────────────────────────────────────────────
+image:
+  repository: "__SERVICE__"
+replicas: 1
+appType: "java"            # gets the shared datasource/kafka/pool/timezone env from common for free
+
+# ── Init container: flyway DB migration (delete this block if there is no DB) ────
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "__SERVICE___schema"
+    image:
+      repository: "__SERVICE__-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: db-url }
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-username }
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-password }
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: flyway-locations }
+        - name: FLYWAY_SCHEMAS
+          value: public
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: public
+
+# ── Observability ───────────────────────────────────────────────────────────────
+tracing-enabled: false     # true -> common injects OTEL env from egov-config
+
+# ── App config (overridable per env) ────────────────────────────────────────────
+# Each key here is an override surface: a value set here is the default, and an
+# environments/<env>.yaml block named "__SERVICE__" overrides it at deploy time.
+context-path: ""                       # blank -> derives /<ingress.context>
+# migration-locations: "classpath:db/migration"
+# kafka-consumer-group: "__SERVICE__-service"
+# redis-db: "0"
+
+# ── Health checks ───────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"         # common prepends ingress.context -> /<context>/health
+  readinessProbePath: "/health"
+
+resources: |
+  requests:
+    cpu: "150m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+# ── Container env ───────────────────────────────────────────────────────────────
+# Reference every overridable value with `index .Values "<key>"`. Infra endpoints
+# (db, kafka, redis, otel) come from common/egov-config via valueFrom - do NOT hardcode them.
+env: |
+  # context path: derives /<ingress.context> unless context-path is set.
+  # env-var name is per the app's application.properties:
+  #   SERVER_CONTEXT_PATH (most) | CONTEXT_PATH (account, workflow) | SERVER_SERVLET_CONTEXT_PATH (notify, template-config)
+  - name: SERVER_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+
+  # your service-specific env, each wired to an override key above:
+  # - name: KAFKA_CONSUMER_GROUP
+  #   value: {{ index .Values "kafka-consumer-group" | quote }}
+  # - name: REDIS_DB
+  #   value: {{ index .Values "redis-db" | quote }}
+
+  # infra injected from the platform (not an override key):
+  # - name: REDIS_ADDRESS
+  #   valueFrom:
+  #     configMapKeyRef: { name: egov-config, key: redis-address }
