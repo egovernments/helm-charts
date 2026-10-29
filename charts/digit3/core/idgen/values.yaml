@@ -72,37 +72,51 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+idgen-timezone: "UTC"
+flyway-enabled: "false"
+events-enabled: "false"
+topic-create-template: "idgen-create-template"
+topic-update-template: "idgen-update-template"
+topic-delete-template: "idgen-delete-template"
+pubsub-type: "kafka"
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+tenant-migration-consumer-group: "idgen"
+metrics-export-enabled: "false"
+management-endpoints: "health,info"
+
 # ── Container env ─────────────────────────────────────────────────────────────
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
   # Zone for {DATE:*} rendering and sequence scope keys
   - name: IDGEN_TIMEZONE
-    value: UTC
+    value: {{ index .Values "idgen-timezone" | quote }}
 
   # ── Datasource ───────────────────────────────────────────────────────────
   # migration handled by the init container above; app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: "false"
+    value: {{ index .Values "flyway-enabled" | quote }}
 
   # ── Template lifecycle events ────────────────────────────────────────────
   # same posture as the Go chart: disabled, redis backend
   - name: IDGEN_EVENTS_ENABLED
-    value: "false"
+    value: {{ index .Values "events-enabled" | quote }}
   - name: IDGEN_EVENTS_TOPICS_CREATE
-    value: idgen-create-template
+    value: {{ index .Values "topic-create-template" | quote }}
   - name: IDGEN_EVENTS_TOPICS_UPDATE
-    value: idgen-update-template
+    value: {{ index .Values "topic-update-template" | quote }}
   - name: IDGEN_EVENTS_TOPICS_DELETE
-    value: idgen-delete-template
+    value: {{ index .Values "topic-delete-template" | quote }}
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   # account publishes account-migration to kafka; tenant-migration subscribes via this backend
   - name: TRACER_PUBSUB_TYPE
-    value: kafka
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -112,29 +126,38 @@ env: |
   # ── Redis ────────────────────────────────────────────────────────────────
   # kept only as a quick switch back; this service has no redis cache
   - name: SPRING_DATA_REDIS_HOST
-    value: redis.backbone.svc.cluster.local
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-host
   - name: SPRING_DATA_REDIS_PORT
-    value: "6379"
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-port
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable; set once at initial deploy
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   # some services spell the same switch SCHEMA_SEPARATION_MODE
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: idgen_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: idgen
+    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: "false"
+    value: {{ index .Values "metrics-export-enabled" | quote }}
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: health,info
+    value: {{ index .Values "management-endpoints" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint

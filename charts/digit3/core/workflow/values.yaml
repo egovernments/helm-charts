@@ -56,6 +56,47 @@ appType: "java"
 tracing-export-enabled: "false"
 tracing-enabled: false
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+log-level: "info"
+wf-inbox-assigned-only: "false"
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+schema-separation-topic: "account-migration"
+migration-locations: "classpath:db/migration"
+kafka-auto-create-topics: "true"
+kafka-partitions: "1"
+kafka-replication-factor: "1"
+kafka-consumer-group: "workflow-service"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-create-process: "workflow-create-process"
+topic-update-process: "workflow-update-process"
+topic-delete-process: "workflow-delete-process"
+topic-create-state: "workflow-create-state"
+topic-update-state: "workflow-update-state"
+topic-delete-state: "workflow-delete-state"
+topic-create-action: "workflow-create-action"
+topic-update-action: "workflow-update-action"
+topic-delete-action: "workflow-delete-action"
+topic-create-escalation-config: "workflow-create-escalation-config"
+topic-update-escalation-config: "workflow-update-escalation-config"
+topic-delete-escalation-config: "workflow-delete-escalation-config"
+topic-transition: "workflow-transition"
+redis-db: "0"
+redis-consumer-group: "workflow-service"
+redis-consumer-id: "workflow-service-1"
+redis-retention-days: "7"
+redis-max-stream-length: "1000000"
+redis-cleanup-interval: "86400"
+otel-traces-exporter: "none"
+otel-enabled: "false"
+otel-service-name: "workflow"
+otel-service-version: "1.0.0"
+otel-metrics-enabled: "true"
+otel-sampler-arg: "1.0"
+prometheus-port: "9090"
+
 resources: |
   requests:
     cpu: "150m"
@@ -68,29 +109,31 @@ resources: |
 env: |
   # ── Service ───────────────────────────────────────────────────────────
   - name: SERVER_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
+  - name: CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
   - name: LOG_LEVEL
-    value: info
+    value: {{ index .Values "log-level" | quote }}
   - name: WF_INBOX_ASSIGNEDONLY
-    value: "false"
+    value: {{ index .Values "wf-inbox-assigned-only" | quote }}
 
   # ── Tenant / schema separation ────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
+    value: {{ index .Values "schema-separation-topic" | quote }}
 
   # ── App-level migrations ──────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations
+    value: {{ index .Values "migration-locations" | quote }}
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: workflow_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   # tracer's KafkaPubSubClient reads Spring's own key; not mapped from KAFKA_BROKERS
@@ -105,85 +148,94 @@ env: |
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: "true"
+    value: {{ index .Values "kafka-auto-create-topics" | quote }}
   - name: KAFKA_PARTITION_COUNT
-    value: "1"
+    value: {{ index .Values "kafka-partitions" | quote }}
   - name: KAFKA_REPLICATION_FACTOR
-    value: "1"
+    value: {{ index .Values "kafka-replication-factor" | quote }}
   - name: KAFKA_CONSUMER_GROUP
-    value: workflow-service
+    value: {{ index .Values "kafka-consumer-group" | quote }}
 
   # ── PubSub ────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: PUBSUB_TOPIC_CREATE_PROCESS
-    value: workflow-create-process
+    value: {{ index .Values "topic-create-process" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_PROCESS
-    value: workflow-update-process
+    value: {{ index .Values "topic-update-process" | quote }}
   - name: PUBSUB_TOPIC_DELETE_PROCESS
-    value: workflow-delete-process
+    value: {{ index .Values "topic-delete-process" | quote }}
   - name: PUBSUB_TOPIC_CREATE_STATE
-    value: workflow-create-state
+    value: {{ index .Values "topic-create-state" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_STATE
-    value: workflow-update-state
+    value: {{ index .Values "topic-update-state" | quote }}
   - name: PUBSUB_TOPIC_DELETE_STATE
-    value: workflow-delete-state
+    value: {{ index .Values "topic-delete-state" | quote }}
   - name: PUBSUB_TOPIC_CREATE_ACTION
-    value: workflow-create-action
+    value: {{ index .Values "topic-create-action" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_ACTION
-    value: workflow-update-action
+    value: {{ index .Values "topic-update-action" | quote }}
   - name: PUBSUB_TOPIC_DELETE_ACTION
-    value: workflow-delete-action
+    value: {{ index .Values "topic-delete-action" | quote }}
   - name: PUBSUB_TOPIC_CREATE_ESCALATION_CONFIG
-    value: workflow-create-escalation-config
+    value: {{ index .Values "topic-create-escalation-config" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_ESCALATION_CONFIG
-    value: workflow-update-escalation-config
+    value: {{ index .Values "topic-update-escalation-config" | quote }}
   - name: PUBSUB_TOPIC_DELETE_ESCALATION_CONFIG
-    value: workflow-delete-escalation-config
+    value: {{ index .Values "topic-delete-escalation-config" | quote }}
   - name: PUBSUB_TOPIC_TRANSITION
-    value: workflow-transition
+    value: {{ index .Values "topic-transition" | quote }}
 
   # ── Redis ─────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-address
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
   - name: REDIS_CONSUMER_GROUP
-    value: worflow-service
+    value: {{ index .Values "redis-consumer-group" | quote }}
   - name: REDIS_CONSUMER_ID
-    value: workflow-service-1
+    value: {{ index .Values "redis-consumer-id" | quote }}
   - name: REDIS_RETENTION_DAYS
-    value: "7"
+    value: {{ index .Values "redis-retention-days" | quote }}
   - name: REDIS_MAX_STREAM_LENGTH
-    value: "1000000"
+    value: {{ index .Values "redis-max-stream-length" | quote }}
   - name: REDIS_CLEANUP_INTERVAL
-    value: "86400"
+    value: {{ index .Values "redis-cleanup-interval" | quote }}
 
   # ── Observability (OpenTelemetry) ─────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: OTEL_TRACES_EXPORTER
-    value: none
+    value: {{ index .Values "otel-traces-exporter" | quote }}
   - name: OTEL_ENABLED
-    value: "false"
+    value: {{ index .Values "otel-enabled" | quote }}
   - name: OTEL_SERVICE_NAME
-    value: workflow
+    value: {{ index .Values "otel-service-name" | quote }}
   - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
+    value: {{ index .Values "otel-service-version" | quote }}
   - name: OTEL_METRICS_ENABLED
-    value: "true"
+    value: {{ index .Values "otel-metrics-enabled" | quote }}
   - name: PROMETHEUS_PORT
-    value: "9090"
+    value: {{ index .Values "prometheus-port" | quote }}
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
+    value: {{ index .Values "otel-sampler-arg" | quote }}
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-exporter-otlp-endpoint
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint
 
 # ── Workflow ──────────────────────────────────────────────────────────────────
 workflow-default-limit: "100"
