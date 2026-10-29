@@ -377,15 +377,26 @@ jobs:
             echo "[$(printf '%s\n' $MODS | awk 'NF{printf (NR>1?",":"")"\""$0"\""}')]" > "${GHP_DIR}/${P}/modules.json"
           done
 
-          # copy registry html from the merged commit (best-effort)
-          for f in index.html project-index.html module-index.html; do
+          # copy registry html + favicon from the merged commit (best-effort)
+          for f in index.html project-index.html module-index.html chart-index.html; do
             git show "${{ steps.ref.outputs.sha }}:$f" > "/tmp/$f" 2>/dev/null || true
           done
+          git show "${{ steps.ref.outputs.sha }}:favicon.png" > "/tmp/favicon.png" 2>/dev/null || true
           [[ -f /tmp/index.html ]] && cp /tmp/index.html "${GHP_DIR}/index.html" || true
+          [[ -s /tmp/favicon.png ]] && cp /tmp/favicon.png "${GHP_DIR}/favicon.png" || true
           for P in $PROJS; do
             [[ -f /tmp/project-index.html ]] && cp /tmp/project-index.html "${GHP_DIR}/${P}/index.html" || true
             for M in $(ls -d "${GHP_DIR}/${P}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_'); do
               [[ -f /tmp/module-index.html ]] && cp /tmp/module-index.html "${GHP_DIR}/${P}/${M}/index.html" || true
+              # per-chart page (chart-index.html) + README.md for every chart dir under this module
+              for C in $(ls -d "${GHP_DIR}/${P}/${M}"/*/ 2>/dev/null | xargs -n1 basename | grep -vE '^_'); do
+                [[ -f /tmp/chart-index.html ]] && cp /tmp/chart-index.html "${GHP_DIR}/${P}/${M}/${C}/index.html" || true
+                if [[ "$C" == "$M" && -f "${CHARTS_DIR}/${P}/${M}/README.md" ]]; then
+                  cp "${CHARTS_DIR}/${P}/${M}/README.md" "${GHP_DIR}/${P}/${M}/${C}/README.md"
+                elif [[ -f "${CHARTS_DIR}/${P}/${M}/${C}/README.md" ]]; then
+                  cp "${CHARTS_DIR}/${P}/${M}/${C}/README.md" "${GHP_DIR}/${P}/${M}/${C}/README.md"
+                fi
+              done
             done
           done
 
