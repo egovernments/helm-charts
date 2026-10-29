@@ -55,6 +55,43 @@ appType: "java"
 # OTel span export switch; override per env via the notification block in environments/<env>.yaml
 tracing-export-enabled: "false"
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+schema-separation-topic: "account-migration"
+migration-locations: "classpath:db/migration"
+template-config-path: "template-config/v3/render"
+filestore-path: "filestore/v3/files"
+sms-content-type: "application/x-www-form-urlencoded"
+message-broker-enabled: "true"
+message-broker-type: "KAFKA"
+kafka-auto-create-topics: "true"
+kafka-partitions: "1"
+kafka-replication-factor: "1"
+kafka-consumer-group: "notification-service"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-create-template: "notification-create-template"
+topic-update-template: "notification-update-template"
+topic-delete-template: "notification-delete-template"
+topic-send-email: "notification-send-email"
+topic-send-sms: "notification-send-sms"
+topic-email: "notification-email"
+topic-sms: "notification-sms"
+redis-db: "0"
+redis-consumer-group: "notification-service"
+redis-consumer-id: "notification-service-1"
+redis-retention-days: "7"
+redis-max-stream-length: "1000000"
+redis-cleanup-interval: "86400"
+otel-enabled: "false"
+otel-service-name: "notification"
+otel-service-version: "1.0.0"
+otel-metrics-enabled: "true"
+otel-sampler-arg: "1.0"
+prometheus-port: "9090"
+
 healthChecks:
   enabled: false
   livenessProbePath: "/health"
@@ -72,26 +109,28 @@ resources: |
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: HTTP_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   # consume account-migration, migrate into the tenant schema
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
+    value: {{ index .Values "schema-separation-topic" | quote }}
 
   # ── App-level migrations ─────────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations
+    value: {{ index .Values "migration-locations" | quote }}
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: notification_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
 
   # ── External services ────────────────────────────────────────────────────
   - name: TEMPLATE_CONFIG_HOST
@@ -100,20 +139,26 @@ env: |
         key: template-config
         name: egov-service-host
   - name: TEMPLATE_CONFIG_PATH
-    value: template-config/v3/render
+    value: {{ index .Values "template-config-path" | quote }}
   - name: FILESTORE_HOST
     valueFrom:
       configMapKeyRef:
         key: filestore
         name: egov-service-host
   - name: FILESTORE_PATH
-    value: filestore/v3/files
+    value: {{ index .Values "filestore-path" | quote }}
 
   # ── Email (SMTP) ─────────────────────────────────────────────────────────
   - name: SMTP_HOST
-    value: smtp.gmail.com
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: smtp-host
   - name: SMTP_PORT
-    value: "587"
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: smtp-port
   - name: SMTP_USERNAME
     valueFrom:
       secretKeyRef:
@@ -130,11 +175,17 @@ env: |
         key: mailsenderusername
         name: egov-notification-mail
   - name: SMTP_FROM_NAME
-    value: eGov Foundation
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: mail-sender-name
 
   # ── SMS ──────────────────────────────────────────────────────────────────
   - name: SMS_PROVIDER_URL
-    value: http://api.smscountry.com/SMSCwebservice_bulk.aspx
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: sms-provider-url
   - name: SMS_PROVIDER_USERNAME
     valueFrom:
       secretKeyRef:
@@ -146,13 +197,13 @@ env: |
         key: password
         name: egov-notification-sms
   - name: SMS_PROVIDER_CONTENT_TYPE
-    value: application/x-www-form-urlencoded
+    value: {{ index .Values "sms-content-type" | quote }}
 
   # ── Message broker ───────────────────────────────────────────────────────
   - name: MESSAGE_BROKER_ENABLED
-    value: "true"
+    value: {{ index .Values "message-broker-enabled" | quote }}
   - name: MESSAGE_BROKER_TYPE
-    value: KAFKA
+    value: {{ index .Values "message-broker-type" | quote }}
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   # tracer reads spring.kafka.bootstrap-servers; not mapped from KAFKA_BROKERS
@@ -162,72 +213,84 @@ env: |
         name: egov-config
         key: kafka-brokers
   - name: KAFKA_BROKERS
-    value: release-name-kafka-controller-headless.kafka-kraft:9092
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: kafka-brokers
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: "true"
+    value: {{ index .Values "kafka-auto-create-topics" | quote }}
   - name: KAFKA_PARTITION_COUNT
-    value: "1"
+    value: {{ index .Values "kafka-partitions" | quote }}
   - name: KAFKA_REPLICATION_FACTOR
-    value: "1"
+    value: {{ index .Values "kafka-replication-factor" | quote }}
   - name: KAFKA_CONSUMER_GROUP
-    value: notification-service
+    value: {{ index .Values "kafka-consumer-group" | quote }}
 
   # ── PubSub ───────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
 
   # ── Notification topics ──────────────────────────────────────────────────
   - name: PUBSUB_TOPIC_CREATE_TEMPLATE
-    value: notification-create-template
+    value: {{ index .Values "topic-create-template" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_TEMPLATE
-    value: notification-update-template
+    value: {{ index .Values "topic-update-template" | quote }}
   - name: PUBSUB_TOPIC_DELETE_TEMPLATE
-    value: notification-delete-template
+    value: {{ index .Values "topic-delete-template" | quote }}
   - name: PUBSUB_TOPIC_SEND_EMAIL
-    value: notification-send-email
+    value: {{ index .Values "topic-send-email" | quote }}
   - name: PUBSUB_TOPIC_SEND_SMS
-    value: notification-send-sms
+    value: {{ index .Values "topic-send-sms" | quote }}
   - name: EMAIL_TOPIC
-    value: notification-email
+    value: {{ index .Values "topic-email" | quote }}
   - name: SMS_TOPIC
-    value: notification-sms
+    value: {{ index .Values "topic-sms" | quote }}
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-address
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
   - name: REDIS_CONSUMER_GROUP
-    value: notification-service
+    value: {{ index .Values "redis-consumer-group" | quote }}
   - name: REDIS_CONSUMER_ID
-    value: notification-service-1
+    value: {{ index .Values "redis-consumer-id" | quote }}
   - name: REDIS_RETENTION_DAYS
-    value: "7"
+    value: {{ index .Values "redis-retention-days" | quote }}
   - name: REDIS_MAX_STREAM_LENGTH
-    value: "1000000"
+    value: {{ index .Values "redis-max-stream-length" | quote }}
   - name: REDIS_CLEANUP_INTERVAL
-    value: "86400"
+    value: {{ index .Values "redis-cleanup-interval" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: OTEL_ENABLED
-    value: "false"
+    value: {{ index .Values "otel-enabled" | quote }}
   - name: OTEL_SERVICE_NAME
-    value: notification
+    value: {{ index .Values "otel-service-name" | quote }}
   - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
+    value: {{ index .Values "otel-service-version" | quote }}
   - name: OTEL_METRICS_ENABLED
-    value: "true"
+    value: {{ index .Values "otel-metrics-enabled" | quote }}
   - name: PROMETHEUS_PORT
-    value: "9090"
+    value: {{ index .Values "prometheus-port" | quote }}
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
+    value: {{ index .Values "otel-sampler-arg" | quote }}
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-exporter-otlp-endpoint
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint

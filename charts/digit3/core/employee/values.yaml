@@ -70,17 +70,40 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+canonical-api-prefix: "canonical"
+idgen-path: "idgen/v3/generate"
+idgen-name: "EmployeeCode"
+idgen-enabled: "true"
+boundary-path: "boundary/v3/relationship"
+boundary-enabled: "true"
+individual-path: "individual/v3/individuals"
+individual-enabled: "true"
+keycloak-client-id: "employee-iam-client"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-create-employee: "employee-create-employee"
+topic-update-employee: "employee-update-employee"
+topic-delete-employee: "employee-delete-employee"
+topic-create-jurisdiction: "employee-create-jurisdiction"
+topic-update-jurisdiction: "employee-update-jurisdiction"
+redis-db: "0"
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+tenant-migration-consumer-group: "employee-service"
+
 # ── Container env ─────────────────────────────────────────────────────────────
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
   - name: SERVER_CONTEXT_PATH
-    value: /employee
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
   - name: CANONICAL_API_PREFIX
-    value: canonical
+    value: {{ index .Values "canonical-api-prefix" | quote }}
 
   # ── IdGen ────────────────────────────────────────────────────────────────
   - name: IDGEN_HOST
@@ -89,11 +112,11 @@ env: |
         key: idgen
         name: egov-service-host
   - name: IDGEN_PATH
-    value: idgen/v3/generate
+    value: {{ index .Values "idgen-path" | quote }}
   - name: IDGEN_NAME
-    value: EmployeeCode
+    value: {{ index .Values "idgen-name" | quote }}
   - name: IDGEN_ENABLED
-    value: "true"
+    value: {{ index .Values "idgen-enabled" | quote }}
 
   # ── Boundary ─────────────────────────────────────────────────────────────
   - name: BOUNDARY_HOST
@@ -102,9 +125,9 @@ env: |
         key: boundary
         name: egov-service-host
   - name: BOUNDARY_PATH
-    value: boundary/v3/relationship
+    value: {{ index .Values "boundary-path" | quote }}
   - name: BOUNDARY_ENABLED
-    value: "true"
+    value: {{ index .Values "boundary-enabled" | quote }}
 
   # ── Individual ───────────────────────────────────────────────────────────
   - name: INDIVIDUAL_HOST
@@ -113,9 +136,9 @@ env: |
         key: individual
         name: egov-service-host
   - name: INDIVIDUAL_PATH
-    value: individual/v3/individuals
+    value: {{ index .Values "individual-path" | quote }}
   - name: INDIVIDUAL_ENABLED
-    value: "true"
+    value: {{ index .Values "individual-enabled" | quote }}
 
   # ── Keycloak ─────────────────────────────────────────────────────────────
   # in-cluster Keycloak - the same URL every other service uses
@@ -130,7 +153,7 @@ env: |
         name: egov-config
         key: keycloak-enabled
   - name: KEYCLOAK_EMPLOYEE_IAM_CLIENT_ID
-    value: employee-iam-client
+    value: {{ index .Values "keycloak-client-id" | quote }}
   - name: KEYCLOAK_EMPLOYEE_IAM_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
@@ -139,47 +162,56 @@ env: |
 
   # ── Kafka / PubSub ───────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: KAFKA_BROKERS
     valueFrom:
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
   - name: PUBSUB_TOPIC_CREATE_EMPLOYEE
-    value: employee-create-employee
+    value: {{ index .Values "topic-create-employee" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_EMPLOYEE
-    value: employee-update-employee
+    value: {{ index .Values "topic-update-employee" | quote }}
   - name: PUBSUB_TOPIC_DELETE_EMPLOYEE
-    value: employee-delete-employee
+    value: {{ index .Values "topic-delete-employee" | quote }}
   - name: PUBSUB_TOPIC_CREATE_JURISDICTION
-    value: employee-create-jurisdiction
+    value: {{ index .Values "topic-create-jurisdiction" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_JURISDICTION
-    value: employee-update-jurisdiction
+    value: {{ index .Values "topic-update-jurisdiction" | quote }}
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_HOST
-    value: redis.backbone.svc.cluster.local
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-host
   - name: REDIS_PORT
-    value: "6379"
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-port
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
 
   # ── tenant-migration ─────────────────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: employee_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: employee-service
+    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint
