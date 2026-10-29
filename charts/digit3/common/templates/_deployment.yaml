@@ -29,24 +29,7 @@ spec:
   replicas: {{ .Values.replicas }}
   template:
     metadata:
-      {{- /*
-        The deployment-timestamp annotation was removed. It rendered
-            deployment-timestamp: "{{ date "20060102150405" Release.Time }}"
-        which evaluates to the time of the render, so every render produced a
-        different pod template. Under Argo CD that means the app is permanently
-        OutOfSync and selfHeal rolls every pod on each sync, even when nothing
-        about the service changed. Verified by rendering the same chart twice 3s
-        apart: 20260903144432 then 20260903144435.
-
-        It only made sense under `helm upgrade`, where a changing annotation is
-        how you force a restart on an otherwise-identical chart. With GitOps the
-        opposite is wanted: the manifest must be a pure function of the commit.
-        To force a restart now, use `kubectl rollout restart` or bump something
-        real (an image tag or a config checksum).
-
-        annotations: is emitted only when additionalAnnotations is set, so we do
-        not leave an empty `annotations:` key rendering as null.
-      */}}
+      {{- /* No deployment-timestamp annotation: it changes every render and keeps Argo CD OutOfSync. Restart via kubectl rollout restart. */ -}}
       {{- if .Values.additionalAnnotations }}
       annotations:
         {{- tpl  .Values.additionalAnnotations . | nindent 8 }}
@@ -165,22 +148,28 @@ spec:
           {{- tpl . $ | nindent 10 }}
         {{- end }}
         {{- end }}
-      {{- if or .Values.env (eq .Values.appType "java") (index .Values "global" "tracing-enabled") .Values.extraEnv.promote }}
+      {{- $hasTracing := or (index .Values "global" "tracing-enabled") (index .Values "tracing-enabled") }}
+      {{- if or .Values.env (eq .Values.appType "java") $hasTracing .Values.extraEnv.app .Values.extraEnv.promote }}
+        {{- /* Merged by name, last wins: env < extraEnv.java < otel < app < promote. Keep every value quoted. */ -}}
+        {{- $envList := list }}
+        {{- if .Values.env }}{{- $envList = concat $envList (tpl (printf "\n%s" .Values.env) . | fromYamlArray | default (list)) }}{{- end }}
+        {{- if eq .Values.appType "java" }}{{- $envList = concat $envList (tpl (printf "\n%s" .Values.extraEnv.java) . | fromYamlArray | default (list)) }}{{- end }}
+        {{- if $hasTracing }}{{- $envList = concat $envList (tpl (printf "\n%s" .Values.extraEnv.otel) . | fromYamlArray | default (list)) }}{{- end }}
+        {{- if .Values.extraEnv.app }}{{- $envList = concat $envList (tpl (printf "\n%s" .Values.extraEnv.app) . | fromYamlArray | default (list)) }}{{- end }}
+        {{- if .Values.extraEnv.promote }}{{- $envList = concat $envList (tpl (printf "\n%s" .Values.extraEnv.promote) . | fromYamlArray | default (list)) }}{{- end }}
+        {{- $byName := dict }}
+        {{- $order := list }}
+        {{- range $e := $envList }}
+          {{- if and (kindIs "map" $e) $e.name }}
+            {{- if not (hasKey $byName $e.name) }}{{- $order = append $order $e.name }}{{- end }}
+            {{- $_ := set $byName $e.name $e }}
+          {{- end }}
+        {{- end }}
+        {{- $envOut := list }}
+        {{- range $n := $order }}{{- $envOut = append $envOut (get $byName $n) }}{{- end }}
+        {{- if $envOut }}
           env:
-        {{- if .Values.env }}
-          {{- tpl  .Values.env . | nindent 12 }}
-        {{- end -}}
-        {{- if eq .Values.appType "java" }}
-          {{- tpl  .Values.extraEnv.java . | nindent 12 }}
-        {{- end -}}
-        {{- if or (index .Values "global" "tracing-enabled") (index .Values "tracing-enabled") }}
-          {{- tpl  .Values.extraEnv.otel . | nindent 12 }}
-        {{- end }}
-        {{- if .Values.extraEnv.app }}
-          {{- tpl .Values.extraEnv.app . | nindent 12 }}
-        {{- end }}
-        {{- if .Values.extraEnv.promote }}
-          {{- tpl .Values.extraEnv.promote . | nindent 12 }}
+            {{- toYaml $envOut | nindent 12 }}
         {{- end }}
       {{- end }}
       {{- if .Values.resources }}

@@ -19,3 +19,6 @@
 .project
 .idea/
 *.tmproj
+# Local tooling artifacts (recall/remember plugins)
+.recall/
+.remember/

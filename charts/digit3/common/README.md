@@ -1,61 +1,112 @@
-# Digit Helm Deployment Common Chart
+# common
 
-The common library chart has templates which eases deployment of a service on to Digit with recommended platform defaults which can further be customized to service or environment needs while abstracting the need to know kubernetes manifest syntax.
+Base chart-building components and helpers for DIGIT 3.0. Provides the shared templates (`common.deployment`, `common.service`, `common.ingress`, `common.cronjob`, `common.servicemonitor`) and helpers (`common.name`, `common.labels`, `common.image`) that every digit3 service chart renders through, so a service chart only has to supply values.
 
-This helps us push defaults and changes to most, if not all, services deployed onto Digit.
+| | |
+|---|---|
+| **Project / Module** | `digit3` / `common` |
+| **Chart type** | library |
+| **Used by** | every digit3 service chart (as a dependency) |
 
-## Requirements
+## Usage
 
-The default values file [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml) has defaults for all manifest files, which can be overrides by service values file or environment override file.
+`common` is a library chart. It is not installed on its own; it is declared as a dependency of a service chart, which then renders its templates. Add it to the service chart's `Chart.yaml`:
 
-The service template file [_service.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/templates/_service.yaml) used for generating a service manifest.
+```yaml
+dependencies:
+  - name: common
+    version: 3.1.0
+    repository: https://helm.digit.org/digit3/common
+```
 
-The ingress template file [_ingress.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/templates/_ingress.yaml) used for generating ingress manifest.
+A service chart's templates then include the shared definitions, for example:
 
-The deployment template file [_deployment.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/templates/_deployment.yaml) used for generating a deployment manifest.
+```yaml
+{{ include "common.deployment" . }}
+{{ include "common.service" . }}
+{{ include "common.ingress" . }}
+```
 
-## Values template
+## How overriding works
 
-Parameter | Description | Default
---- | --- | ---
-`namespace` | Default namespace for the service | `egov`
-`replicas` | Number of Pods to be created | `1`
-`httpPort` | Default port number for the service | `8080`
-`appType` | Application Type to configure defaults for appType, "java-spring" only type with defaults for now. For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml) | ` `
-`labels` | Labels for the service, for example, <br/>`app: "egov-mdms-service"`<br/>`group: "core"` | `''`
-`ingress.enabled` | To add ingress controller for the service  | `false`
-`ingress.gateway` | When ingress is enabled, routes the request via API gateway | `false`
-`ingress.context` | When ingress is enabled, exposes the following context path to the internet, example `user` | ``
-`ingress.waf.enabled` | When ingress is enabled, Enable Web Application Firewall for the service | `true`
-`image.pullPolicy` |  To pull a Docker image from Docker repository, By default skip pulling an image if it already exists | `IfNotPresent`
-`image.tag` | Docker image tag for the service | `latest`
-`affinity.preferSpreadAcrossAZ` | To spread deployment replicas across multiple availability zones in cloud environment | `true`
-`initContainers.dbMigration.enabled` | Add Flyway DB migration container for the service, requires schemaTable configuration! | `false`
-`initContainers.dbMigration.schemaTable` | Schema table for the flyway db migration, required, if db migration enabled,  | `''`
-`initContainers.dbMigration.image.pullPolicy` | Pulls the DB migration docker images from Docker repository | `IfNotPresent`
-`initContainers.dbMigration.image.tag` | Docker image tag for the initcontainer | `latest`
-`initContainers.dbMigration.env` | Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `env: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `- name: "FLYWAY_USER"` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; `valueFrom:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `secretKeyRef:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `name: db` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `key: flyway-username` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`initContainers.gitSync.enabled` | To add a gitSync init container which clones a repository using configured ssh read token | `false`
-`initContainers.gitSync.repo` | Git repository to be checked out, required, if gitSync enabled, example, `git@github.com:egovernments/egov-mdms-data`  | `''`
-`initContainers.gitSync.branch` | Git repository branch to be checked out, required, if gitSync enabled, example, `master`  | `''`
-`gitSync.image.repository` | Docker image of the gitSync init container  | `k8s.gcr.io/git-sync`
-`gitSync.image.tag` | Docker image tag of the gitSync init container | `v3.1.1`
-`gitSync.image.pullPolicy` |  Docker image pull policy for gitSync init container | `IfNotPresent`
-`gitSync.env` | Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string |  `For Eg:` <br/> `env: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `- name: "GIT_SYNC_REPO"` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; `value: "{{ .Values.initContainers.gitSync.repo }}"` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`healthChecks.enabled` | To enable/disable healthchecks [Liveness probes and Readiness probes] for a pod | `false`
-`healthChecks.livenessProbe` | Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `livenessProbe: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `httpGet:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `path: "{{ .Values.healthChecks.livenessProbePath }}"` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `initialDelaySeconds: 60` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`healthChecks.livenessProbe.httpGet.path` | Context path of the service to check the liveness of a pod | `{{ .Values.healthChecks.livenessProbePath }}`
-`healthChecks.livenessProbe.httpGet.port` | Port number of the service to check the liveness of a pod | `{{ .Values.httpPort }}`
-`healthChecks.readinessProbe` | Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `readinessProbe: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `httpGet:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `path: "{{ .Values.healthChecks.readinessProbePath }}"` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `initialDelaySeconds: 60` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`healthChecks.readinessProbe.httpGet.path` | Context path of the service to check the readiness of a pod | `{{ .Values.healthChecks.readinessProbePath }}`
-`healthChecks.readinessProbe.httpGet.port` | Port number of the service to check the readiness of a pod | `{{ .Values.httpPort }}`
-`lifecycle.preStop.exec.command` | Executes the command in the pod before stopping | `- sh`<br/> `- -c` <br/> `- "sleep 10"`
-`memory_limits` | To set the memory limit for the pod | `512Mi`
-`resources` | To set the resource limits for the pod. Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `resources: \|` <br/> &nbsp;  &nbsp; `{{- if eq .Values.appType "java-spring" -}}` <br/> &nbsp;  &nbsp; `requests:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `memory: {{ .Values.memory_limits \| quote }}` <br/> &nbsp;  &nbsp; `limits:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `memory: {{ .Values.memory_limits \| quote }}` <br/> &nbsp;  &nbsp; `{{- end -}}`
-`extraEnv.java` | Allows the specification of additional environment variables for Java. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `java: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `- name: SPRING_DATASOURCE_URL` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; `valueFrom:` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `configMapKeyRef:` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `name: egov-config` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; `key: db-url` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`jaeger` | Jaeger API tracing environment variables to send traces to Jaeger Agent.  Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `jaeger: \|` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; `- name: JAEGER_AGENT_PORT` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp; `port: 6831` <br/> For more details check [values.yaml](https://github.com/egovernments/eGov-infraOps/blob/helm/helm/charts/common/values.yaml)
-`extraVolumes` | To add additional volumes to the service.  Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `extraVolumes: \|` <br/> &nbsp;  &nbsp; `- name: new-volume` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; `configMap:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp; `name: service-new-volume`
-`extraVolumeMounts` | To mount additional volumes to the service in a desired mount path.  Allows the specification of additional environment variables. Passed through the tpl function and thus to be configured a string | `For Eg:` <br/> `extraVolumeMounts: \|` <br/> &nbsp;  &nbsp; `- mountPath: /opt/service-path/file.conf` <br/> &nbsp;  &nbsp; &nbsp; &nbsp; `configMap:` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp; `name: new-volume` <br/> &nbsp;  &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp; `subPath: file.conf`
-`extraInitContainers` | Additional init containers, e. g. for providing themes, etc. Passed through the `tpl` function and thus to be configured a string | `""`
-`extraContainers` | Additional sidecar containers, e. g. for a database proxy, such as Google's cloudsql-proxy. Passed through the `tpl` function and thus to be configured a string | `""`
+Every value a service runs with is resolved by the `common.name` helper (`templates/_helpers.tpl`), which runs first in each template. It performs a 3-tier `mustMergeOverwrite` from lowest to highest priority:
 
+1. **common defaults** - `.Values.common`, the shared platform defaults carried in this library chart's `values.yaml` (lowest).
+2. **service values** - the service chart's own `.Values` (medium).
+3. **environment block** - the block in the env file named after the chart, looked up as `index .Values (default .Chart.Name .Values.name)` (highest).
+
+```go
+{{- $envOverrides := index .Values (tpl (default .Chart.Name .Values.name) .) -}}
+{{- $baseCommonValues := .Values.common | deepCopy -}}
+{{- $values := dict "Values" (mustMergeOverwrite $baseCommonValues .Values $envOverrides) -}}
+{{- with mustMergeOverwrite . $values -}}
+```
+
+`mustMergeOverwrite` deep-merges in order, so a key set in the environment block wins over the service default, which wins over the common default. The merge mutates the root `.Values` in place (via `mustMergeOverwrite . $values`), so every template rendered afterwards in the same pass sees the already-merged values. This is why a service chart can rely on common's defaults being present without copying them.
+
+```yaml
+# env file  -- the block is named after the chart and wins over service + common defaults
+filestore:
+  replicas: 2
+  httpPort: 8080
+```
+
+## Shared parameters
+
+Defaults below come from this chart's `values.yaml`. A service chart inherits them and overrides any of them through its own `values.yaml` or the environment block (see above).
+
+| Key | Description | Default |
+|---|---|---|
+| `global.mode` | Image-tag resolution mode, `prod` or `dev`. In `prod` the tag is always the chart `appVersion` (`image.tag` cannot override). In `dev` the tag is `image.tag` if set, else `appVersion`. Any other value fails the render. | `prod` |
+| `global.containerRegistry` | Registry prefix for images whose `repository` has no `/` | `egovio` |
+| `global.namespace` | When set, overrides the namespace for all rendered objects | (unset) |
+| `namespace` | Service namespace; used when `global.namespace` is unset. Effective order: `global.namespace` > service `namespace` > `egov` | `egov` |
+| `replicas` | Number of pods | `1` |
+| `httpPort` | Container and service port | `8080` |
+| `appType` | When `java`, injects the shared Java env (`extraEnv.java`) and applies `resources` | `""` |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `image.tag` | Image tag; honoured only in `dev` mode (see `global.mode`) | (unset) |
+| `ingress.enabled` | Render an Ingress for the service | `false` |
+| `ingress.gateway` | Route the Ingress backend through the API gateway instead of the service, and annotate the Service with `gateway/route-path: <ingress.context>` | `false` |
+| `ingress.gatewayServiceName` | Gateway (kong) proxy Service name used as the Ingress backend when `ingress.gateway` is true | `kong-proxy` |
+| `ingress.gatewayServicePort` | Gateway proxy Service port | `8000` |
+| `ingress.waf.enabled` | Add the WAF (lua-resty-waf) annotations to the Ingress | `true` |
+| `affinity.preferSpreadAcrossAZ` | Prefer spreading replicas across availability zones (pod anti-affinity) | `true` |
+| `initContainers.dbMigration.enabled` | Add the Flyway DB-migration init container (requires `schemaTable`) | `false` |
+| `initContainers.dbMigration.image.pullPolicy` | Pull policy for the migration init container | `IfNotPresent` |
+| `initContainers.dbMigration.image.tag` | Tag for the migration init container | `latest` |
+| `initContainers.dbMigration.env` | Env block for the migration init container (templated string); defaults wire `DB_URL`, `SCHEMA_TABLE`, `FLYWAY_USER`, `FLYWAY_PASSWORD`, `FLYWAY_LOCATIONS` from `egov-config` and the `db` secret | (see values.yaml) |
+| `initContainers.gitSync.enabled` | Add a git-sync init container that clones a repo via SSH | `false` |
+| `healthChecks.enabled` | Enable readiness and liveness probes | `false` |
+| `healthChecks.livenessProbe` / `healthChecks.readinessProbe` | Probe definitions (templated string); default to `httpGet` on `/<ingress.context><probePath>` at `httpPort` | (see values.yaml) |
+| `lifecycle.preStop` | Pre-stop hook; defaults to `sleep 10` for graceful shutdown | `sleep 10` |
+| `cpu_requests` | CPU request (applied only when `appType` is `java`) | `100m` |
+| `memory_requests` | Memory request (java only) | `256Mi` |
+| `cpu_limits` | CPU limit (java only) | `300m` |
+| `memory_limits` | Memory limit (java only) | `512Mi` |
+| `resources` | Resource block (templated string); renders requests/limits from the four values above only when `appType` is `java` | (see values.yaml) |
+| `extraEnv.java` | Shared Java env injected into every `appType: java` service (datasource + Hikari pool, Flyway off in-app, Kafka bootstrap, timezone, Tomcat tuning); sourced from `egov-config` and the `db` secret. Do not redefine the datasource at service level. | (see values.yaml) |
+| `extraEnv.otel` | OpenTelemetry env (`OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT` from `egov-config`); injected only when tracing is enabled via `global.tracing-enabled` or `tracing-enabled` | (see values.yaml) |
+| `extraEnv.app` | Optional per-service env block, appended after `otel` | (unset) |
+| `extraEnv.promote` | Optional per-service env block, appended last so its entries override earlier duplicates | (unset) |
+| `extraInitContainers` | Additional init containers (templated string) | `""` |
+| `extraContainers` | Additional sidecar containers (templated string) | `""` |
+| `extraVolumes` | Additional volumes (templated string) | `""` |
+| `extraVolumeMounts` | Additional volume mounts (templated string) | `""` |
+| `additionalLabels` | Extra labels merged into `common.labels` | `{}` |
+| `podSecurityContext` | Pod-level security context | `{}` |
+| `securityContext` | Container-level security context | `{}` |
+| `service.additionalAnnotations` | Extra annotations on the Service (templated string) | `{}` |
+| `serviceMonitor.honorLabels` | `honorLabels` on the ServiceMonitor | `true` |
+| `cron.concurrencyPolicy` | Concurrency policy for `common.cronjob` jobs | `Forbid` |
+| `cron.restartPolicy` | Restart policy for cron jobs | `OnFailure` |
+| `cron.httpPort` | Port for cron workloads | `8080` |
+
+### Env assembly and merge order
+
+`common.deployment` builds the container `env` list by concatenating, in order, `env` < `extraEnv.java` (when `appType: java`) < `extraEnv.otel` (when tracing enabled) < `extraEnv.app` < `extraEnv.promote`, then de-duplicates by variable name keeping the last occurrence. `extraEnv.java` and `extraEnv.otel` are the platform-wide blocks: they are injected into every Java service and are sourced from the `egov-config` ConfigMap (and the `db` secret) managed by the `cluster-configs` chart, so a service does not set the datasource, Kafka brokers, or tracing endpoint itself.
+
+## Source
+
+- Chart: [`charts/digit3/common`](https://github.com/egovernments/helm-charts/tree/master/charts/digit3/common)
+- Full defaults: [`values.yaml`](https://github.com/egovernments/helm-charts/blob/master/charts/digit3/common/values.yaml)
