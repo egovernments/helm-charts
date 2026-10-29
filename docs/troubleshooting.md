@@ -57,9 +57,9 @@ exactly one Release option ticked.
 default `prod` mode, `common.image` uses `Chart.AppVersion` as the image tag, so the pod pulls
 `<service>:1.16.0` - which does not exist.
 
-**Fix:** set `appVersion` in `Chart.yaml` to the **real image tag** (e.g. `flyway-branch-18c74fe`,
-the same tag the `<service>-db` images use). It drives both the service image and the db-migration
-init-image. Do **not** set `image.tag` in prod mode - it is ignored; only `global.mode: dev` reads
+**Fix:** set `appVersion` in `Chart.yaml` to the **real CI build tag** (e.g. `dev-flyway-7068862`,
+the same tag the `<service>-db` images use; check `egovio/<service>` on Docker Hub). It drives both
+the service image and the db-migration init-image. Do **not** set `image.tag` in prod mode - it is ignored; only `global.mode: dev` reads
 `image.tag`. See [onboarding-a-service.md](onboarding-a-service.md).
 
 ## The chart published under the wrong name (`digit-<name>`)

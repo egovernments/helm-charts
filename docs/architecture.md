@@ -79,7 +79,7 @@ Service charts declare `common` as a dependency pulled from the registry:
 # charts/digit3/core/localization/Chart.yaml
 dependencies:
   - name: common
-    version: 3.1.0
+    version: 3.1.1
     repository: https://helm.digit.org/digit3/common
 ```
 
@@ -97,6 +97,12 @@ ConfigMap and the `db` Secret. A separate `extraEnv.otel` block adds OpenTelemet
 is enabled. Services therefore **do not** redefine their datasource, broker or pool; they inherit
 them. See [onboarding-a-service.md](onboarding-a-service.md) for the exact fields.
 
+A service's **own** env (topics, feature flags, consumer groups, …) is wired to be overridable: each
+value is a short top-level key referenced as `{{ index .Values "<key>" | quote }}`, resolved through
+a three-tier merge - `common` defaults < the chart's `values.yaml` < the `environments/<env>.yaml`
+block named after the chart (highest). App-specific values live in the chart; shared infrastructure
+stays in `egov-config`. See [onboarding-a-service.md](onboarding-a-service.md#3d-service-specific-env-and-making-it-overridable).
+
 ### Shared config: `cluster-configs`
 
 The values those env vars read from are defined in one place - the `cluster-configs` chart
@@ -111,7 +117,7 @@ in `environments/<env>.yaml`.
 `common.image` resolves the tag from `global.mode` (default `prod`, set in `common`):
 
 - **prod** (default): the image tag is always the chart's `Chart.AppVersion`. `image.tag` in
-  `values.yaml` is ignored. Set `appVersion` to the real tag (e.g. `flyway-branch-18c74fe`); it
+  `values.yaml` is ignored. Set `appVersion` to the real CI build tag (currently `dev-flyway-<build>`, e.g. `dev-flyway-7068862`); it
   drives both the service image and the `<service>-db` init-image.
 - **dev**: uses `.Values.image.tag` if set, else falls back to `appVersion`.
 
@@ -135,10 +141,12 @@ chart indexes:
 | Projects | `index.html` | `/index.html` | `projects.json` |
 | Modules | `project-index.html` | `/<project>/index.html` | `<project>/modules.json` + each module's `index.yaml` |
 | Charts | `module-index.html` | `/<project>/<module>/index.html` | `<project>/<module>/index.yaml` + `changelog.yaml` |
+| Chart detail | `chart-index.html` | `/<project>/<module>/<chart>/index.html` | the chart's `README.md` (rendered as the page) + the module `index.yaml` (version history) |
 
-`projects.json`, each `<project>/modules.json`, the three HTML pages, and each module's
-`changelog.yaml` are (re)generated and copied into `gh-pages` automatically on every release run.
-You never edit them by hand.
+On every release run CI (re)generates and copies into `gh-pages`, automatically: `projects.json`,
+each `<project>/modules.json`, the four HTML page templates, each module's `changelog.yaml`, the
+`favicon.png`, and each chart's `README.md` (placed next to its package so the chart-detail page can
+render it). You never edit them by hand.
 
 ## What is NOT used for versioning
 

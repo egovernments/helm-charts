@@ -40,6 +40,13 @@ helm install my-release digit3-core/localization -n core -f values.yaml
   [onboarding-a-service.md](onboarding-a-service.md)).
 - Shared config and secrets (`egov-config`, `egov-service-host`, the `db` Secret, …) are defined
   once in the **`cluster-configs`** chart.
+- A service's own env is made **overridable**: each value is a short top-level key referenced as
+  `{{ index .Values "<key>" }}`, resolved through a three-tier merge (common defaults < chart
+  `values.yaml` < `environments/<env>.yaml` block). App-specific values live in the chart; shared
+  infra stays in `egov-config`.
+- Every chart ships a **`README.md`**, rendered on the registry at
+  `helm.digit.org/<project>/<module>/<chart>`. A fillable **scaffold** for a new service chart lives
+  at [`templates/service-chart/`](templates/service-chart).
 - Infrastructure charts (`kong`, `vault`, `postgresql`) are **vendored** from upstream (they do not
   use `common`) and carry `digit.org/upstream-*` provenance annotations.
 - Versions are derived from the published registry, not from git tags. There are no
