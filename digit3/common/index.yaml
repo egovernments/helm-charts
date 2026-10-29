@@ -2,8 +2,16 @@ apiVersion: v1
 entries:
   common:
     - apiVersion: v1
+      created: "2026-10-29T12:25:10.967393427Z"
+      description: base chartbuilding components and helpers
+      digest: 86dfcf73288ae3776866b365b8e0ecc9cccff00fc678c82fa5191dfe8f050165
+      name: common
+      urls:
+        - https://helm.digit.org/digit3/common/common/common-3.1.1.tgz
+      version: 3.1.1
+    - apiVersion: v1
       appVersion: 1.0.0
-      created: "2026-10-27T11:06:46.063279584Z"
+      created: "2026-10-29T12:25:10.966611532Z"
       description: base chartbuilding components and helpers
       digest: 0c51c1df99c7ab9a412d895dbbceb50d85f9cce4ddf83db01a063e9f48e8340e
       name: common
@@ -12,11 +20,11 @@ entries:
       version: 3.1.0
     - apiVersion: v1
       appVersion: 1.0.0
-      created: "2026-10-27T11:06:46.062528379Z"
+      created: "2026-10-29T12:25:10.965166136Z"
       description: base chartbuilding components and helpers
       digest: 8f33d7a12c2ec5a655dcfc1b5301da87fa07c9e8da28f25e0e9b0637a67ce766
       name: common
       urls:
         - https://helm.digit.org/digit3/common/common/common-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-27T11:06:46.061600643Z"
+generated: "2026-10-29T12:25:10.964107693Z"
