@@ -7,5 +7,5 @@ version: 3.2.1
 appVersion: flyway-branch-18c74fe
 dependencies:
   - name: common
-    version: 3.1.0
+    version: 3.1.1
     repository: https://helm.digit.org/digit3/common
