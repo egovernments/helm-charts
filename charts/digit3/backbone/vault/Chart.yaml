@@ -6,7 +6,7 @@ name: vault
 # Chart version follows this repo's digit3 convention (seed 3.0.0), not the
 # upstream vault-helm version. Upstream chart: 0.29.1. appVersion tracks the
 # Vault release delivered.
-version: 3.0.0
+version: 3.0.1
 appVersion: 1.18.1
 kubeVersion: ">= 1.20.0-0"
 description: Official HashiCorp Vault Chart

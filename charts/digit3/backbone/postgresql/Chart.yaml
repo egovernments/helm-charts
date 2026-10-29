@@ -1,17 +1,13 @@
 apiVersion: v2
 name: postgresql
 description: >-
-  PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official
-  cloudnative-pg/cluster chart, with a reconciler that provisions the application
-  database + role (from egov-config and the db secret) after the cluster is ready.
+  PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
 type: application
-
 # Chart version follows this repo's digit3 3.x convention, not the upstream
 # cluster chart version (see the digit.org/upstream-* annotations below).
-version: 3.0.0
+version: 3.0.1
 appVersion: "18"
 kubeVersion: ">=1.29.0-0"
-
 icon: https://raw.githubusercontent.com/cloudnative-pg/artwork/main/cloudnativepg-logo.svg
 home: https://cloudnative-pg.io
 sources:
@@ -21,7 +17,6 @@ keywords:
   - postgres
   - database
   - cloudnative-pg
-
 annotations:
   # Upstream provenance: vendored from the official CloudNativePG cluster chart,
   # so the parent chart + app versions are easy to map and re-sync.
