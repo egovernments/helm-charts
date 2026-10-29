@@ -24,29 +24,6 @@ tracing-enabled: "true"
 metrics-enabled: "true"
 events-listeners: "jboss-logging,register-citizen-listener"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-kc-proxy: "edge"
-kc-http-relative-path: "/keycloak"
-kc-features: "token-exchange,admin-fine-grained-authz"
-kc-db: "postgres"
-db-port: "5432"
-register-citizen-listener-enabled: "true"
-otp-generate-path: "otp/v3/generate"
-otp-resend-path: "otp/v3/resend"
-otp-verify-path: "otp/v3/verify"
-otp-invalidate-path: "otp/v3/invalidate"
-otp-email-purpose: "login"
-otp-sms-purpose: "login"
-otp-registration-purpose: "registration"
-email-destination-attribute: "email"
-sms-destination-attribute: "mobileNumber"
-http-client-connect-timeout-ms: "3000"
-http-client-request-timeout-ms: "5000"
-otel-service-name: "keycloak"
-kc-telemetry-protocol: "http"
-otel-sampler-type: "parentbased_always_on"
-otel-exporter-protocol: "http/protobuf"
-
 cpu_requests: "250m"
 memory_requests: "512Mi"
 cpu_limits: "500m"
@@ -72,13 +49,13 @@ resources: |
 env: |
   # ── Server ───────────────────────────────────────────────────────────────
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: KC_PROXY
-    value: {{ index .Values "kc-proxy" | quote }}
+    value: "edge"
   - name: KC_HTTP_RELATIVE_PATH
-    value: {{ index .Values "kc-http-relative-path" | quote }}
+    value: "/keycloak"
   - name: KC_FEATURES
-    value: {{ index .Values "kc-features" | quote }}
+    value: "token-exchange,admin-fine-grained-authz"
 
   # ── Database ─────────────────────────────────────────────────────────────
   # KC_DB_URL from egov-config/<dbInit.urlKey> so each env has its own db; db-init creates it.
@@ -88,9 +65,9 @@ env: |
         name: egov-config
         key: {{ .Values.dbInit.urlKey | quote }}
   - name: KC_DB
-    value: {{ index .Values "kc-db" | quote }}
+    value: "postgres"
   - name: DB_PORT
-    value: {{ index .Values "db-port" | quote }}
+    value: "5432"
   - name: KC_DB_USERNAME
     valueFrom:
       secretKeyRef:
@@ -120,7 +97,7 @@ env: |
   - name: KC_EVENTS_LISTENERS
     value: {{ index .Values "events-listeners" | quote }}
   - name: KC_SPI_EVENTS_LISTENER_REGISTER_CITIZEN_LISTENER_ENABLED
-    value: {{ index .Values "register-citizen-listener-enabled" | quote }}
+    value: "true"
   - name: KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -133,29 +110,29 @@ env: |
   # (tracing-enabled: false) - in Helm a non-empty string "false" is TRUTHY.
   {{- if index .Values "tracing-enabled" }}
   - name: KC_TRACING_ENABLED
-    value: {{ index .Values "tracing-enabled" | quote }}
+    value: "true"
   - name: KC_TELEMETRY_ENDPOINT
     valueFrom:
       configMapKeyRef:
         name: egov-config
         key: otel-exporter-otlp-endpoint
   - name: KC_TELEMETRY_PROTOCOL
-    value: {{ index .Values "kc-telemetry-protocol" | quote }}
+    value: "http"
   - name: KC_TELEMETRY_SERVICE_NAME
-    value: {{ index .Values "otel-service-name" | quote }}
+    value: "keycloak"
   - name: KC_TELEMETRY_SAMPLER_TYPE
-    value: {{ index .Values "otel-sampler-type" | quote }}
+    value: "parentbased_always_on"
   {{- end }}
   {{- if index .Values "metrics-enabled" }}
   # KC_HTTP_MANAGEMENT_PORT left unset so management stays on default 9000 (metrics via
   # keycloak-management Service); pinning it to 8080 put two servers on one port -> ~1/4
   # of requests 404'd and exposed /keycloak/metrics through the ingress.
   - name: KC_METRICS_ENABLED
-    value: {{ index .Values "metrics-enabled" | quote }}
+    value: "true"
   {{- end }}
   {{- if index .Values "tracing-enabled" }}
   - name: OTEL_SERVICE_NAME
-    value: {{ index .Values "otel-service-name" | quote }}
+    value: "keycloak"
   {{- end }}
   # Always emitted: Keycloak reads OTEL_TRACES_EXPORTER unconditionally.
   - name: OTEL_TRACES_EXPORTER
@@ -164,7 +141,7 @@ env: |
   # OTEL_EXPORTER_OTLP_ENDPOINT comes from common's otel block; only the protocol is set
   # here so the SDK uses OTLP/HTTP, matching the :4318 collector port.
   - name: OTEL_EXPORTER_OTLP_PROTOCOL
-    value: {{ index .Values "otel-exporter-protocol" | quote }}
+    value: "http/protobuf"
   {{- end }}
 
   # ── OTP ──────────────────────────────────────────────────────────────────
@@ -172,17 +149,17 @@ env: |
   - name: OTP_HOST
     value: {{ index .Values "otp-host" | default "http://otp:8080/" | quote }}
   - name: OTP_GENERATE_PATH
-    value: {{ index .Values "otp-generate-path" | quote }}
+    value: "otp/v3/generate"
   - name: OTP_RESEND_PATH
-    value: {{ index .Values "otp-resend-path" | quote }}
+    value: "otp/v3/resend"
   - name: OTP_VERIFY_PATH
-    value: {{ index .Values "otp-verify-path" | quote }}
+    value: "otp/v3/verify"
   - name: OTP_INVALIDATE_PATH
-    value: {{ index .Values "otp-invalidate-path" | quote }}
+    value: "otp/v3/invalidate"
   - name: OTP_EMAIL_PURPOSE
-    value: {{ index .Values "otp-email-purpose" | quote }}
+    value: "login"
   - name: OTP_SMS_PURPOSE
-    value: {{ index .Values "otp-sms-purpose" | quote }}
+    value: "login"
   # Citizen self-registration via OTP (present on every running deployment).
   # *_DEFAULT_OTP is a NON-PRODUCTION convenience; override `otp-default`, never ship a fixed OTP.
   - name: OTP_EMAIL_DEFAULT_OTP
@@ -190,19 +167,19 @@ env: |
   - name: OTP_SMS_DEFAULT_OTP
     value: {{ index .Values "otp-default" | default "123456" | quote }}
   - name: OTP_REGISTRATION_PURPOSE
-    value: {{ index .Values "otp-registration-purpose" | quote }}
+    value: "registration"
   - name: OTP_REGISTRATION_DEFAULT_OTP
     value: {{ index .Values "otp-default" | default "123456" | quote }}
   - name: OTP_REGISTRATION_ROLES
     value: {{ index .Values "otp-registration-roles" | default "CITIZEN" | quote }}
   - name: KEYCLOAK_EMAIL_DESTINATION_ATTRIBUTE
-    value: {{ index .Values "email-destination-attribute" | quote }}
+    value: "email"
   - name: KEYCLOAK_SMS_DESTINATION_ATTRIBUTE
-    value: {{ index .Values "sms-destination-attribute" | quote }}
+    value: "mobileNumber"
   - name: HTTP_CLIENT_CONNECT_TIMEOUT_MS
-    value: {{ index .Values "http-client-connect-timeout-ms" | quote }}
+    value: "3000"
   - name: HTTP_CLIENT_REQUEST_TIMEOUT_MS
-    value: {{ index .Values "http-client-request-timeout-ms" | quote }}
+    value: "5000"
 
   # ── Hostname ─────────────────────────────────────────────────────────────
   # Derived from global.domain so issuer/redirect URLs are correct behind the ingress.

@@ -69,55 +69,15 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-context-path: ""  # blank -> /<ingress.context>
-boundary-basepath: "http://boundary:8080/"
-cache-type: "inmemory"
-filestore-endpoint: "/filestore/v1/files"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-schema-separation-topic: "account-migration"
-migration-locations: "classpath:db/migration"
-kafka-auto-create-topics: "true"
-kafka-partitions: "1"
-kafka-replication-factor: "1"
-kafka-consumer-group: "boundary-service"
-pubsub-enabled: "true"
-pubsub-type: "kafka"
-topic-create-boundary: "boundary-create-boundary"
-topic-update-boundary: "boundary-update-boundary"
-topic-delete-boundary: "boundary-delete-boundary"
-topic-create-boundary-hierarchy: "boundary-create-boundary-hierarchy"
-topic-update-boundary-hierarchy: "boundary-update-boundary-hierarchy"
-topic-delete-boundary-hierarchy: "boundary-delete-boundary-hierarchy"
-topic-create-boundary-relationship: "boundary-create-boundary-relationship"
-topic-update-boundary-relationship: "boundary-update-boundary-relationship"
-topic-delete-boundary-relationship: "boundary-delete-boundary-relationship"
-redis-db: "0"
-redis-consumer-group: "boundary-service"
-redis-consumer-id: "boundary-service-1"
-redis-retention-days: "7"
-redis-max-stream-length: "1000000"
-redis-cleanup-interval: "86400"
-otel-enabled: "true"
-otel-service-name: "boundary"
-otel-service-version: "1.0.0"
-otel-metrics-enabled: "true"
-otel-sampler-arg: "1.0"
-prometheus-port: "9090"
-
 # ── Container env ─────────────────────────────────────────────────────────────
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
-  # app reads HTTP_PORT, not SERVER_PORT
-  - name: HTTP_PORT
-    value: {{ .Values.httpPort | quote }}
-  - name: SERVER_CONTEXT_PATH
-    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: SERVER_PORT
+    value: "8080"
   - name: BOUNDARY_BASEPATH
-    value: {{ index .Values "boundary-basepath" | quote }}
+    value: http://boundary:8080/
   - name: CACHE_TYPE
-    value: {{ index .Values "cache-type" | quote }}
+    value: inmemory
 
   # ── Filestore ────────────────────────────────────────────────────────────
   - name: FILESTORE_BASEPATH
@@ -126,26 +86,26 @@ env: |
         key: filestore
         name: egov-service-host
   - name: FILESTORE_ENDPOINT
-    value: {{ index .Values "filestore-endpoint" | quote }}
+    value: /filestore/v1/files
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   # consume account-migration, migrate into the tenant schema
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_TOPIC
-    value: {{ index .Values "schema-separation-topic" | quote }}
+    value: account-migration
 
   # ── App-level migrations ─────────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: {{ index .Values "migration-locations" | quote }}
+    value: classpath:db/migration  # jar-embedded migrations
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: boundary_schema
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   - name: KAFKA_BROKERS
@@ -154,81 +114,72 @@ env: |
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: {{ index .Values "kafka-auto-create-topics" | quote }}
+    value: "true"
   - name: KAFKA_PARTITION_COUNT
-    value: {{ index .Values "kafka-partitions" | quote }}
+    value: "1"
   - name: KAFKA_REPLICATION_FACTOR
-    value: {{ index .Values "kafka-replication-factor" | quote }}
+    value: "1"
   - name: KAFKA_CONSUMER_GROUP
-    value: {{ index .Values "kafka-consumer-group" | quote }}
+    value: boundary-service
 
   # ── PubSub ───────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: {{ index .Values "pubsub-enabled" | quote }}
+    value: "true"
   - name: PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: "kafka"
   - name: PUBSUB_TOPIC_CREATE_BOUNDARY
-    value: {{ index .Values "topic-create-boundary" | quote }}
+    value: boundary-create-boundary
   - name: PUBSUB_TOPIC_UPDATE_BOUNDARY
-    value: {{ index .Values "topic-update-boundary" | quote }}
+    value: boundary-update-boundary
   - name: PUBSUB_TOPIC_DELETE_BOUNDARY
-    value: {{ index .Values "topic-delete-boundary" | quote }}
+    value: boundary-delete-boundary
   - name: PUBSUB_TOPIC_CREATE_BOUNDARY_HIERARCHY
-    value: {{ index .Values "topic-create-boundary-hierarchy" | quote }}
+    value: boundary-create-boundary-hierarchy
   - name: PUBSUB_TOPIC_UPDATE_BOUNDARY_HIERARCHY
-    value: {{ index .Values "topic-update-boundary-hierarchy" | quote }}
+    value: boundary-update-boundary-hierarchy
   - name: PUBSUB_TOPIC_DELETE_BOUNDARY_HIERARCHY
-    value: {{ index .Values "topic-delete-boundary-hierarchy" | quote }}
+    value: boundary-delete-boundary-hierarchy
   - name: PUBSUB_TOPIC_CREATE_BOUNDARY_RELATIONSHIP
-    value: {{ index .Values "topic-create-boundary-relationship" | quote }}
+    value: boundary-create-boundary-relationship
   - name: PUBSUB_TOPIC_UPDATE_BOUNDARY_RELATIONSHIP
-    value: {{ index .Values "topic-update-boundary-relationship" | quote }}
+    value: boundary-update-boundary-relationship
   - name: PUBSUB_TOPIC_DELETE_BOUNDARY_RELATIONSHIP
-    value: {{ index .Values "topic-delete-boundary-relationship" | quote }}
+    value: boundary-delete-boundary-relationship
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-address
+    value: redis.backbone.svc.cluster.local:6379
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: {{ index .Values "redis-db" | quote }}
+    value: "0"
   - name: REDIS_CONSUMER_GROUP
-    value: {{ index .Values "redis-consumer-group" | quote }}
+    value: boundary-service
   - name: REDIS_CONSUMER_ID
-    value: {{ index .Values "redis-consumer-id" | quote }}
+    value: boundary-service-1
   - name: REDIS_RETENTION_DAYS
-    value: {{ index .Values "redis-retention-days" | quote }}
+    value: "7"
   - name: REDIS_MAX_STREAM_LENGTH
-    value: {{ index .Values "redis-max-stream-length" | quote }}
+    value: "1000000"
   - name: REDIS_CLEANUP_INTERVAL
-    value: {{ index .Values "redis-cleanup-interval" | quote }}
+    value: "86400"
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: OTEL_ENABLED
-    value: {{ index .Values "otel-enabled" | quote }}
+    value: "true"
   - name: OTEL_SERVICE_NAME
-    value: {{ index .Values "otel-service-name" | quote }}
+    value: boundary
   - name: OTEL_SERVICE_VERSION
-    value: {{ index .Values "otel-service-version" | quote }}
+    value: 1.0.0
   - name: OTEL_METRICS_ENABLED
-    value: {{ index .Values "otel-metrics-enabled" | quote }}
+    value: "true"
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: {{ index .Values "otel-sampler-arg" | quote }}
+    value: "1.0"
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-exporter-otlp-endpoint
+    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
   - name: PROMETHEUS_PORT
-    value: {{ index .Values "prometheus-port" | quote }}
+    value: "9090"
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces

@@ -60,20 +60,6 @@ smscountry-api-url: "http://api.smscountry.com/SMSCwebservice_bulk.aspx"
 # Optional; left blank, the gateway applies the registered sender header
 smscountry-sender-id: ""
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-context-path: ""  # blank -> /<ingress.context>
-log-level: "INFO"
-flyway-enabled: "false"
-management-base-path: "/"
-management-exposure-include: "health,info"
-metrics-export-enabled: "false"
-pubsub-type: "kafka"
-kafka-consumer-group: "notify-service"
-redis-db: "0"
-tenant-migration-enabled: "true"
-tenant-migration-consumer-group: "notify-service"
-topic-send-enabled: "true"
-
 healthChecks:
   enabled: true
   livenessProbePath: "/health"
@@ -94,20 +80,20 @@ env: |
   - name: JAVA_TOOL_OPTIONS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: SERVER_SERVLET_CONTEXT_PATH
-    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+    value: /notify
   - name: APP_TIMEZONE
     valueFrom:
       configMapKeyRef:
         name: egov-config
         key: timezone
   - name: LOGGING_LEVEL_ORG_DIGIT_NOTIFY
-    value: {{ index .Values "log-level" | quote }}
+    value: INFO
 
   # ── Datasource ───────────────────────────────────────────────────────────
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "flyway-enabled" | quote }}
+    value: "false"
 
   # ── Providers (email / SMS) ──────────────────────────────────────────────
   # jars are baked into the image; nothing is mounted at /providers (a volume would hide them)
@@ -144,55 +130,46 @@ env: |
   # ── Management / actuator ────────────────────────────────────────────────
   # base-path `/` puts the actuator endpoints under the servlet context path, where the probes look
   - name: MANAGEMENT_ENDPOINTS_WEB_BASE_PATH
-    value: {{ index .Values "management-base-path" | quote }}
+    value: "/"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-exposure-include" | quote }}
+    value: health,info
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   - name: PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: kafka
   - name: KAFKA_BROKERS
     valueFrom:
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_CONSUMER_GROUP
-    value: {{ index .Values "kafka-consumer-group" | quote }}
+    value: notify-service
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-host
+    value: redis.backbone.svc.cluster.local
   - name: REDIS_PORT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-port
+    value: "6379"
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: {{ index .Values "redis-db" | quote }}
+    value: "0"
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: notify_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: notify-service
 
   # ── Notification topics ──────────────────────────────────────────────────
   - name: NOTIFY_TOPIC_SEND_ENABLED
-    value: {{ index .Values "topic-send-enabled" | quote }}
+    value: "true"
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces

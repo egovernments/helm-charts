@@ -59,26 +59,6 @@ heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 tracing-export-enabled: "false"
 tracing-enabled: false
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-app-name: "url-shortener"
-flyway-enabled: "false"
-cache-enabled: "false"
-cache-type: "redis"
-cache-ttl: "24h"
-redis-db: "0"
-events-enabled: "false"
-topic-create-short-url: "url-shortener-create-short-url"
-topic-create-config: "url-shortener-create-url-config"
-topic-update-config: "url-shortener-update-url-config"
-topic-delete-config: "url-shortener-delete-url-config"
-pubsub-type: "kafka"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-tenant-migration-consumer-group: "url-shortener"
-metrics-export-enabled: "false"
-management-endpoints-exposure: "health,info"
-tracing-sampling-probability: "1.0"
-
 healthChecks:
   enabled: false
   livenessProbePath: "/health"
@@ -100,55 +80,49 @@ env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: SPRING_APPLICATION_NAME
-    value: {{ index .Values "app-name" | quote }}
+    value: url-shortener
   - name: URL_SHORTENER_HOST_NAME
     value: https://{{ .Values.global.domain }}
   - name: URL_SHORTENER_CACHE_ENABLED
-    value: {{ index .Values "cache-enabled" | quote }}
+    value: "false"
   - name: URL_SHORTENER_CACHE_TYPE
-    value: {{ index .Values "cache-type" | quote }}
+    value: redis
   - name: URL_SHORTENER_CACHE_TTL
-    value: {{ index .Values "cache-ttl" | quote }}
+    value: 24h
 
   # ── Datasource ────────────────────────────────────────────────────────
   # Migration is handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "flyway-enabled" | quote }}
+    value: "false"
 
   # ── Redis (redirect cache) ────────────────────────────────────────────
   - name: SPRING_DATA_REDIS_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-host
+    value: redis.backbone.svc.cluster.local
   - name: SPRING_DATA_REDIS_PORT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-port
+    value: "6379"
   - name: SPRING_DATA_REDIS_DATABASE
-    value: {{ index .Values "redis-db" | quote }}
+    value: "0"
   - name: SPRING_DATA_REDIS_PASSWORD
 
   # ── Lifecycle events ──────────────────────────────────────────────────
   # same posture as the Go chart: disabled
   - name: URL_SHORTENER_EVENTS_ENABLED
-    value: {{ index .Values "events-enabled" | quote }}
+    value: "false"
   - name: URL_SHORTENER_EVENTS_TOPICS_CREATE_SHORT_URL
-    value: {{ index .Values "topic-create-short-url" | quote }}
+    value: url-shortener-create-short-url
   - name: URL_SHORTENER_EVENTS_TOPICS_CREATE_CONFIG
-    value: {{ index .Values "topic-create-config" | quote }}
+    value: url-shortener-create-url-config
   - name: URL_SHORTENER_EVENTS_TOPICS_UPDATE_CONFIG
-    value: {{ index .Values "topic-update-config" | quote }}
+    value: url-shortener-update-url-config
   - name: URL_SHORTENER_EVENTS_TOPICS_DELETE_CONFIG
-    value: {{ index .Values "topic-delete-config" | quote }}
+    value: url-shortener-delete-url-config
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   # kafka, not redis: account publishes account-migration to kafka and tenant-migration below subscribes here
   - name: TRACER_PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -158,26 +132,23 @@ env: |
   # ── Tenant / schema separation ────────────────────────────────────────
   # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above; set once at initial deployment
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: url_shortener_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: url-shortener
 
   # ── Observability (OpenTelemetry) ─────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-endpoints-exposure" | quote }}
+    value: health,info
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
   - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-    value: {{ index .Values "tracing-sampling-probability" | quote }}
+    value: "1.0"

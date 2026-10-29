@@ -56,44 +56,6 @@ appType: "java"
 tracing-export-enabled: "false"
 tracing-enabled: false
 
-idgenBaseUrl: "http://idgen:8080/idgen"
-
-# ── App config (overridable per env) ──────────────────────────────────────────
-context-path: ""  # blank -> /<ingress.context>
-log-level: "info"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-schema-separation-topic: "account-migration"
-migration-locations: "classpath:db/migration"
-kafka-auto-create-topics: "true"
-kafka-partitions: "1"
-kafka-replication-factor: "1"
-kafka-consumer-group: "registry-service"
-pubsub-enabled: "true"
-pubsub-type: "kafka"
-redis-db: "0"
-redis-consumer-group: "registry-service"
-redis-consumer-id: "registry-service-1"
-redis-retention-days: "7"
-redis-max-stream-length: "1000000"
-redis-cleanup-interval: "86400"
-vault-required: "false"
-vault-transit-mount: "transit"
-vault-key-prefix: "registry-"
-vault-timeout: "30s"
-idgen-template-id: "registryId"
-idgen-org-value: "REGISTRY"
-idgen-http-timeout: "5s"
-idgen-table-templates: "idgen_templates"
-idgen-table-sequence-lookups: "idgen_sequence_lookup"
-idgen-table-sequence-resets: "idgen_sequence_resets"
-otel-enabled: "false"
-otel-metrics-enabled: "false"
-otel-service-name: "registry"
-otel-service-version: "1.0.0"
-otel-sampler-arg: "1.0"
-prometheus-port: "9090"
-
 resources: |
   requests:
     cpu: "150m"
@@ -106,29 +68,27 @@ resources: |
 env: |
   # ── Service ───────────────────────────────────────────────────────────
   - name: PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: LOG_LEVEL
-    value: {{ index .Values "log-level" | quote }}
-  - name: SERVER_CONTEXT_PATH
-    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+    value: info
 
   # ── Tenant / schema separation ────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_TOPIC
-    value: {{ index .Values "schema-separation-topic" | quote }}
+    value: account-migration
 
   # ── App-level migrations ──────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: {{ index .Values "migration-locations" | quote }}
+    value: classpath:db/migration  # jar-embedded migrations
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: registry_schema
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   - name: KAFKA_BROKERS
@@ -137,89 +97,80 @@ env: |
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: {{ index .Values "kafka-auto-create-topics" | quote }}
+    value: "true"
   - name: KAFKA_PARTITION_COUNT
-    value: {{ index .Values "kafka-partitions" | quote }}
+    value: "1"
   - name: KAFKA_REPLICATION_FACTOR
-    value: {{ index .Values "kafka-replication-factor" | quote }}
+    value: "1"
   - name: KAFKA_CONSUMER_GROUP
-    value: {{ index .Values "kafka-consumer-group" | quote }}
+    value: registry-service
 
   # ── PubSub ────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: {{ index .Values "pubsub-enabled" | quote }}
+    value: "true"
   - name: PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: "kafka"
 
   # ── Redis ─────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-address
+    value: redis.backbone.svc.cluster.local:6379
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: {{ index .Values "redis-db" | quote }}
+    value: "0"
   - name: REDIS_CONSUMER_GROUP
-    value: {{ index .Values "redis-consumer-group" | quote }}
+    value: registry-service
   - name: REDIS_CONSUMER_ID
-    value: {{ index .Values "redis-consumer-id" | quote }}
+    value: registry-service-1
   - name: REDIS_RETENTION_DAYS
-    value: {{ index .Values "redis-retention-days" | quote }}
+    value: "7"
   - name: REDIS_MAX_STREAM_LENGTH
-    value: {{ index .Values "redis-max-stream-length" | quote }}
+    value: "1000000"
   - name: REDIS_CLEANUP_INTERVAL
-    value: {{ index .Values "redis-cleanup-interval" | quote }}
+    value: "86400"
 
   # ── Vault ─────────────────────────────────────────────────────────────
   - name: VAULT_REQUIRED
-    value: {{ index .Values "vault-required" | quote }}
+    value: "false"
   - name: VAULT_TRANSIT_MOUNT
-    value: {{ index .Values "vault-transit-mount" | quote }}
+    value: transit
   - name: VAULT_KEY_PREFIX
-    value: {{ index .Values "vault-key-prefix" | quote }}
+    value: registry-
   - name: VAULT_TIMEOUT
-    value: {{ index .Values "vault-timeout" | quote }}
+    value: 30s
 
   # ── IDGen ─────────────────────────────────────────────────────────────
   - name: IDGEN_BASE_URL
-    value: {{ .Values.idgenBaseUrl | quote }}
+    value: http://idgen.egov.svc.cluster.local:8080/idgen
   - name: IDGEN_TEMPLATE_ID
-    value: {{ index .Values "idgen-template-id" | quote }}
+    value: registryId
   - name: IDGEN_ORG_VALUE
-    value: {{ index .Values "idgen-org-value" | quote }}
+    value: REGISTRY
   - name: IDGEN_HTTP_TIMEOUT
-    value: {{ index .Values "idgen-http-timeout" | quote }}
+    value: 5s
   - name: IDGEN_TABLE_TEMPLATES
-    value: {{ index .Values "idgen-table-templates" | quote }}
+    value: idgen_templates
   - name: IDGEN_TABLE_SEQUENCE_LOOKUPS
-    value: {{ index .Values "idgen-table-sequence-lookups" | quote }}
+    value: idgen_sequence_lookup
   - name: IDGEN_TABLE_SEQUENCE_RESETS
-    value: {{ index .Values "idgen-table-sequence-resets" | quote }}
+    value: idgen_sequence_resets
 
   # ── Observability (OpenTelemetry) ─────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: OTEL_ENABLED
-    value: {{ index .Values "otel-enabled" | quote }}
+    value: "false"
   - name: OTEL_METRICS_ENABLED
-    value: {{ index .Values "otel-metrics-enabled" | quote }}
+    value: "false"
   - name: OTEL_SERVICE_NAME
-    value: {{ index .Values "otel-service-name" | quote }}
+    value: registry
   - name: OTEL_SERVICE_VERSION
-    value: {{ index .Values "otel-service-version" | quote }}
+    value: 1.0.0
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-exporter-otlp-endpoint
+    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: {{ index .Values "otel-sampler-arg" | quote }}
+    value: "1.0"
   - name: PROMETHEUS_PORT
-    value: {{ index .Values "prometheus-port" | quote }}
+    value: "9090"
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces

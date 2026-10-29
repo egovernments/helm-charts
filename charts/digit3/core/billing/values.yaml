@@ -72,31 +72,6 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-demand-enable-arrears: "true"
-max-instrument-date-age-days: "90"
-bulk-bill-consumer-batch-size: "10"
-topic-bulk-bill-generation: "bulk-bill-generator"
-topic-bulk-bill-generation-dlq: "bulk-bill-generator-dlq"
-spring-flyway-enabled: "false"
-idgen-generate-path: "idgen/v3/generate"
-idgen-bulk-generate-path: "idgen/v3/generate/bulk"
-idgen-bill-number-template: "BillNumber"
-idgen-receipt-number-template: "ReceiptNumber"
-idgen-transaction-number-template: "TransactionNumber"
-apportion-bill-path: "apportion/v3/bills"
-filestore-upload-path: "filestore/v3/files/upload"
-filestore-download-path: "filestore/v3/files/{id}"
-pdf-fail-on-error: "false"
-pubsub-type: "kafka"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-tenant-migration-consumer-group: "billing"
-metrics-export-enabled: "false"
-management-endpoints-exposure: "health,info"
-tracing-sampling-probability: "1.0"
-log-level: "DEBUG"
-
 # ── Container env ─────────────────────────────────────────────────────────────
 # Configured through Spring properties; only deployment-specific overrides set here.
 env: |
@@ -104,22 +79,22 @@ env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: BILLING_DEMAND_ENABLE_ARREARS
-    value: {{ index .Values "demand-enable-arrears" | quote }}
+    value: "true"
   - name: BILLING_MAX_INSTRUMENT_DATE_AGE_DAYS
-    value: {{ index .Values "max-instrument-date-age-days" | quote }}
+    value: "90"
   - name: BILLING_BULK_BILL_CONSUMER_BATCH_SIZE
-    value: {{ index .Values "bulk-bill-consumer-batch-size" | quote }}
+    value: "10"
   - name: BILLING_TOPICS_BULK_BILL_GENERATION
-    value: {{ index .Values "topic-bulk-bill-generation" | quote }}
+    value: bulk-bill-generator
   - name: BILLING_TOPICS_BULK_BILL_GENERATION_DLQ
-    value: {{ index .Values "topic-bulk-bill-generation-dlq" | quote }}
+    value: bulk-bill-generator-dlq
 
   # ── Datasource ───────────────────────────────────────────────────────────
   # migration handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "spring-flyway-enabled" | quote }}
+    value: "false"
 
   # ── Internal service clients ─────────────────────────────────────────────
   # hosts end with "/", paths are relative
@@ -129,45 +104,42 @@ env: |
         key: idgen
         name: egov-service-host
   - name: BILLING_IDGEN_GENERATE_PATH
-    value: {{ index .Values "idgen-generate-path" | quote }}
+    value: idgen/v3/generate
   - name: BILLING_IDGEN_BULK_GENERATE_PATH
-    value: {{ index .Values "idgen-bulk-generate-path" | quote }}
+    value: idgen/v3/generate/bulk
   - name: BILLING_IDGEN_BILL_NUMBER_TEMPLATE
-    value: {{ index .Values "idgen-bill-number-template" | quote }}
+    value: BillNumber
   - name: BILLING_IDGEN_RECEIPT_NUMBER_TEMPLATE
-    value: {{ index .Values "idgen-receipt-number-template" | quote }}
+    value: ReceiptNumber
   - name: BILLING_IDGEN_TRANSACTION_NUMBER_TEMPLATE
-    value: {{ index .Values "idgen-transaction-number-template" | quote }}
+    value: TransactionNumber
   - name: BILLING_APPORTION_HOST
     valueFrom:
       configMapKeyRef:
         key: apportion
         name: egov-service-host
   - name: BILLING_APPORTION_BILL_PATH
-    value: {{ index .Values "apportion-bill-path" | quote }}
+    value: apportion/v3/bills
   - name: BILLING_FILESTORE_HOST
     valueFrom:
       configMapKeyRef:
         key: filestore
         name: egov-service-host
   - name: BILLING_FILESTORE_UPLOAD_PATH
-    value: {{ index .Values "filestore-upload-path" | quote }}
+    value: filestore/v3/files/upload
   - name: BILLING_FILESTORE_DOWNLOAD_PATH
-    value: {{ index .Values "filestore-download-path" | quote }}
+    value: filestore/v3/files/{id}
   # egov-service-host has no account key (nothing else calls account by host)
   - name: ACCOUNTS_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-service-host
-        key: account
+    value: http://account.egov.svc.cluster.local:8080
   # a filestore/account outage must not fail bill generation; PDF backfilled later
   - name: BILLING_PDF_FAIL_ON_ERROR
-    value: {{ index .Values "pdf-fail-on-error" | quote }}
+    value: "false"
 
   # ── Messaging ────────────────────────────────────────────────────────────
   # kafka is required - account publishes account-migration to kafka only
   - name: TRACER_PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -177,30 +149,27 @@ env: |
   # ── Per-tenant schemas ───────────────────────────────────────────────────
   # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: billing_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: billing
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-endpoints-exposure" | quote }}
+    value: health,info
   - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-    value: {{ index .Values "tracing-sampling-probability" | quote }}
+    value: "1.0"
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
 
   # ── Logging ──────────────────────────────────────────────────────────────
   - name: LOGGING_LEVEL_ORG_DIGIT
-    value: {{ index .Values "log-level" | quote }}
+    value: DEBUG

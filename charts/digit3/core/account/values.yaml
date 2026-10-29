@@ -7,8 +7,7 @@ labels:
 ingress:
   enabled: true
   gateway: true
-  # app context-path is /accounts
-  context: "accounts"
+  context: "account"
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
@@ -71,60 +70,24 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-context-path: ""  # blank -> /<ingress.context>
-canonical-api-prefix: "canonical"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-citizen-broker-client-id: "citizen-broker"
-smtp-starttls: "true"
-smtp-ssl: "false"
-smtp-auth: "true"
-access-token-lifespan: "14400"
-sso-session-idle-timeout: "28800"
-sso-session-max-lifespan: "36000"
-notify-send-path: "notify/v3/notifications"
-temp-password-template-code: "account-tenant-temp-password"
-notification-timeout-seconds: "5"
-notification-enabled: "true"
-platform-auth-enabled: "false"
-platform-auth-realm: "master"
-platform-auth-required-role: "SUPERADMIN"
-signup-enabled: "true"
-otp-generate-path: "otp/v3/generate"
-otp-verify-path: "otp/v3/verify"
-otp-resend-path: "otp/v3/resend"
-otp-config-path: "otp/v3/config"
-otp-bootstrap-purposes: "login,registration"
-otp-timeout-seconds: "10"
-pubsub-enabled: "true"
-pubsub-type: "kafka"
-topic-create-tenant: "account-create-tenant"
-topic-update-tenant: "account-update-tenant"
-topic-delete-tenant: "account-delete-tenant"
-topic-create-tenant-config: "account-create-tenant-config"
-topic-update-tenant-config: "account-update-tenant-config"
-topic-migration: "account-migration"
-log-level: "DEBUG"
-
 # ── Container env ─────────────────────────────────────────────────────────────
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: CONTEXT_PATH
-    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+    value: /account
   - name: CANONICAL_API_PREFIX
-    value: {{ index .Values "canonical-api-prefix" | quote }}
+    value: canonical
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   # consume account-migration, migrate into the tenant schema
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
 
   # ── Keycloak ─────────────────────────────────────────────────────────────
   - name: KEYCLOAK_BASE_URL
@@ -146,7 +109,7 @@ env: |
         name: kc-admin
         key: password
   - name: CITIZEN_BROKER_CLIENT_ID
-    value: {{ index .Values "citizen-broker-client-id" | quote }}
+    value: citizen-broker
   - name: CITIZEN_BROKER_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
@@ -164,26 +127,17 @@ env: |
 
   # ── SMTP ─────────────────────────────────────────────────────────────────
   - name: SMTP_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: smtp-host
+    value: smtp.gmail.com
   - name: SMTP_PORT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: smtp-port
+    value: "587"
   - name: SMTP_STARTTLS
-    value: {{ index .Values "smtp-starttls" | quote }}
+    value: "true"
   - name: SMTP_SSL
-    value: {{ index .Values "smtp-ssl" | quote }}
+    value: "false"
   - name: SMTP_AUTH
-    value: {{ index .Values "smtp-auth" | quote }}
+    value: "true"
   - name: SMTP_FROM_NAME
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: mail-sender-name
+    value: eGov Foundation
   - name: SMTP_FROM_ADDRESS
     valueFrom:
       secretKeyRef:
@@ -202,41 +156,38 @@ env: |
 
   # ── Sessions / tokens ────────────────────────────────────────────────────
   - name: ACCESS_TOKEN_LIFESPAN
-    value: {{ index .Values "access-token-lifespan" | quote }}
+    value: "14400"
   - name: SSO_SESSION_IDLE_TIMEOUT
-    value: {{ index .Values "sso-session-idle-timeout" | quote }}
+    value: "28800"
   - name: SSO_SESSION_MAX_LIFESPAN
-    value: {{ index .Values "sso-session-max-lifespan" | quote }}
+    value: "36000"
 
-  # ── Notification (via notify service) ────────────────────────────────────
-  - name: NOTIFY_BASE_URL
+  # ── Notification (email) ─────────────────────────────────────────────────
+  - name: NOTIFICATION_BASE_URL
     valueFrom:
       configMapKeyRef:
-        key: notify
+        key: notification
         name: egov-service-host
-  - name: NOTIFY_SEND_PATH
-    value: {{ index .Values "notify-send-path" | quote }}
+  - name: NOTIFICATION_EMAIL_SEND_PATH
+    value: notification/v3/email/send
   - name: NOTIFICATION_PLATFORM_TENANT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: platform-tenant
-  - name: NOTIFY_TEMP_PASSWORD_TEMPLATE_CODE
-    value: {{ index .Values "temp-password-template-code" | quote }}
+    value: default
+  - name: NOTIFICATION_TEMP_PASSWORD_TEMPLATE_ID
+    value: account-tenant-temp-password
   - name: NOTIFICATION_TIMEOUT_SECONDS
-    value: {{ index .Values "notification-timeout-seconds" | quote }}
+    value: "5"
   - name: NOTIFICATION_ENABLED
-    value: {{ index .Values "notification-enabled" | quote }}
+    value: "true"
 
   # ── Platform auth ────────────────────────────────────────────────────────
   - name: PLATFORM_AUTH_ENABLED
-    value: {{ index .Values "platform-auth-enabled" | quote }}
+    value: "false"
   - name: PLATFORM_AUTH_REALM
-    value: {{ index .Values "platform-auth-realm" | quote }}
+    value: master
   - name: PLATFORM_AUTH_REQUIRED_ROLE
-    value: {{ index .Values "platform-auth-required-role" | quote }}
+    value: SUPERADMIN
   - name: SIGNUP_ENABLED
-    value: {{ index .Values "signup-enabled" | quote }}
+    value: "true"
 
   # ── OTP ──────────────────────────────────────────────────────────────────
   - name: OTP_BASE_URL
@@ -245,73 +196,58 @@ env: |
         key: otp
         name: egov-service-host
   - name: OTP_GENERATE_PATH
-    value: {{ index .Values "otp-generate-path" | quote }}
+    value: otp/v3/generate
   - name: OTP_VERIFY_PATH
-    value: {{ index .Values "otp-verify-path" | quote }}
+    value: otp/v3/verify
   - name: OTP_RESEND_PATH
-    value: {{ index .Values "otp-resend-path" | quote }}
+    value: otp/v3/resend
   - name: OTP_CONFIG_PATH
-    value: {{ index .Values "otp-config-path" | quote }}
+    value: otp/v3/config
   - name: OTP_BOOTSTRAP_PURPOSES
-    value: {{ index .Values "otp-bootstrap-purposes" | quote }}
+    value: login,registration
   - name: OTP_TIMEOUT_SECONDS
-    value: {{ index .Values "otp-timeout-seconds" | quote }}
+    value: "10"
   - name: OTP_PLATFORM_TENANT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: platform-tenant
+    value: default
 
   # ── Kafka / PubSub ───────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: {{ index .Values "pubsub-enabled" | quote }}
+    value: "true"
   - name: PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: "kafka"
   - name: KAFKA_BROKERS
     valueFrom:
       configMapKeyRef:
         key: kafka-brokers
         name: egov-config
   - name: PUBSUB_TOPIC_CREATE_TENANT
-    value: {{ index .Values "topic-create-tenant" | quote }}
+    value: account-create-tenant
   - name: PUBSUB_TOPIC_UPDATE_TENANT
-    value: {{ index .Values "topic-update-tenant" | quote }}
+    value: account-update-tenant
   - name: PUBSUB_TOPIC_DELETE_TENANT
-    value: {{ index .Values "topic-delete-tenant" | quote }}
+    value: account-delete-tenant
   - name: PUBSUB_TOPIC_CREATE_TENANT_CONFIG
-    value: {{ index .Values "topic-create-tenant-config" | quote }}
+    value: account-create-tenant-config
   - name: PUBSUB_TOPIC_UPDATE_TENANT_CONFIG
-    value: {{ index .Values "topic-update-tenant-config" | quote }}
+    value: account-update-tenant-config
   - name: PUBSUB_TOPIC_MIGRATION
-    value: {{ index .Values "topic-migration" | quote }}
+    value: account-migration
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-address
+    value: redis.backbone.svc.cluster.local:6379
   - name: REDIS_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-host
+    value: redis.backbone.svc.cluster.local
   - name: REDIS_PORT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-port
+    value: "6379"
 
   # ── Logging ──────────────────────────────────────────────────────────────
   - name: LOG_LEVEL
-    value: {{ index .Values "log-level" | quote }}
+    value: DEBUG
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces

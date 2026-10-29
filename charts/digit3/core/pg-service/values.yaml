@@ -3,10 +3,6 @@ labels:
   app: "digit-pg-service"
   group: "core"
 
-# ── Service config ──────────────────────────────────────────────────────────────
-# Seeded system user UUID for payment reconciliation. Install-specific; override per env.
-reconciliationSystemUserUuid: "b405e4d0-99ec-41b1-92e7-2ebda0321e0d"
-
 # ── Ingress ───────────────────────────────────────────────────────────────────
 ingress:
   enabled: true
@@ -83,45 +79,18 @@ axis: false
 payu: false
 paytm: false
 phonepe: false
+ccavenue: false
 stripe: true
 payu-url: ""
 payu-url-status: ""
+ccavenue-status-access-code: ""
+ccavenue-redirect-access-code: ""
+ccavenue-url: ""
+ccavenue-url-status: ""
+ccavenue-url-redirect: ""
+ccavenue-url-cancel: ""
 java-args: "-Dspring.profiles.active=monitoring"
 java-debug: "true"
-
-# ── App config (overridable per env) ──────────────────────────────────────────
-flyway-enabled: "false"
-canonical-path: "canonical"
-reconcile-interval-mins: "15"
-message-broker-enabled: "false"
-topic-create-txn: "create-pg-txn"
-topic-update-txn: "update-pg-txn"
-pubsub-type: "kafka"
-idgen-generate-path: "idgen/v3/generate"
-idgen-txn-template-code: "TxnID"
-billing-payments-create-path: "billing/v3/payments"
-billing-payments-validate-path: "billing/v3/payments/validate"
-registry-data-search-path: "registry/v3/{schemaCode}/data/_search"
-registry-bank-account-schema: "bank-account"
-individual-create-path: "individual/v3/individuals"
-individual-search-path: "individual/v3/individuals"
-user-create-enabled: "false"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-tenant-migration-consumer-group: "pg-service"
-stripe-currency: "inr"
-axis-currency: "INR"
-axis-locale: "en_IN"
-axis-vpc-version: "1"
-axis-vpc-command-pay: "pay"
-axis-vpc-command-status: "queryDR"
-axis-url-debit: "https://migs.mastercard.co.in/vpcpay"
-axis-url-status: "https://migs.mastercard.co.in/vpcdps"
-tracing-export-enabled: "false"
-metrics-export-enabled: "false"
-management-endpoints-exposure: "health,info"
-tracing-sampling-probability: "1.0"
-log-level: "DEBUG"
 
 # ── Container env ─────────────────────────────────────────────────────────────
 # Configured through Spring properties (relaxed env binding); topic properties are messaging.broker.topic.*
@@ -131,37 +100,37 @@ env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
 
   # ── Datasource ────────────────────────────────────────────────────────
   # Migration is handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "flyway-enabled" | quote }}
+    value: "false"
 
   # ── Canonical API ─────────────────────────────────────────────────────
   # path segment of the canonical twins: /transaction/v3/{segment}/_create, etc.
   - name: PG_SERVICE_CANONICAL_PATH
-    value: {{ index .Values "canonical-path" | quote }}
+    value: canonical
 
   # ── Reconciliation ────────────────────────────────────────────────────
   # Quartz jobs; tables live in public with the eg_pg_qrtz_ prefix
   - name: PG_EARLYRECONCILEJOBRUNINTERVAL_MINS
-    value: {{ index .Values "reconcile-interval-mins" | quote }}
+    value: "15"
   - name: PG_RECONCILIATION_SYSTEM_USER_UUID
-    value: {{ .Values.reconciliationSystemUserUuid | quote }}
+    value: "b405e4d0-99ec-41b1-92e7-2ebda0321e0d"
 
   # ── Transaction events ────────────────────────────────────────────────
   - name: MESSAGE_BROKER_ENABLED
-    value: {{ index .Values "message-broker-enabled" | quote }}
+    value: "false"
   - name: MESSAGING_BROKER_TOPIC_CREATE_TXN
-    value: {{ index .Values "topic-create-txn" | quote }}
+    value: create-pg-txn
   - name: MESSAGING_BROKER_TOPIC_UPDATE_TXN
-    value: {{ index .Values "topic-update-txn" | quote }}
+    value: update-pg-txn
 
   # ── Messaging backend ─────────────────────────────────────────────────
   # kafka is required, not a preference - account publishes account-migration to kafka only
   - name: TRACER_PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -176,18 +145,18 @@ env: |
         key: idgen
         name: egov-service-host
   - name: IDGEN_GENERATE_ID_PATH
-    value: {{ index .Values "idgen-generate-path" | quote }}
+    value: idgen/v3/generate
   - name: IDGEN_TXN_ID_TEMPLATE_CODE
-    value: {{ index .Values "idgen-txn-template-code" | quote }}
+    value: TxnID
   - name: BILLING_HOST
     valueFrom:
       configMapKeyRef:
         key: billing
         name: egov-service-host
   - name: BILLING_PAYMENTS_CREATE_PATH
-    value: {{ index .Values "billing-payments-create-path" | quote }}
+    value: billing/v3/payments
   - name: BILLING_PAYMENTS_VALIDATE_PATH
-    value: {{ index .Values "billing-payments-validate-path" | quote }}
+    value: billing/v3/payments/validate
   # registry is read only by the AXIS bank-account lookup
   - name: REGISTRY_HOST
     valueFrom:
@@ -195,32 +164,32 @@ env: |
         key: registry
         name: egov-service-host
   - name: REGISTRY_DATA_SEARCH_PATH
-    value: {{ index .Values "registry-data-search-path" | quote }}
+    value: registry/v3/{schemaCode}/data/_search
   - name: REGISTRY_BANK_ACCOUNT_SCHEMA
-    value: {{ index .Values "registry-bank-account-schema" | quote }}
+    value: bank-account
   - name: INDIVIDUAL_HOST
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
         key: individual
   - name: INDIVIDUAL_CREATE_PATH
-    value: {{ index .Values "individual-create-path" | quote }}
+    value: individual/v3/individuals
   - name: INDIVIDUAL_SEARCH_PATH
-    value: {{ index .Values "individual-search-path" | quote }}
+    value: individual/v3/individuals
   - name: PG_IS_USER_CREATE_ENABLED
-    value: {{ index .Values "user-create-enabled" | quote }}
+    value: "false"
 
   # ── Per-tenant schemas ────────────────────────────────────────────────
   # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above; set once at initial deployment
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   # some services spell the same switch SCHEMA_SEPARATION_MODE
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: pg_service_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: pg-service
 
   # ── Payment gateways ──────────────────────────────────────────────────
   # secrets come from the existing egov-pg-service secret; the reference chart's key names are reused
@@ -228,7 +197,7 @@ env: |
   - name: STRIPE_ACTIVE
     value: "true"
   - name: STRIPE_CURRENCY
-    value: {{ index .Values "stripe-currency" | quote }}
+    value: "inr"
   # from egov-pg-service (cluster-configs.secrets.egov-pg-service.stripe-secret-key in sops); optional, so a
   # cluster without the key still starts and Stripe simply fails at checkout
   - name: STRIPE_SECRET_KEY
@@ -245,19 +214,19 @@ env: |
   - name: AXIS_ACTIVE
     value: "true"
   - name: AXIS_CURRENCY
-    value: {{ index .Values "axis-currency" | quote }}
+    value: "INR"
   - name: AXIS_LOCALE
-    value: {{ index .Values "axis-locale" | quote }}
+    value: "en_IN"
   - name: AXIS_MERCHANT_VPC_VERSION
-    value: {{ index .Values "axis-vpc-version" | quote }}
+    value: "1"
   - name: AXIS_MERCHANT_VPC_COMMAND_PAY
-    value: {{ index .Values "axis-vpc-command-pay" | quote }}
+    value: "pay"
   - name: AXIS_MERCHANT_VPC_COMMAND_STATUS
-    value: {{ index .Values "axis-vpc-command-status" | quote }}
+    value: "queryDR"
   - name: AXIS_URL_DEBIT
-    value: {{ index .Values "axis-url-debit" | quote }}
+    value: "https://migs.mastercard.co.in/vpcpay"
   - name: AXIS_URL_STATUS
-    value: {{ index .Values "axis-url-status" | quote }}
+    value: "https://migs.mastercard.co.in/vpcdps"
   - name: AXIS_MERCHANT_ID
     valueFrom:
       secretKeyRef:
@@ -347,26 +316,57 @@ env: |
   - name: PHONEPE_ACTIVE
     value: "false"
   {{- end }}
+  {{- if .Values.ccavenue }}
+  - name: CCAVENUE_ACTIVE
+    value: "true"
+  - name: CCAVENUE_MERCHANT_ID
+    valueFrom:
+      secretKeyRef:
+        name: egov-pg-service
+        key: ccavenue-merchant-id
+  - name: CCAVENUE_STATUS_WORKING_KEY
+    valueFrom:
+      secretKeyRef:
+        name: egov-pg-service
+        key: ccavenue-status-working-key
+  - name: CCAVENUE_REDIRECT_WORKING_KEY
+    valueFrom:
+      secretKeyRef:
+        name: egov-pg-service
+        key: ccavenue-redirect-working-key
+  - name: CCAVENUE_STATUS_ACCESS_CODE
+    value: {{ index .Values "ccavenue-status-access-code" | quote }}
+  - name: CCAVENUE_REDIRECT_ACCESS_CODE
+    value: {{ index .Values "ccavenue-redirect-access-code" | quote }}
+  - name: CCAVENUE_GATEWAY_URL
+    value: {{ index .Values "ccavenue-url" | quote }}
+  - name: CCAVENUE_GATEWAY_STATUS_URL
+    value: {{ index .Values "ccavenue-url-status" | quote }}
+  - name: CCAVENUE_REDIRECT_URL
+    value: {{ index .Values "ccavenue-url-redirect" | quote }}
+  - name: CCAVENUE_CANCEL_URL
+    value: {{ index .Values "ccavenue-url-cancel" | quote }}
+  {{- else }}
+  - name: CCAVENUE_ACTIVE
+    value: "false"
+  {{- end }}
 
   # ── Observability (OpenTelemetry) ─────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
-    value: {{ index .Values "tracing-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-endpoints-exposure" | quote }}
+    value: health,info
   - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-    value: {{ index .Values "tracing-sampling-probability" | quote }}
+    value: "1.0"
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
 
   # ── Logging ───────────────────────────────────────────────────────────
   - name: LOGGING_LEVEL_ORG_EGOV_PG
-    value: {{ index .Values "log-level" | quote }}
+    value: DEBUG
   - name: JAVA_ARGS
     value: {{ index .Values "java-args" | quote }}
   - name: JAVA_ENABLE_DEBUG
