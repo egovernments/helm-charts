@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-10-29"
+    ref: "PR-106"
+    title: "backbone: add READMEs for postgresql and vault"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "postgresql"
+        from: "3.0.0"
+        to: "3.0.1"
+      - name: "vault"
+        from: "3.0.0"
+        to: "3.0.1"
   - date: "2026-10-27"
     ref: "PR-100"
     title: "feat(backbone): onboard postgresql (CloudNativePG) and vault"

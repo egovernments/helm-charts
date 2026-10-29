@@ -2,185 +2,207 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Module - DIGIT Helm Charts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DIGIT - Helm Charts</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
   <style>
     :root {
-      --bg:#0b1220; --border:#2a3444; --text:#e8edf5; --muted:#8b95a5; --line:#273243; --link:#4ea1ff;
-      --code:#0f1c2d; --badge-blue:#2c8fe8; --badge-green:#2ea043; --badge-orange:#d18616; --badge-purple:#8b5cf6;
-      --accent:#ff8b6a; --card-bg:#0d1829; --card-border:#1e2d3d; --card-hover:#111f33;
+      --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eceff4; --raise:#ffffff;
+      --border:#e1e6ee; --border-strong:#cfd6e2; --fg:#101827; --fg-soft:#36414f; --muted:#64718a;
+      --accent:#e8622a; --accent-soft:#fbe7dc; --accent-ink:#b84a1c; --blue:#1f6bf0; --green:#118a53; --purple:#6d4cf0; --cyan:#0e8aa8;
+      --shadow:0 1px 2px rgba(16,24,39,.04), 0 10px 30px rgba(16,24,39,.06);
+      --font-display:"Archivo", system-ui, sans-serif; --font-body:"IBM Plex Sans", system-ui, -apple-system, sans-serif; --font-mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radius:16px; --radius-sm:10px; color-scheme:light;
     }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135; --border:#213049; --border-strong:#2c3f5c; --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+      --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68; --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45); color-scheme:dark; } }
+    :root[data-theme="dark"] {
+      --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135; --border:#213049; --border-strong:#2c3f5c; --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+      --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68; --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45); color-scheme:dark; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; padding:28px; }
-    .frame { width:min(1360px,100%); margin:0 auto; border:1px solid var(--border); border-radius:18px; background:linear-gradient(180deg,#08111d,#07101a); overflow:hidden; box-shadow:0 12px 36px rgba(0,0,0,.28); }
-    .topbar { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 0 22px; border-bottom:1px solid var(--border); }
-    .tab { display:flex; align-items:center; gap:12px; padding:0 0 16px 0; font-weight:700; font-size:18px; position:relative; }
-    .tab::after { content:""; position:absolute; left:-10px; bottom:-1px; width:150px; height:3px; border-radius:3px; background:var(--accent); }
-    .book { width:24px; height:24px; opacity:.9; } .icons svg { width:22px; height:22px; stroke:#d9e0ea; opacity:.88; } .icons { padding-bottom:12px; }
-    .content { padding:40px 48px 56px 48px; }
-    .breadcrumb { font-size:15px; color:var(--muted); margin-bottom:18px; }
-    .breadcrumb a { color:var(--link); text-decoration:none; } .breadcrumb a:hover { text-decoration:underline; }
-    h1 { font-size:46px; line-height:1.1; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px; }
-    h2 { margin:40px 0 12px 0; font-size:28px; font-weight:800; }
-    hr { border:none; border-top:1px solid var(--line); margin:16px 0 22px 0; }
-    p { margin:0 0 18px 0; font-size:17px; line-height:1.7; }
-    a { color:var(--link); text-underline-offset:3px; }
-    .badges { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 24px 0; }
-    .badge { display:inline-flex; align-items:center; border-radius:6px; font-size:14px; color:#fff; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
-    .badge .label { background:#4c5563; padding:6px 10px; } .badge .value { padding:6px 12px; }
-    .badge .value.blue { background:var(--badge-blue); } .badge .value.green { background:var(--badge-green); } .badge .value.orange { background:var(--badge-orange); }
-    .codeblock { background:var(--code); padding:22px 26px; margin:14px 0 22px 0; border-radius:8px; overflow:auto; }
-    code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:15px; color:#77b9ff; white-space:pre; }
-    .inline { display:inline-block; background:#2b3440; color:#f0f4fa; border-radius:6px; padding:3px 8px; font-size:14px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
-    .stats { display:flex; gap:32px; flex-wrap:wrap; margin:20px 0 28px 0; padding:20px 26px; background:rgba(255,255,255,.02); border:1px solid var(--card-border); border-radius:12px; }
-    .stat { text-align:center; } .stat-num { font-size:30px; font-weight:800; color:var(--link); } .stat-label { font-size:14px; color:var(--muted); margin-top:4px; }
-    .charts-table { width:100%; border-collapse:collapse; margin:8px 0 8px 0; border:1px solid var(--card-border); border-radius:12px; overflow:hidden; }
-    .charts-table th { text-align:left; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:14px 20px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--card-border); }
-    .charts-table td { padding:16px 20px; border-bottom:1px solid var(--card-border); font-size:15px; vertical-align:top; }
-    .charts-table tr:last-child td { border-bottom:none; }
-    .charts-table tr:hover td { background:var(--card-hover); }
-    .chart-name-cell { font-weight:700; white-space:nowrap; }
-    .type-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:4px; background:rgba(255,255,255,.08); color:var(--muted); margin-left:8px; }
-    .chart-desc-cell { color:var(--muted); line-height:1.5; }
-    .dep-list { margin-top:6px; font-size:13px; color:var(--muted); } .dep-list span { color:#77b9ff; }
-    .meta-badge { display:inline-flex; align-items:center; border-radius:4px; font-size:12px; color:#fff; overflow:hidden; }
-    .meta-badge .m-label { background:#3a4453; padding:3px 7px; } .meta-badge .m-value { padding:3px 8px; }
-    .m-value.v-blue { background:#1e6fbf; } .m-value.v-green { background:#1a7f35; }
-    .empty-state { padding:22px 26px; color:var(--muted); font-style:italic; border:1px solid var(--card-border); border-radius:12px; }
-    .changelog { margin:8px 0 8px 0; }
-    .release-entry { border:1px solid var(--card-border); border-radius:12px; padding:18px 22px; margin-bottom:14px; background:var(--card-bg); }
-    .release-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
-    .release-title { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:600; flex-wrap:wrap; }
-    .release-type-badge { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:3px 9px; border-radius:5px; color:#fff; }
-    .release-type-badge.major { background:#b60205; } .release-type-badge.minor { background:#bf8700; } .release-type-badge.patch { background:#1a7f35; }
-    .release-meta { font-size:13px; color:var(--muted); display:flex; gap:14px; } .release-meta .author { color:#77b9ff; }
+    body { background:var(--bg); color:var(--fg); font-family:var(--font-body); line-height:1.6; -webkit-font-smoothing:antialiased; }
+    body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--surface); }
+    a { color:var(--blue); text-decoration:none; } img { max-width:100%; }
+    h1,h2,h3 { font-family:var(--font-display); line-height:1.1; text-wrap:balance; } code,.mono { font-family:var(--font-mono); }
+    .wrap { width:min(1200px,100%); margin:0 auto; padding-left:max(20px,env(safe-area-inset-left,0px)); padding-right:max(20px,env(safe-area-inset-right,0px)); }
+
+    header.site { position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block:12px; }
+    .brand { display:flex; align-items:center; gap:11px; min-width:0; } .brand img { width:30px; height:30px; border-radius:7px; display:block; }
+    .brand .wm { font-family:var(--font-display); font-weight:800; font-size:17px; letter-spacing:-.01em; white-space:nowrap; color:var(--fg); } .brand .wm span { color:var(--accent); }
+    .nav-right { display:flex; align-items:center; gap:8px; }
+    .nav-link { color:var(--fg-soft); font-weight:500; font-size:14px; padding:8px 12px; border-radius:9px; } .nav-link:hover { background:var(--surface-2); color:var(--fg); }
+    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--fg-soft); cursor:pointer; }
+    .icon-btn:hover { border-color:var(--border-strong); color:var(--fg); } .icon-btn svg { width:18px; height:18px; }
+
+    .crumb { color:var(--muted); font-size:14px; margin:26px 0 10px; } .crumb a { color:var(--blue); }
+    .page-head { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .page-head .glyph { width:50px; height:50px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:800; font-size:20px; color:#fff; background:linear-gradient(135deg,var(--blue),var(--cyan)); }
+    .page-head h1 { font-family:var(--font-mono); font-weight:600; font-size:34px; letter-spacing:-.01em; } .page-head p { color:var(--muted); font-size:15px; }
+
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:22px; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; }
+    .stat .n { font-family:var(--font-display); font-weight:800; font-size:28px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; } .stat .n.accent { color:var(--accent); } .stat .l { font-size:13px; color:var(--muted); margin-top:2px; }
+
+    .sec-head { margin:40px 0 16px; } .sec-head h2 { font-size:22px; font-weight:800; letter-spacing:-.02em; }
+
+    .cmd { background:var(--raise); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; min-width:0; }
+    .cmd-head { display:flex; align-items:center; gap:7px; padding:11px 15px; border-bottom:1px solid var(--border); }
+    .dot { width:11px; height:11px; border-radius:50%; } .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+    .cmd-head .fname { margin-left:8px; font-size:12px; color:var(--muted); font-family:var(--font-mono); }
+    .cmd pre { margin:0; padding:16px; overflow-x:auto; font-family:var(--font-mono); font-size:13px; line-height:1.8; color:var(--fg-soft); } .cmd pre .k { color:var(--accent-ink); font-weight:600; } .cmd pre .s { color:var(--green); }
+
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+    .card { display:flex; flex-direction:column; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease; min-width:0; }
+    .card:hover { transform:translateY(-2px); border-color:var(--border-strong); box-shadow:var(--shadow); }
+    .card .top { display:flex; align-items:center; gap:10px; }
+    .card .glyph { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:800; font-size:14px; color:#fff; flex:none; }
+    .card .cn { font-family:var(--font-mono); font-weight:600; font-size:15px; } .card .cn a { color:var(--fg); overflow-wrap:anywhere; } .card .cn a:hover { color:var(--accent); }
+    .card .cd { color:var(--muted); font-size:13.5px; line-height:1.5; flex:1; }
+    .card .foot { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+    .tag { display:inline-flex; align-items:center; font-size:11.5px; border-radius:6px; overflow:hidden; border:1px solid var(--border); } .tag b { background:var(--surface-2); color:var(--muted); padding:3px 7px; font-weight:600; } .tag i { padding:3px 8px; font-style:normal; font-family:var(--font-mono); } .tag i.v { color:var(--blue); } .tag i.a { color:var(--green); }
+    .pill-lib { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--purple); background:color-mix(in srgb, var(--purple) 14%, transparent); padding:3px 8px; border-radius:6px; }
+
+    .release { border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:14px; background:var(--surface); }
+    .release-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .release-title { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-weight:600; }
+    .rtype { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:3px 9px; border-radius:6px; color:#fff; }
+    .rtype.major{background:#b60205;} .rtype.minor{background:#bf8700;} .rtype.patch{background:var(--green);}
+    .release-meta { font-size:13px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; } .release-meta .author { color:var(--blue); }
     .release-charts { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
-    .release-chart-row { display:flex; align-items:center; gap:12px; font-size:14px; }
-    .release-chart-name { font-weight:600; min-width:160px; }
-    .version-arrow { display:inline-flex; align-items:center; gap:8px; font-family:ui-monospace,Menlo,monospace; font-size:13px; }
-    .version-arrow .old { color:var(--muted); } .version-arrow .arrow { color:var(--accent); } .version-arrow .new { color:#2ea043; font-weight:600; }
-    .loader { display:flex; align-items:center; gap:12px; padding:22px 26px; color:var(--muted); font-size:15px; }
-    .spinner { width:20px; height:20px; border:2px solid var(--card-border); border-top-color:var(--link); border-radius:50%; animation:spin .8s linear infinite; }
+    .rc-row { display:flex; align-items:center; gap:12px; font-size:13.5px; flex-wrap:wrap; }
+    .rc-name { font-family:var(--font-mono); font-weight:600; min-width:150px; }
+    .varrow { font-family:var(--font-mono); font-size:12.5px; } .varrow .old { color:var(--muted); } .varrow .arr { color:var(--accent); } .varrow .new { color:var(--green); font-weight:600; }
+
+    .loader { display:flex; align-items:center; gap:12px; padding:22px; color:var(--muted); font-size:15px; }
+    .spinner { width:20px; height:20px; border:2px solid var(--border-strong); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
-    @media (max-width:900px) { body{padding:14px;} .content{padding:22px 16px 30px;} h1{font-size:30px;} .charts-table{display:block;overflow-x:auto;} .release-chart-name{min-width:unset;} }
+    .empty { padding:22px; color:var(--muted); font-style:italic; border:1px solid var(--border); border-radius:var(--radius); }
+
+    footer.site { margin-top:56px; border-top:1px solid var(--border); padding-block:28px; color:var(--muted); font-size:13.5px; }
+    .foot-row { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center; } .foot-row a { color:var(--fg-soft); }
+    @media (max-width:560px) { .stats { grid-template-columns:1fr; } }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
   </style>
 </head>
 <body>
-  <div class="frame">
-    <div class="topbar">
-      <div class="tab">
-        <svg class="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5v-13A2.5 2.5 0 0 1 6.5 2z"></path><path d="M12 6.5v11"></path></svg>
-        <span>Helm Charts Registry</span>
+  <header class="site">
+    <div class="wrap nav">
+      <div class="brand"><a href="/" style="display:flex;align-items:center;gap:11px"><img src="/favicon.png" alt="DIGIT"><div class="wm">DIGIT <span>Helm Charts</span></div></a></div>
+      <div class="nav-right">
+        <a class="nav-link" href="https://docs.digit.org" target="_blank" rel="noopener">Docs</a>
+        <a class="nav-link" href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">Repository</a>
+        <button class="icon-btn" id="theme" aria-label="Toggle theme" title="Toggle theme"></button>
       </div>
-      <div class="icons"><a href="https://github.com/egovernments/helm-charts" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></div>
     </div>
-    <div class="content">
-      <div class="breadcrumb"><a href="/">Registry</a> / <a id="crumb-project-link" href="#">project</a> / <span id="crumb-module">module</span></div>
-      <h1 id="page-title">Module</h1>
-      <hr>
-      <div class="badges" id="module-badges"></div>
-      <p id="module-desc">Charts in this module.</p>
+  </header>
 
-      <div class="stats">
-        <div class="stat"><div class="stat-num" id="stat-charts">-</div><div class="stat-label">Charts</div></div>
-        <div class="stat"><div class="stat-num" id="stat-releases">-</div><div class="stat-label">Releases</div></div>
-        <div class="stat"><div class="stat-num" id="stat-latest-date" style="font-size:18px">-</div><div class="stat-label">Latest Release</div></div>
-      </div>
-
-      <h2>Install</h2><hr>
-      <div class="codeblock"><code id="install-code">Loading...</code></div>
-
-      <h2>Charts</h2><hr>
-      <div id="charts-section"><div class="loader"><div class="spinner"></div> Loading charts from index.yaml...</div></div>
-
-      <h2>Release History</h2><hr>
-      <div id="changelog-section"><div class="loader"><div class="spinner"></div> Loading changelog...</div></div>
+  <main class="wrap">
+    <div class="crumb"><a href="/">Registry</a> / <a id="crumb-project" href="#">project</a> / <span id="crumb-module">module</span></div>
+    <div class="page-head">
+      <div class="glyph" id="mod-glyph">co</div>
+      <div style="min-width:0"><h1 id="page-title">module</h1><p id="mod-desc">Charts in this module.</p></div>
     </div>
-  </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n accent" id="st-charts">-</div><div class="l">Charts</div></div>
+      <div class="stat"><div class="n" id="st-releases">-</div><div class="l">Releases</div></div>
+      <div class="stat"><div class="n" id="st-latest" style="font-size:18px">-</div><div class="l">Latest release</div></div>
+    </div>
+
+    <div class="sec-head"><h2>Install</h2></div>
+    <div class="cmd">
+      <div class="cmd-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="fname" id="install-fname">repo</span></div>
+      <pre id="install-code">Loading...</pre>
+    </div>
+
+    <div class="sec-head"><h2>Charts</h2></div>
+    <div id="charts-section"><div class="loader"><div class="spinner"></div> Loading charts from index.yaml...</div></div>
+
+    <div class="sec-head"><h2>Release history</h2></div>
+    <div id="changelog-section"><div class="loader"><div class="spinner"></div> Loading changelog...</div></div>
+  </main>
+
+  <footer class="site">
+    <div class="wrap foot-row">
+      <div>Apache 2.0 - charts published to <code>helm.digit.org</code></div>
+      <div style="display:flex;gap:18px"><a href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">GitHub</a><a href="https://docs.digit.org" target="_blank" rel="noopener">Documentation</a></div>
+    </div>
+  </footer>
 
   <script>
-    const HOST = 'helm.digit.org';
-    const REPO_BASE = 'https://github.com/egovernments/helm-charts';
+    const HOST='helm.digit.org', REPO='https://github.com/egovernments/helm-charts';
+    const CHIP=['#1f6bf0','#6d4cf0','#e8622a','#118a53','#0e8aa8','#9333ea'];
+    function ctx(){ const p=location.pathname.replace(/\/+$/,'').split('/').filter(Boolean); return {module:p[p.length-1]||'unknown', project:p[p.length-2]||'unknown'}; }
+    function parseIndex(t){ const d=jsyaml.load(t); if(!d||!d.entries) return []; const out=[];
+      for(const [name,vers] of Object.entries(d.entries)){ if(!Array.isArray(vers)||!vers.length) continue; const l=vers[0];
+        out.push({name:l.name||name, version:l.version||'0.0.0', appVersion:l.appVersion||'', description:l.description||'', type:l.type||'application', allVersions:vers.map(v=>v.version)}); }
+      return out.sort((a,b)=>a.name.localeCompare(b.name)); }
+    function parseChangelog(t){ const d=jsyaml.load(t); return (d&&Array.isArray(d.releases))?d.releases:[]; }
+    function initials(n){ const p=n.split('-'); return (p[0][0]+(p[1]?p[1][0]:(p[0][1]||''))).toLowerCase(); }
 
-    function ctx() {
-      const parts = window.location.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
-      const module = parts[parts.length - 1] || 'unknown';
-      const project = parts[parts.length - 2] || 'unknown';
-      return { project, module };
+    function renderCharts(module, charts){
+      if(!charts.length) return '<div class="empty">No charts published yet for this module.</div>';
+      return `<div class="grid">${charts.map((c,i)=>{
+        const lib=c.type==='library'; const col=CHIP[i%CHIP.length], col2=CHIP[(i+2)%CHIP.length];
+        return `<div class="card">
+          <div class="top"><div class="glyph" style="background:linear-gradient(135deg,${col},${col2})">${initials(c.name)}</div><div class="cn"><a href="./${c.name}/">${c.name}</a></div></div>
+          <div class="cd">${c.description||''}</div>
+          <div class="foot"><span class="tag"><b>chart</b><i class="v">${c.version}</i></span>${lib?'<span class="pill-lib">library</span>':(c.appVersion?`<span class="tag"><b>app</b><i class="a">${c.appVersion}</i></span>`:'')}<span class="tag"><b>releases</b><i>${c.allVersions?c.allVersions.length:1}</i></span></div>
+        </div>`;}).join('')}</div>`;
     }
-    function parseIndex(t) {
-      const d = jsyaml.load(t); if (!d || !d.entries) return [];
-      const out = [];
-      for (const [name, vers] of Object.entries(d.entries)) {
-        if (!Array.isArray(vers) || !vers.length) continue;
-        const l = vers[0];
-        out.push({ name:l.name||name, version:l.version||'0.0.0', appVersion:l.appVersion||'', description:l.description||'', type:l.type||'application', dependencies:l.dependencies||[], allVersions:vers.map(v=>v.version) });
-      }
-      return out.sort((a,b)=>a.name.localeCompare(b.name));
-    }
-    function parseChangelog(t) { const d = jsyaml.load(t); return (d && Array.isArray(d.releases)) ? d.releases : []; }
-
-    function renderCharts(charts) {
-      if (!charts.length) return '<div class="empty-state">No charts published yet for this module.</div>';
-      const rows = charts.map(c => {
-        const lib = c.type === 'library';
-        let ver = `<div class="meta-badge"><span class="m-label">chart</span><span class="m-value v-blue">${c.version}</span></div>`;
-        if (c.appVersion) ver += ` <div class="meta-badge"><span class="m-label">app</span><span class="m-value v-green">${c.appVersion}</span></div>`;
-        let deps = '';
-        if (c.dependencies && c.dependencies.length) deps = `<div class="dep-list">Deps: ${c.dependencies.map(d=>`<span>${d.name} (${d.version})</span>`).join(', ')}</div>`;
-        return `<tr><td class="chart-name-cell">${c.name}${lib?'<span class="type-tag">library</span>':''}</td><td class="chart-desc-cell">${c.description||''}${deps}</td><td>${ver}</td><td style="color:var(--muted);text-align:center">${c.allVersions?c.allVersions.length:1}</td></tr>`;
+    function renderChangelog(releases){
+      if(!releases.length) return '<div class="empty">No release history recorded yet.</div>';
+      return releases.map(r=>{
+        const m=/^PR-(\d+)$/.exec(r.ref||''); const ref=m?`<a href="${REPO}/pull/${m[1]}">#${m[1]}</a>`:(r.ref?`<span>${r.ref}</span>`:'');
+        const rt=(r.release_type||'patch').toLowerCase();
+        const charts=(r.charts||[]).map(c=>`<div class="rc-row"><span class="rc-name">${c.name}</span><span class="varrow"><span class="old">${c.from||'new'}</span> <span class="arr">&rarr;</span> <span class="new">${c.to}</span></span></div>`).join('');
+        return `<div class="release"><div class="release-head"><div class="release-title"><span class="rtype ${rt}">${rt}</span>${ref}<span>${r.title||'Release'}</span></div><div class="release-meta"><span>${r.date||''}</span><span>by <span class="author">@${r.author||'github-actions'}</span></span></div></div>${charts?`<div class="release-charts">${charts}</div>`:''}</div>`;
       }).join('');
-      return `<table class="charts-table"><thead><tr><th>Chart</th><th>Description</th><th>Latest Version</th><th>Releases</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
-    function renderChangelog(releases) {
-      if (!releases.length) return '<div class="empty-state">No release history recorded yet.</div>';
-      return '<div class="changelog">' + releases.map(r => {
-        const ref = r.ref || '';
-        const m = /^PR-(\d+)$/.exec(ref);
-        const refHtml = m ? `<a href="${REPO_BASE}/pull/${m[1]}">#${m[1]}</a>` : (ref ? `<span>${ref}</span>` : '');
-        const rtype = (r.release_type || 'patch').toLowerCase();
-        const charts = (r.charts || []).map(c => `
-          <div class="release-chart-row"><span class="release-chart-name">${c.name}</span>
-          <span class="version-arrow"><span class="old">${c.from||'new'}</span><span class="arrow">&rarr;</span><span class="new">${c.to}</span></span></div>`).join('');
-        return `<div class="release-entry">
-          <div class="release-header">
-            <div class="release-title"><span class="release-type-badge ${rtype}">${rtype}</span>${refHtml}<span>${r.title||'Release'}</span></div>
-            <div class="release-meta"><span>${r.date||''}</span><span>by <span class="author">@${r.author||'github-actions'}</span></span></div>
-          </div>${charts?`<div class="release-charts">${charts}</div>`:''}</div>`;
-      }).join('') + '</div>';
-    }
+    async function main(){
+      const {project,module}=ctx();
+      const repoName=`${project}-${module}`, repoUrl=`https://${HOST}/${project}/${module}`;
+      document.getElementById('crumb-module').textContent=module;
+      const pl=document.getElementById('crumb-project'); pl.textContent=project; pl.href=`/${project}/`;
+      document.getElementById('page-title').textContent=module;
+      document.getElementById('mod-glyph').textContent=module.slice(0,2);
+      document.getElementById('mod-desc').textContent=`Charts in module "${module}" of project "${project}". Independent Helm repository at ${repoUrl}.`;
+      document.getElementById('install-fname').textContent=repoName;
+      document.getElementById('install-code').innerHTML=`<span class="k">helm</span> repo add ${repoName} <span class="s">${repoUrl}</span>\n<span class="k">helm</span> repo update\n<span class="k">helm</span> install my-release ${repoName}/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml`;
 
-    async function main() {
-      const { project, module } = ctx();
-      const repoName = `${project}-${module}`;
-      const repoUrl = `https://${HOST}/${project}/${module}`;
-      document.title = `${project}/${module} - DIGIT Helm Charts`;
-      document.getElementById('page-title').textContent = module;
-      document.getElementById('crumb-module').textContent = module;
-      const pl = document.getElementById('crumb-project-link'); pl.textContent = project; pl.href = `/${project}/`;
-      document.getElementById('module-desc').textContent = `Charts in module "${module}" of project "${project}". Independent Helm repository at ${repoUrl}.`;
-      document.getElementById('install-code').textContent =
-        `helm repo add ${repoName} ${repoUrl}\nhelm repo update\nhelm install my-release ${repoName}/<chart-name> -n <namespace> -f values.yaml`;
-
-      const [idx, cl] = await Promise.allSettled([
+      const [idx,cl]=await Promise.allSettled([
         fetch('./index.yaml').then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
         fetch('./changelog.yaml').then(r=>{ if(!r.ok) throw new Error(); return r.text(); })
       ]);
-      const charts = idx.status === 'fulfilled' ? parseIndex(idx.value) : [];
-      const releases = cl.status === 'fulfilled' ? parseChangelog(cl.value) : [];
-      document.getElementById('charts-section').innerHTML = renderCharts(charts);
-      document.getElementById('changelog-section').innerHTML = renderChangelog(releases);
-      document.getElementById('stat-charts').textContent = charts.length;
-      document.getElementById('stat-releases').textContent = releases.length;
-      document.getElementById('stat-latest-date').textContent = releases.length ? (releases[0].date || 'N/A') : 'N/A';
-      document.getElementById('module-badges').innerHTML =
-        `<div class="badge"><span class="label">Project</span><span class="value blue">${project}</span></div>
-         <div class="badge"><span class="label">Module</span><span class="value orange">${module}</span></div>
-         <div class="badge"><span class="label">Charts</span><span class="value green">${charts.length}</span></div>`;
+      const charts=idx.status==='fulfilled'?parseIndex(idx.value):[];
+      const releases=cl.status==='fulfilled'?parseChangelog(cl.value):[];
+      document.getElementById('charts-section').innerHTML=renderCharts(module,charts);
+      document.getElementById('changelog-section').innerHTML=renderChangelog(releases);
+      document.getElementById('st-charts').textContent=charts.length;
+      document.getElementById('st-releases').textContent=releases.length;
+      document.getElementById('st-latest').textContent=releases.length?(releases[0].date||'N/A'):'N/A';
     }
     main();
+
+    (function themeToggle(){
+      const root=document.documentElement, b=document.getElementById('theme');
+      const sysDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+      let stored=null; try { stored=localStorage.getItem('digit-theme'); } catch {}
+      if (stored) root.setAttribute('data-theme', stored);
+      const sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>';
+      const moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      const paint=()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); b.innerHTML=dark?sun:moon; };
+      paint(); b.addEventListener('click',()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); const next=dark?'light':'dark'; root.setAttribute('data-theme',next); try{localStorage.setItem('digit-theme',next);}catch{} paint(); });
+    })();
   </script>
 </body>
 </html>
