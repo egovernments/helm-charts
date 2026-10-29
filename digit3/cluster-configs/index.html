@@ -170,12 +170,14 @@
 
     async function main(){
       const {project,module}=ctx();
+      const PROJECT_LABELS = { digit3: "DIGIT - 3.0" };   // slug still drives every URL and repo name
+      const projLabel = s => PROJECT_LABELS[s] || s;
       const repoName=`${project}-${module}`, repoUrl=`https://${HOST}/${project}/${module}`;
       document.getElementById('crumb-module').textContent=module;
-      const pl=document.getElementById('crumb-project'); pl.textContent=project; pl.href=`/${project}/`;
+      const pl=document.getElementById('crumb-project'); pl.textContent=projLabel(project); pl.href=`/${project}/`;
       document.getElementById('page-title').textContent=module;
       document.getElementById('mod-glyph').textContent=module.slice(0,2);
-      document.getElementById('mod-desc').textContent=`Charts in module "${module}" of project "${project}". Independent Helm repository at ${repoUrl}.`;
+      document.getElementById('mod-desc').textContent=`Charts in module "${module}" of project "${projLabel(project)}". Independent Helm repository at ${repoUrl}.`;
       document.getElementById('install-fname').textContent=repoName;
       document.getElementById('install-code').innerHTML=`<span class="k">helm</span> repo add ${repoName} <span class="s">${repoUrl}</span>\n<span class="k">helm</span> repo update\n<span class="k">helm</span> install my-release ${repoName}/&lt;chart-name&gt; -n &lt;namespace&gt; -f values.yaml`;
 

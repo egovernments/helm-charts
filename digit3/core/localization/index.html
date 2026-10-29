@@ -112,8 +112,10 @@
     }
     async function main(){
       const {project,module,chart}=ctx();
+      const PROJECT_LABELS = { digit3: "DIGIT - 3.0" };   // slug still drives every URL and repo name
+      const projLabel = s => PROJECT_LABELS[s] || s;
       document.getElementById('crumb-chart').textContent=chart;
-      const pl=document.getElementById('crumb-project'); pl.textContent=project||'project'; pl.href=`/${project}/`;
+      const pl=document.getElementById('crumb-project'); pl.textContent=projLabel(project)||'project'; pl.href=`/${project}/`;
       const ml=document.getElementById('crumb-module'); ml.textContent=module||'module'; ml.href=`/${project}/${module}/`;
       const readmeEl=document.getElementById('readme');
       try { const r=await fetch('./README.md',{cache:'no-cache'}); if(!r.ok) throw new Error(); marked.setOptions({gfm:true, breaks:false});

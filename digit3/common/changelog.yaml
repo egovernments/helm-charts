@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-29"
+    ref: "PR-103"
+    title: "common: overridable gateway backend + refreshed docs"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "common"
+        from: "3.1.0"
+        to: "3.1.1"
   - date: "2026-10-27"
     ref: "PR-97"
     title: "refactor(common): centralize datasource + OTel env, add extraEnv.promote"

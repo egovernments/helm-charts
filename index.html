@@ -188,6 +188,10 @@
 
   <script>
     const ICON_COLORS = ['linear-gradient(135deg,#1f6bf0,#0e8aa8)','linear-gradient(135deg,#6d4cf0,#9333ea)','linear-gradient(135deg,#e8622a,#f0a020)','linear-gradient(135deg,#118a53,#0e8aa8)','linear-gradient(135deg,#0e8aa8,#1f6bf0)'];
+    // display labels for project slugs; the slug (e.g. digit3) still drives every URL and repo name
+    const PROJECT_LABELS = { digit3: "DIGIT - 3.0" };
+    const projLabel = s => PROJECT_LABELS[s] || s;
+    const projGlyph = s => s === "digit3" ? "D3" : s.slice(0,2);
 
     function countCharts(yamlText){ try { const d = jsyaml.load(yamlText); return d && d.entries ? Object.keys(d.entries).length : 0; } catch { return 0; } }
     async function moduleChartCount(project, module){ try { const r = await fetch(`./${project}/${module}/index.yaml`); if (!r.ok) return 0; return countCharts(await r.text()); } catch { return 0; } }
@@ -201,7 +205,7 @@
             <div class="mod-cell"><a href="./${project}/${m}/">${m}/</a><span class="mc">${counts[m]||0} chart${(counts[m]||0)===1?'':'s'}</span></div>`).join('')}</div>`;
       return `<div class="project" id="${project}">
         <div class="project-head">
-          <div class="project-title"><div class="glyph" style="background:${color}">${project.slice(0,2)}</div><a href="./${project}/">${project}/</a></div>
+          <div class="project-title"><div class="glyph" style="background:${color}">${projGlyph(project)}</div><a href="./${project}/">${projLabel(project)}</a></div>
           <div style="display:flex;align-items:center;gap:14px"><span class="project-count">${modules.length} module${modules.length===1?'':'s'} - ${total} chart${total===1?'':'s'}</span><a href="./${project}/" style="font-size:14px">Open &rarr;</a></div>
         </div>${cells}</div>`;
     }
