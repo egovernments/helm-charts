@@ -3,7 +3,7 @@ name: localization
 description: DIGIT localization service
 type: application
 # chart version (semver); the release workflow seeds/bumps and syncs this on merge
-version: 3.2.1
+version: 3.1.1
 # appVersion is the default image tag: used as-is in prod mode; overridable via image.tag in dev mode
 appVersion: "dev-flyway-7068862"
 dependencies:

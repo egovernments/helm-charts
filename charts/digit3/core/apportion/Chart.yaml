@@ -1,7 +1,7 @@
 apiVersion: v2
 name: apportion
 description: Apportions a collected payment across a bill's tax heads
-version: 3.2.1
+version: 3.1.1
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
 appVersion: dev-flyway-7068862
