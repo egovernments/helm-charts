@@ -63,6 +63,24 @@ tracing-enabled: false
 vault-enabled: "false"
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+canonical-api-prefix: "canonical"
+log-level: "DEBUG"
+idgen-path: "idgen/v3/generate"
+idgen-enabled: "true"
+idgen-id-format: "individual"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-create-individual: "individual-create-individual"
+topic-update-individual: "individual-update-individual"
+topic-delete-individual: "individual-delete-individual"
+topic-upsert-config: "individual-upsert-config"
+redis-db: "0"
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+tenant-migration-consumer-group: "individual-service"
+
 healthChecks:
   enabled: false
   livenessProbePath: "/health"
@@ -82,13 +100,13 @@ env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
   - name: SERVER_CONTEXT_PATH
-    value: /individual
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
   - name: CANONICAL_API_PREFIX
-    value: canonical
+    value: {{ index .Values "canonical-api-prefix" | quote }}
   - name: LOG_LEVEL
-    value: DEBUG
+    value: {{ index .Values "log-level" | quote }}
 
   # ── External services ────────────────────────────────────────────────────
   - name: IDGEN_HOST
@@ -97,11 +115,11 @@ env: |
         key: idgen
         name: egov-service-host
   - name: IDGEN_PATH
-    value: idgen/v3/generate
+    value: {{ index .Values "idgen-path" | quote }}
   - name: IDGEN_ENABLED
-    value: "true"
+    value: {{ index .Values "idgen-enabled" | quote }}
   - name: IDGEN_INDIVIDUAL_ID_FORMAT
-    value: individual
+    value: {{ index .Values "idgen-id-format" | quote }}
 
   # ── Vault / PII encryption ───────────────────────────────────────────────
   - name: VAULT_HOST
@@ -132,17 +150,17 @@ env: |
 
   # ── PubSub ───────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: PUBSUB_TOPIC_CREATE_INDIVIDUAL
-    value: individual-create-individual
+    value: {{ index .Values "topic-create-individual" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_INDIVIDUAL
-    value: individual-update-individual
+    value: {{ index .Values "topic-update-individual" | quote }}
   - name: PUBSUB_TOPIC_DELETE_INDIVIDUAL
-    value: individual-delete-individual
+    value: {{ index .Values "topic-delete-individual" | quote }}
   - name: PUBSUB_TOPIC_UPSERT_CONFIG
-    value: individual-upsert-config
+    value: {{ index .Values "topic-upsert-config" | quote }}
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   - name: KAFKA_BROKERS
@@ -153,27 +171,36 @@ env: |
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_HOST
-    value: redis.backbone.svc.cluster.local
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-host
   - name: REDIS_PORT
-    value: "6379"
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-port
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   # some services spell the same switch SCHEMA_SEPARATION_MODE
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: TENANT_MIGRATION_SCHEMA_TABLE
     value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: individual-service
+    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint

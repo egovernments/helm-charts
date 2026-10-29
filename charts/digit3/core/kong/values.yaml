@@ -13,17 +13,7 @@
 # Deployment parameters
 # -----------------------------------------------------------------------------
 
-# The rest of the platform routes to kong-kong-proxy:
-# charts/common/templates/_ingress.yaml uses kong-kong-proxy as the ingress
-# backend for every chart, and the environment files point at
-# http://kong-kong-proxy.egov. On a FRESH cluster (no legacy kong-kong
-# Deployment to adopt, unlike test-lts) this chart can and must render as
-# kong-kong so the proxy Service is named kong-kong-proxy.
-#
-# Note this chart's _helpers.tpl builds the name from
-# `default (printf "%s" $name) .Values.fullnameOverride` -- only the chart
-# name, not Release.Name-chartName like upstream Kong -- so removing this
-# override entirely would yield "kong-proxy", not "kong-kong-proxy".
+# renders proxy Service "kong-proxy"; to adopt legacy "kong-kong" also set common ingress.gatewayServiceName
 fullnameOverride: "kong"
 namespace: "egov"
 

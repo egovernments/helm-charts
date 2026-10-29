@@ -8,5 +8,5 @@ version: 3.1.1
 appVersion: "keycloak-spi-custom-build-aardhya-78019f9"
 dependencies:
   - name: common
-    version: 3.1.0
+    version: 3.1.1
     repository: https://helm.digit.org/digit3/common

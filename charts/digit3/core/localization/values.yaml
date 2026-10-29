@@ -56,6 +56,35 @@ appType: "java"
 tracing-export-enabled: "false"
 tracing-enabled: false
 
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+schema-separation-topic: "account-migration"
+migration-locations: "classpath:db/migration"
+kafka-auto-create-topics: "true"
+kafka-partitions: "1"
+kafka-replication-factor: "1"
+kafka-consumer-group: "localization-service"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-create-message: "localization-create-message"
+topic-update-message: "localization-update-message"
+topic-upsert-message: "localization-upsert-message"
+topic-delete-message: "localization-delete-message"
+redis-db: "0"
+redis-consumer-group: "localization-service"
+redis-consumer-id: "localization-service-1"
+redis-retention-days: "7"
+redis-max-stream-length: "1000000"
+redis-cleanup-interval: "86400"
+otel-enabled: "false"
+otel-service-name: "localization-service"
+otel-service-version: "1.0.0"
+otel-metrics-enabled: "true"
+otel-sampler-arg: "1.0"
+prometheus-port: "9090"
+
 healthChecks:
   enabled: true
   livenessProbePath: "/health"
@@ -73,26 +102,28 @@ resources: |
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: HTTP_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
 
   # ── Tenant / schema separation ───────────────────────────────────────────
   # consume account-migration, migrate into the tenant schema
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
+    value: {{ index .Values "schema-separation-topic" | quote }}
 
   # ── App-level migrations ─────────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations
+    value: {{ index .Values "migration-locations" | quote }}
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: localization_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   # tracer reads spring.kafka.bootstrap-servers; not mapped from KAFKA_BROKERS
@@ -107,62 +138,71 @@ env: |
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: "true"
+    value: {{ index .Values "kafka-auto-create-topics" | quote }}
   - name: KAFKA_PARTITION_COUNT
-    value: "1"
+    value: {{ index .Values "kafka-partitions" | quote }}
   - name: KAFKA_REPLICATION_FACTOR
-    value: "1"
+    value: {{ index .Values "kafka-replication-factor" | quote }}
   - name: KAFKA_CONSUMER_GROUP
-    value: localization-service
+    value: {{ index .Values "kafka-consumer-group" | quote }}
 
   # ── PubSub ───────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: PUBSUB_TOPIC_CREATE_MESSAGE
-    value: localization-create-message
+    value: {{ index .Values "topic-create-message" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_MESSAGE
-    value: localization-update-message
+    value: {{ index .Values "topic-update-message" | quote }}
   - name: PUBSUB_TOPIC_UPSERT_MESSAGE
-    value: localization-upsert-message
+    value: {{ index .Values "topic-upsert-message" | quote }}
   - name: PUBSUB_TOPIC_DELETE_MESSAGE
-    value: localization-delete-message
+    value: {{ index .Values "topic-delete-message" | quote }}
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-address
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
   - name: REDIS_CONSUMER_GROUP
-    value: localization-service
+    value: {{ index .Values "redis-consumer-group" | quote }}
   - name: REDIS_CONSUMER_ID
-    value: localization-service-1
+    value: {{ index .Values "redis-consumer-id" | quote }}
   - name: REDIS_RETENTION_DAYS
-    value: "7"
+    value: {{ index .Values "redis-retention-days" | quote }}
   - name: REDIS_MAX_STREAM_LENGTH
-    value: "1000000"
+    value: {{ index .Values "redis-max-stream-length" | quote }}
   - name: REDIS_CLEANUP_INTERVAL
-    value: "86400"
+    value: {{ index .Values "redis-cleanup-interval" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: OTEL_ENABLED
-    value: "false"
+    value: {{ index .Values "otel-enabled" | quote }}
   - name: OTEL_SERVICE_NAME
-    value: localization-service
+    value: {{ index .Values "otel-service-name" | quote }}
   - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
+    value: {{ index .Values "otel-service-version" | quote }}
   - name: OTEL_METRICS_ENABLED
-    value: "true"
+    value: {{ index .Values "otel-metrics-enabled" | quote }}
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
+    value: {{ index .Values "otel-sampler-arg" | quote }}
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-exporter-otlp-endpoint
   - name: PROMETHEUS_PORT
-    value: "9090"
+    value: {{ index .Values "prometheus-port" | quote }}
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint
