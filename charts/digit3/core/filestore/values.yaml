@@ -53,17 +53,46 @@ replicas: "1"
 appType: "java"
 heap: "-Xmx256m -Xms256m"
 
-# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
 tracing-enabled: true
 
-# storage backend (in-cluster MinIO / S3)
-is-bucket-fixed: "true"
-fixed-bucketname: "unified-dev-bucket-s3"
-file-storage-mount-path: "/filestore"
-is-nfs-enabled: false
-is-s3-enabled: true
-minio-enabled: true
+# ── Storage (S3 / MinIO); creds from the `minio` secret ───────────────────────
+s3-bucket: "digit-filestore-bucket"
+s3-region: "ap-south-1"
+s3-endpoint: "s3.ap-south-1.amazonaws.com"
+s3-source: "s3"
+s3-use-ssl: "true"
+minio-use-ssl: "false"
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+tenant-migration-enabled: "true"
+schema-separation-mode: "true"
+schema-separation-topic: "account-migration"
+migration-locations: "classpath:db/migration"
+kafka-auto-create-topics: "true"
+kafka-partitions: "1"
+kafka-replication-factor: "1"
+kafka-consumer-group: "filestore-service"
+pubsub-enabled: "true"
+pubsub-type: "kafka"
+topic-upload-file: "filestore-upload-file"
+topic-create-doc-category: "filestore-create-doc-category"
+topic-update-doc-category: "filestore-update-doc-category"
+topic-delete-doc-category: "filestore-delete-doc-category"
+redis-db: "0"
+redis-consumer-group: "filestore-service"
+redis-consumer-id: "filestore-service-1"
+redis-retention-days: "7"
+redis-max-stream-length: "1000000"
+redis-cleanup-interval: "86400"
+console-logs-enabled: "true"
+otel-enabled: "true"
+otel-service-name: "filestore"
+otel-service-version: "1.0.0"
+otel-metrics-enabled: "true"
+otel-sampler-arg: "1.0"
+prometheus-port: "9090"
 
 healthChecks:
   enabled: true
@@ -86,39 +115,39 @@ persistence:
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: SERVER_PORT
-    value: "8080"
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
 
   # ── Tenant / schema separation ───────────────────────────────────────────
-  # consume account-migration, migrate into the tenant schema
   - name: TENANT_MIGRATION_ENABLED
-    value: "true"
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
   - name: SCHEMA_SEPARATION_MODE
-    value: "true"
+    value: {{ index .Values "schema-separation-mode" | quote }}
   - name: SCHEMA_SEPARATION_TOPIC
-    value: account-migration
+    value: {{ index .Values "schema-separation-topic" | quote }}
 
   # ── App-level migrations ─────────────────────────────────────────────────
   - name: MIGRATION_FLYWAY_LOCATIONS
-    value: classpath:db/migration  # jar-embedded migrations
+    value: {{ index .Values "migration-locations" | quote }}
   - name: MIGRATION_SCRIPT_PATH
     value: /opt/digit/migrate.sh
   - name: MIGRATION_FLYWAY_BIN
     value: /opt/flyway/flyway
   - name: MIGRATION_SCHEMA_TABLE
-    value: filestore_schema
+    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
 
   # ── Storage (S3 / MinIO) ─────────────────────────────────────────────────
-  # S3 backend = in-cluster MinIO (backbone ns); creds from the `minio` secret
   - name: MINIO_USE_SSL
-    value: "false"
+    value: {{ index .Values "minio-use-ssl" | quote }}
   - name: S3_BUCKET
-    value: unified-dev-bucket-s3
+    value: {{ index .Values "s3-bucket" | quote }}
   - name: S3_READ_BUCKET
-    value: unified-dev-bucket-s3
+    value: {{ index .Values "s3-read-bucket" | default (index .Values "s3-bucket") | quote }}
   - name: S3_USE_SSL
-    value: "false"
+    value: {{ index .Values "s3-use-ssl" | quote }}
   - name: S3_REGION
-    value: ap-south-1
+    value: {{ index .Values "s3-region" | quote }}
   - name: S3_ACCESS_KEY
     valueFrom:
       secretKeyRef:
@@ -130,9 +159,9 @@ env: |
         key: secretkey
         name: minio
   - name: S3_SOURCE
-    value: s3
+    value: {{ index .Values "s3-source" | quote }}
   - name: S3_ENDPOINT
-    value: minio.backbone.svc.cluster.local:9000
+    value: {{ index .Values "s3-endpoint" | quote }}
 
   # ── Kafka ────────────────────────────────────────────────────────────────
   - name: KAFKA_BROKERS
@@ -141,66 +170,74 @@ env: |
         key: kafka-brokers
         name: egov-config
   - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-    value: "true"
+    value: {{ index .Values "kafka-auto-create-topics" | quote }}
   - name: KAFKA_PARTITION_COUNT
-    value: "1"
+    value: {{ index .Values "kafka-partitions" | quote }}
   - name: KAFKA_REPLICATION_FACTOR
-    value: "1"
+    value: {{ index .Values "kafka-replication-factor" | quote }}
   - name: KAFKA_CONSUMER_GROUP
-    value: filestore-service
+    value: {{ index .Values "kafka-consumer-group" | quote }}
 
   # ── PubSub ───────────────────────────────────────────────────────────────
   - name: PUBSUB_ENABLED
-    value: "true"
+    value: {{ index .Values "pubsub-enabled" | quote }}
   - name: PUBSUB_TYPE
-    value: "kafka"
+    value: {{ index .Values "pubsub-type" | quote }}
   - name: PUBSUB_TOPIC_UPLOAD_FILE
-    value: filestore-upload-file
+    value: {{ index .Values "topic-upload-file" | quote }}
   - name: PUBSUB_TOPIC_CREATE_DOC_CATEGORY
-    value: filestore-create-doc-category
+    value: {{ index .Values "topic-create-doc-category" | quote }}
   - name: PUBSUB_TOPIC_UPDATE_DOC_CATEGORY
-    value: filestore-update-doc-category
+    value: {{ index .Values "topic-update-doc-category" | quote }}
   - name: PUBSUB_TOPIC_DELETE_DOC_CATEGORY
-    value: filestore-delete-doc-category
+    value: {{ index .Values "topic-delete-doc-category" | quote }}
 
   # ── Redis ────────────────────────────────────────────────────────────────
   - name: REDIS_ADDRESS
-    value: redis.backbone.svc.cluster.local:6379
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: redis-address
   - name: REDIS_PASSWORD
   - name: REDIS_DB
-    value: "0"
+    value: {{ index .Values "redis-db" | quote }}
   - name: REDIS_CONSUMER_GROUP
-    value: filestore-service
+    value: {{ index .Values "redis-consumer-group" | quote }}
   - name: REDIS_CONSUMER_ID
-    value: filestore-service-1
+    value: {{ index .Values "redis-consumer-id" | quote }}
   - name: REDIS_RETENTION_DAYS
-    value: "7"
+    value: {{ index .Values "redis-retention-days" | quote }}
   - name: REDIS_MAX_STREAM_LENGTH
-    value: "1000000"
+    value: {{ index .Values "redis-max-stream-length" | quote }}
   - name: REDIS_CLEANUP_INTERVAL
-    value: "86400"
+    value: {{ index .Values "redis-cleanup-interval" | quote }}
 
   # ── Logging ──────────────────────────────────────────────────────────────
   - name: CONSOLE_LOGS_ENABLED
-    value: "true"
+    value: {{ index .Values "console-logs-enabled" | quote }}
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
-  # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: OTEL_ENABLED
-    value: "true"
+    value: {{ index .Values "otel-enabled" | quote }}
   - name: OTEL_SERVICE_NAME
-    value: filestore
+    value: {{ index .Values "otel-service-name" | quote }}
   - name: OTEL_SERVICE_VERSION
-    value: 1.0.0
+    value: {{ index .Values "otel-service-version" | quote }}
   - name: OTEL_METRICS_ENABLED
-    value: "true"
+    value: {{ index .Values "otel-metrics-enabled" | quote }}
   - name: OTEL_TRACES_SAMPLER_ARG
-    value: "1.0"
+    value: {{ index .Values "otel-sampler-arg" | quote }}
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-exporter-otlp-endpoint
   - name: PROMETHEUS_PORT
-    value: "9090"
+    value: {{ index .Values "prometheus-port" | quote }}
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
     value: {{ index .Values "tracing-export-enabled" | quote }}
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: otel-tracing-export-otlp-endpoint
