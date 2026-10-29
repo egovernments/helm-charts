@@ -56,22 +56,6 @@ appType: "java"
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 tracing-enabled: false
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-context-path: ""  # blank -> /<ingress.context>
-flyway-enabled: "false"
-events-enabled: "false"
-topic-create: "template-config-create-template-config"
-topic-update: "template-config-update-template-config"
-topic-delete: "template-config-delete-template-config"
-pubsub-type: "kafka"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-tenant-migration-consumer-group: "template-config"
-tracing-export-enabled: "false"
-metrics-export-enabled: "false"
-management-exposure-include: "health,info"
-tracing-sampling-probability: "1.0"
-
 healthChecks:
   enabled: false
   livenessProbePath: "/health"
@@ -92,30 +76,30 @@ env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: SERVER_SERVLET_CONTEXT_PATH
-    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+    value: /template-config
 
   # ── Datasource ────────────────────────────────────────────────────────
   # Migration is handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "flyway-enabled" | quote }}
+    value: "false"
 
   # ── Lifecycle events ──────────────────────────────────────────────────
   # fire-and-forget; same posture as the Go chart: disabled
   - name: TEMPLATE_CONFIG_EVENTS_ENABLED
-    value: {{ index .Values "events-enabled" | quote }}
+    value: "false"
   - name: TEMPLATE_CONFIG_TOPICS_CREATE
-    value: {{ index .Values "topic-create" | quote }}
+    value: template-config-create-template-config
   - name: TEMPLATE_CONFIG_TOPICS_UPDATE
-    value: {{ index .Values "topic-update" | quote }}
+    value: template-config-update-template-config
   - name: TEMPLATE_CONFIG_TOPICS_DELETE
-    value: {{ index .Values "topic-delete" | quote }}
+    value: template-config-delete-template-config
 
   # ── Kafka ─────────────────────────────────────────────────────────────
   # account publishes account-migration to kafka, so tenant-migration below requires this backend
   - name: TRACER_PUBSUB_TYPE
-    value: {{ index .Values "pubsub-type" | quote }}
+    value: kafka
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -125,26 +109,23 @@ env: |
   # ── Tenant / schema separation ────────────────────────────────────────
   # SCHEMA_TABLE must equal initContainers.dbMigration.schemaTable above; set once at initial deployment
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
-    value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+    value: template_config_schema
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: template-config
 
   # ── Observability (OpenTelemetry) ─────────────────────────────────────
   # span switch is MANAGEMENT_TRACING_EXPORT_ENABLED, not MANAGEMENT_TRACING_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
-    value: {{ index .Values "tracing-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-exposure-include" | quote }}
+    value: health,info
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces
   - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-    value: {{ index .Values "tracing-sampling-probability" | quote }}
+    value: "1.0"

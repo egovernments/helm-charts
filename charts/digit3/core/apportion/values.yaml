@@ -53,12 +53,8 @@ image:
   repository: "apportion"
 replicas: 1
 appType: "java"
-# app hardcodes 8280
-httpPort: 8280
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 
-# MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
-tracing-export-enabled: "false"
 tracing-enabled: false
 
 healthChecks:
@@ -74,47 +70,35 @@ resources: |
     cpu: "1"
     memory: "1Gi"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-value-order: "true"
-enable-advance: "false"
-spring-flyway-enabled: "false"
-tenant-migration-enabled: "true"
-schema-separation-mode: "true"
-tenant-migration-consumer-group: "apportion"
-billing-tax-heads-path: "billing/v3/tax-heads"
-metrics-export-enabled: "false"
-management-endpoints-exposure: "health,info"
-tracing-sampling-probability: "1.0"
-
 # ── Container env ─────────────────────────────────────────────────────────────
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   # true: skip tax-head order validation, use order as equal-amount tie-break
   - name: APPORTION_VALUE_ORDER
-    value: {{ index .Values "value-order" | quote }}
+    value: "true"
   # keep OFF until billing's payment module can absorb the advance row
   - name: APPORTION_ENABLE_ADVANCE
-    value: {{ index .Values "enable-advance" | quote }}
+    value: "false"
 
   # ── Datasource ───────────────────────────────────────────────────────────
   # migration handled by the init container above - app-boot Flyway is off
   - name: SPRING_FLYWAY_ENABLED
-    value: {{ index .Values "spring-flyway-enabled" | quote }}
+    value: "false"
 
   # ── tenant-migration ─────────────────────────────────────────────────────
   # schema-table must equal the init container's SCHEMA_TABLE
   - name: TENANT_MIGRATION_ENABLED
-    value: {{ index .Values "tenant-migration-enabled" | quote }}
+    value: "true"
   - name: SCHEMA_SEPARATION_MODE
-    value: {{ index .Values "schema-separation-mode" | quote }}
+    value: "true"
   - name: TENANT_MIGRATION_SCHEMA_TABLE
     value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
   - name: TENANT_MIGRATION_CONSUMER_GROUP
-    value: {{ index .Values "tenant-migration-consumer-group" | quote }}
+    value: apportion
   - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
     valueFrom:
       configMapKeyRef:
@@ -128,20 +112,17 @@ env: |
         key: billing
         name: egov-service-host
   - name: APPORTION_BILLING_TAX_HEADS_PATH
-    value: {{ index .Values "billing-tax-heads-path" | quote }}
+    value: billing/v3/tax-heads
 
   # ── Observability (OpenTelemetry) ────────────────────────────────────────
   # span switch is *_EXPORT_ENABLED, not *_ENABLED
   - name: MANAGEMENT_TRACING_EXPORT_ENABLED
-    value: {{ index .Values "tracing-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_DEFAULTS_METRICS_EXPORT_ENABLED
-    value: {{ index .Values "metrics-export-enabled" | quote }}
+    value: "false"
   - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-    value: {{ index .Values "management-endpoints-exposure" | quote }}
+    value: health,info
   - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-    value: {{ index .Values "tracing-sampling-probability" | quote }}
+    value: "1.0"
   - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: otel-tracing-export-otlp-endpoint
+    value: http://open-telemetry-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces

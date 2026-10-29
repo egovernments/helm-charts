@@ -83,21 +83,13 @@ filestoreModule: "boundary"
 # must not exceed the boundary service's BULK_RELATIONSHIP_MAX_SIZE (1000)
 bulkRelationshipChunkSize: "1000"
 
-# ── App config (overridable per env) ──────────────────────────────────────────
-digit-client-id: "boundary-management"
-localization-module: "hcm-admin-schemas"
-db-ssl: "false"
-persistence-mode: "db"
-bulk-relationship-enabled: "true"
-confirm-parent-enabled: "false"
-
 # ── Container env ─────────────────────────────────────────────────────────────
 # Defaults in src/server/config/index.ts already target the digit3 paths, so only
 # hosts are set here. Job status rows go straight to Postgres (PERSISTENCE_MODE=db).
 env: |
   # ── Service ──────────────────────────────────────────────────────────────
   - name: APP_PORT
-    value: {{ .Values.httpPort | quote }}
+    value: "8080"
   - name: APP_LOG_LEVEL
     value: {{ .Values.logLevel | quote }}
   - name: APP_MAX_DEBUG_CHAR
@@ -108,7 +100,7 @@ env: |
         name: egov-config
         key: egov-services-fqdn-name
   - name: DIGIT_CLIENT_ID
-    value: {{ index .Values "digit-client-id" | quote }}
+    value: "boundary-management"
   {{- if .Values.defaultTenantId }}
   - name: DEFAULT_TENANT_ID
     value: {{ .Values.defaultTenantId | quote }}
@@ -116,7 +108,7 @@ env: |
   - name: LOCALE
     value: {{ .Values.defaultLocale | quote }}
   - name: LOCALIZATION_MODULE
-    value: {{ index .Values "localization-module" | quote }}
+    value: "hcm-admin-schemas"
   - name: FILESTORE_MODULE
     value: {{ .Values.filestoreModule | quote }}
 
@@ -125,9 +117,9 @@ env: |
   - name: DB_SCHEMA
     value: {{ .Values.dbSchema | quote }}
   - name: DB_SSL
-    value: {{ index .Values "db-ssl" | quote }}
+    value: "false"
   - name: PERSISTENCE_MODE
-    value: {{ index .Values "persistence-mode" | quote }}
+    value: "db"
 
   # ── Downstream services ──────────────────────────────────────────────────
   - name: EGOV_BOUNDARY_HOST
@@ -158,11 +150,11 @@ env: |
 
   # ── Bulk relationship ────────────────────────────────────────────────────
   - name: BULK_RELATIONSHIP_ENABLED
-    value: {{ index .Values "bulk-relationship-enabled" | quote }}
+    value: "true"
   - name: BULK_RELATIONSHIP_CHUNK_SIZE
     value: {{ .Values.bulkRelationshipChunkSize | quote }}
   - name: CONFIRM_PARENT_ENABLED
-    value: {{ index .Values "confirm-parent-enabled" | quote }}
+    value: "false"
 
   # ── Messaging / cache ────────────────────────────────────────────────────
   # Kafka unused in db persistence mode; Redis cache off unless CACHE_ENABLED is set
@@ -172,12 +164,6 @@ env: |
         name: egov-config
         key: kafka-brokers
   - name: REDIS_HOST
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-host
+    value: redis.backbone.svc.cluster.local
   - name: REDIS_PORT
-    valueFrom:
-      configMapKeyRef:
-        name: egov-config
-        key: redis-port
+    value: "6379"
