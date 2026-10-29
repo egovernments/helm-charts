@@ -160,6 +160,9 @@
     function initials(n){ const p=n.split('-'); return (p[0][0]+(p[1]?p[1][0]:(p[0][1]||''))).toLowerCase(); }
 
     const proj = project();
+    const PROJECT_LABELS = { digit3: "DIGIT - 3.0" };   // slug still drives every URL and repo name
+    const projLabel = s => PROJECT_LABELS[s] || s;
+    const projGlyph = s => s === "digit3" ? "D3" : s.slice(0,2);
     const tabsEl=document.getElementById('mod-tabs'), gridEl=document.getElementById('chart-grid'), subEl=document.getElementById('mod-sub');
     const installCard=document.getElementById('install-card'), installCode=document.getElementById('install-code'), installFname=document.getElementById('install-fname');
     let active=null, DATA={};
@@ -183,10 +186,10 @@
     }
 
     async function main(){
-      document.getElementById('crumb-project').textContent=proj;
-      document.getElementById('page-title').textContent=proj;
-      document.getElementById('proj-glyph').textContent=proj.slice(0,2);
-      document.getElementById('proj-desc').textContent=`Modules in project "${proj}". Each module is an independent Helm repository under helm.digit.org/${proj}/.`;
+      document.getElementById('crumb-project').textContent=projLabel(proj);
+      document.getElementById('page-title').textContent=projLabel(proj);
+      document.getElementById('proj-glyph').textContent=projGlyph(proj);
+      document.getElementById('proj-desc').textContent=`Modules in project "${projLabel(proj)}". Each module is an independent Helm repository under helm.digit.org/${proj}/.`;
       let modules=[];
       try { const r=await fetch('./modules.json'); if(r.ok) modules=await r.json(); } catch {}
       if(!Array.isArray(modules)||!modules.length){ gridEl.innerHTML='<div class="empty">No modules published yet for this project.</div>'; document.getElementById('st-modules').textContent=0; document.getElementById('st-charts').textContent=0; return; }
