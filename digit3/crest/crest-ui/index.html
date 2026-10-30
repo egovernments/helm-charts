@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DIGIT - Helm Charts</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <style>
+    :root {
+      --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eceff4; --raise:#ffffff;
+      --border:#e1e6ee; --border-strong:#cfd6e2; --fg:#101827; --fg-soft:#36414f; --muted:#64718a;
+      --accent:#e8622a; --accent-soft:#fbe7dc; --accent-ink:#b84a1c; --blue:#1f6bf0; --green:#118a53; --purple:#6d4cf0; --cyan:#0e8aa8;
+      --shadow:0 1px 2px rgba(16,24,39,.04), 0 10px 30px rgba(16,24,39,.06);
+      --font-display:"Archivo", system-ui, sans-serif; --font-body:"IBM Plex Sans", system-ui, -apple-system, sans-serif; --font-mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radius:16px; color-scheme:light;
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135; --border:#213049; --border-strong:#2c3f5c; --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+      --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68; --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45); color-scheme:dark; } }
+    :root[data-theme="dark"] {
+      --bg:#080c15; --surface:#0e1626; --surface-2:#131e30; --raise:#152135; --border:#213049; --border-strong:#2c3f5c; --fg:#eaeff7; --fg-soft:#c3ccda; --muted:#8e9db4;
+      --accent:#ff844a; --accent-soft:#2a1a12; --accent-ink:#ff9b68; --blue:#5aa2ff; --green:#36c07d; --purple:#a98bff; --cyan:#45c2e0;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45); color-scheme:dark; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--fg); font-family:var(--font-body); line-height:1.6; -webkit-font-smoothing:antialiased; }
+    body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--surface); }
+    a { color:var(--blue); text-decoration:none; } img { max-width:100%; }
+    code,.mono { font-family:var(--font-mono); }
+    .wrap { width:min(1040px,100%); margin:0 auto; padding-left:max(20px,env(safe-area-inset-left,0px)); padding-right:max(20px,env(safe-area-inset-right,0px)); }
+
+    header.site { position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block:12px; width:min(1200px,100%); margin:0 auto; padding-left:max(20px,env(safe-area-inset-left,0px)); padding-right:max(20px,env(safe-area-inset-right,0px)); }
+    .brand { display:flex; align-items:center; gap:11px; min-width:0; } .brand img { width:30px; height:30px; border-radius:7px; display:block; }
+    .brand .wm { font-family:var(--font-display); font-weight:800; font-size:17px; letter-spacing:-.01em; white-space:nowrap; color:var(--fg); } .brand .wm span { color:var(--accent); }
+    .nav-right { display:flex; align-items:center; gap:8px; }
+    .nav-link { color:var(--fg-soft); font-weight:500; font-size:14px; padding:8px 12px; border-radius:9px; } .nav-link:hover { background:var(--surface-2); color:var(--fg); }
+    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--fg-soft); cursor:pointer; }
+    .icon-btn:hover { border-color:var(--border-strong); color:var(--fg); } .icon-btn svg { width:18px; height:18px; }
+
+    .crumb { color:var(--muted); font-size:14px; margin:26px 0 22px; } .crumb a { color:var(--blue); }
+    .loader { display:flex; align-items:center; gap:12px; padding:22px 0; color:var(--muted); font-size:15px; }
+    .spinner { width:20px; height:20px; border:2px solid var(--border-strong); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .empty { padding:22px; color:var(--muted); font-style:italic; border:1px solid var(--border); border-radius:var(--radius); }
+
+    .md-body { font-size:16px; line-height:1.7; }
+    .md-body h1 { font-family:var(--font-display); font-size:42px; line-height:1.1; font-weight:800; letter-spacing:-.03em; margin:0 0 10px; text-wrap:balance; }
+    .md-body h2 { font-family:var(--font-display); font-size:26px; font-weight:800; margin:40px 0 14px; padding-bottom:8px; border-bottom:1px solid var(--border); letter-spacing:-.02em; }
+    .md-body h3 { font-family:var(--font-display); font-size:19px; font-weight:700; margin:28px 0 12px; }
+    .md-body p { margin:0 0 16px; color:var(--fg-soft); }
+    .md-body ul,.md-body ol { margin:0 0 16px 24px; } .md-body li { margin:4px 0; }
+    .md-body a { color:var(--blue); } .md-body hr { border:none; border-top:1px solid var(--border); margin:22px 0; }
+    .md-body code { font-family:var(--font-mono); font-size:13px; background:var(--surface-2); color:var(--fg); border-radius:5px; padding:2px 6px; }
+    .md-body pre { background:var(--raise); border:1px solid var(--border); padding:18px; margin:14px 0 22px; border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow); }
+    .md-body pre code { background:none; color:var(--fg-soft); padding:0; font-size:13.5px; line-height:1.8; white-space:pre; }
+    .md-body table { width:100%; border-collapse:collapse; margin:10px 0 24px; border:1px solid var(--border); border-radius:12px; overflow:hidden; font-size:14px; }
+    .md-body th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:11px 14px; background:var(--surface-2); border-bottom:1px solid var(--border); }
+    .md-body td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top; } .md-body tr:last-child td { border-bottom:none; } .md-body tbody tr:hover td { background:var(--surface-2); }
+    .md-body blockquote { border-left:3px solid var(--accent); margin:0 0 16px; padding:4px 0 4px 18px; color:var(--muted); }
+    .md-scroll { overflow-x:auto; }
+
+    .versions { margin-top:44px; }
+    .versions h2 { font-family:var(--font-display); font-size:26px; font-weight:800; letter-spacing:-.02em; margin-bottom:14px; }
+    .ver-table { width:100%; border-collapse:collapse; border:1px solid var(--border); border-radius:12px; overflow:hidden; font-size:14px; }
+    .ver-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:12px 16px; background:var(--surface-2); border-bottom:1px solid var(--border); }
+    .ver-table td { padding:12px 16px; border-bottom:1px solid var(--border); font-family:var(--font-mono); font-size:13px; } .ver-table tr:last-child td { border-bottom:none; }
+    .ver-latest { font-family:var(--font-body); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:var(--green); padding:2px 8px; border-radius:5px; margin-left:8px; }
+
+    footer.site { margin-top:56px; border-top:1px solid var(--border); padding-block:28px; color:var(--muted); font-size:13.5px; }
+    .foot-row { width:min(1040px,100%); margin:0 auto; padding-left:max(20px,env(safe-area-inset-left,0px)); padding-right:max(20px,env(safe-area-inset-right,0px)); display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; } .foot-row a { color:var(--fg-soft); }
+    @media (max-width:900px) { .md-body h1 { font-size:30px; } }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="nav">
+      <div class="brand"><a href="/" style="display:flex;align-items:center;gap:11px"><img src="/favicon.png" alt="DIGIT"><div class="wm">DIGIT <span>Helm Charts</span></div></a></div>
+      <div class="nav-right">
+        <a class="nav-link" href="https://docs.digit.org" target="_blank" rel="noopener">Docs</a>
+        <a class="nav-link" href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">Repository</a>
+        <button class="icon-btn" id="theme" aria-label="Toggle theme" title="Toggle theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="crumb"><a href="/">Registry</a> / <a id="crumb-project" href="#">project</a> / <a id="crumb-module" href="#">module</a> / <span id="crumb-chart">chart</span></div>
+    <div id="readme" class="md-body"><div class="loader"><div class="spinner"></div> Loading chart documentation...</div></div>
+    <div class="versions" id="versions"></div>
+  </main>
+
+  <footer class="site">
+    <div class="foot-row">
+      <div>Apache 2.0 - charts published to <code>helm.digit.org</code></div>
+      <div style="display:flex;gap:18px"><a href="https://github.com/egovernments/helm-charts" target="_blank" rel="noopener">GitHub</a><a href="https://docs.digit.org" target="_blank" rel="noopener">Documentation</a></div>
+    </div>
+  </footer>
+
+  <script>
+    function ctx(){ const p=location.pathname.replace(/\/+$/,'').split('/').filter(Boolean); return { project:p[p.length-3]||'', module:p[p.length-2]||'', chart:p[p.length-1]||'' }; }
+    function renderVersions(entry){
+      if(!entry||!entry.length) return '';
+      const rows=entry.map((v,i)=>{ const url=(v.urls&&v.urls[0])?v.urls[0]:''; const tgz=url?`<a href="${url}">download</a>`:''; return `<tr><td>${v.version}${i===0?'<span class="ver-latest">latest</span>':''}</td><td>${v.appVersion||'-'}</td><td>${v.created?v.created.slice(0,10):'-'}</td><td>${tgz}</td></tr>`; }).join('');
+      return `<h2>Versions</h2><div class="md-scroll"><table class="ver-table"><thead><tr><th>Chart version</th><th>App version</th><th>Published</th><th>Package</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    async function main(){
+      const {project,module,chart}=ctx();
+      const PROJECT_LABELS = { digit3: "DIGIT - 3.0" };   // slug still drives every URL and repo name
+      const projLabel = s => PROJECT_LABELS[s] || s;
+      document.getElementById('crumb-chart').textContent=chart;
+      const pl=document.getElementById('crumb-project'); pl.textContent=projLabel(project)||'project'; pl.href=`/${project}/`;
+      const ml=document.getElementById('crumb-module'); ml.textContent=module||'module'; ml.href=`/${project}/${module}/`;
+      const readmeEl=document.getElementById('readme');
+      try { const r=await fetch('./README.md',{cache:'no-cache'}); if(!r.ok) throw new Error(); marked.setOptions({gfm:true, breaks:false});
+        // wrap tables so wide ones scroll instead of widening the page
+        const html=marked.parse(await r.text()); readmeEl.innerHTML=html;
+        readmeEl.querySelectorAll('table').forEach(t=>{ const w=document.createElement('div'); w.className='md-scroll'; t.replaceWith(w); w.appendChild(t); });
+      } catch { readmeEl.innerHTML=`<div class="empty">No README published for <strong>${chart}</strong> yet. See the <a href="https://github.com/egovernments/helm-charts/tree/master/charts/${project}/${module}/${chart}">chart source</a>.</div>`; }
+      try { const r=await fetch('../index.yaml',{cache:'no-cache'}); if(r.ok){ const d=jsyaml.load(await r.text()); const entry=d&&d.entries?d.entries[chart]:null; document.getElementById('versions').innerHTML=renderVersions(entry); } } catch {}
+    }
+    main();
+
+    (function themeToggle(){
+      const root=document.documentElement, b=document.getElementById('theme');
+      const sysDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+      let stored=null; try { stored=localStorage.getItem('digit-theme'); } catch {}
+      if (stored) root.setAttribute('data-theme', stored);
+      const sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>';
+      const moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      const paint=()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); b.innerHTML=dark?sun:moon; };
+      paint(); b.addEventListener('click',()=>{ const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&sysDark()); const next=dark?'light':'dark'; root.setAttribute('data-theme',next); try{localStorage.setItem('digit-theme',next);}catch{} paint(); });
+    })();
+  </script>
+</body>
+</html>

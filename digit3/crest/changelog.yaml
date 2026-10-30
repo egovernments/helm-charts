@@ -1,0 +1,13 @@
+releases:
+  - date: "2026-10-30"
+    ref: "PR-111"
+    title: "Add the crest module: crest and crest-ui charts"
+    author: "nikhilmulinti"
+    release_type: "minor"
+    charts:
+      - name: "crest"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "crest-ui"
+        from: "0.0.0"
+        to: "3.0.0"
