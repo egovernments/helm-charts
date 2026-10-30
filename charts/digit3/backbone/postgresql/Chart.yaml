@@ -5,7 +5,7 @@ description: >-
 type: application
 # Chart version follows this repo's digit3 3.x convention, not the upstream
 # cluster chart version (see the digit.org/upstream-* annotations below).
-version: 3.0.1
+version: 3.0.2
 appVersion: "18"
 kubeVersion: ">=1.29.0-0"
 icon: https://raw.githubusercontent.com/cloudnative-pg/artwork/main/cloudnativepg-logo.svg
