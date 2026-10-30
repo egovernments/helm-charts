@@ -1,0 +1,136 @@
+name: Chart image check
+
+# On every PR, render each changed chart and verify that every container image it references
+# actually exists in its registry. Fails the PR if an image is missing (typo, unpublished tag,
+# un-mirrored dependency) or is a deprecated Bitnami/bitnamilegacy image.
+#
+# PRs with no chart changes pass automatically. Wire the 'image-check' job as a REQUIRED status
+# check on master to block merges on a broken image.
+#
+# Existence is checked with `crane manifest` (no pull, no daemon). Public images need no auth;
+# set the DOCKERHUB_USERNAME / DOCKERHUB_TOKEN repo secrets to authenticate (avoids Docker Hub
+# anonymous rate limits and allows checking private repos).
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  image-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Helm + crane
+        run: |
+          set -e
+          curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64
+          curl -fsSL https://github.com/google/go-containerregistry/releases/download/v0.20.2/go-containerregistry_Linux_x86_64.tar.gz | tar xz crane
+          sudo mv crane /usr/local/bin/crane
+          helm version --short; crane version
+
+      - name: Check images referenced by changed charts
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # optional Docker Hub auth (skips cleanly if the secrets are not set)
+          if [[ -n "${DH_USER:-}" && -n "${DH_TOKEN:-}" ]]; then
+            echo "$DH_TOKEN" | crane auth login docker.io -u "$DH_USER" --password-stdin && echo "crane: authenticated to Docker Hub"
+          else
+            echo "crane: anonymous (set DOCKERHUB_USERNAME/DOCKERHUB_TOKEN secrets to authenticate)"
+          fi
+
+          # map changed files -> chart directories (same rule as chart-ci):
+          # charts/<project>/<module>/Chart.yaml is a single-chart module (common, cluster-configs);
+          # otherwise charts live at charts/<project>/<module>/<service>.
+          : > /tmp/targets.txt
+          git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- charts \
+            | awk -F/ '$1=="charts" && NF>=3 {print $2"/"$3"/"$4}' | sort -u \
+            | while IFS=/ read -r p m s; do
+                [[ -n "$p" && -n "$m" ]] || continue
+                if [[ -f "charts/$p/$m/Chart.yaml" ]]; then echo "charts/$p/$m"
+                elif [[ -n "$s" && -f "charts/$p/$m/$s/Chart.yaml" ]]; then echo "charts/$p/$m/$s"; fi
+              done | sort -u > /tmp/targets.txt
+
+          if [[ ! -s /tmp/targets.txt ]]; then
+            echo "No chart changes - nothing to check."; exit 0
+          fi
+          echo "Charts to check:"; cat /tmp/targets.txt
+
+          # add the common repo for each project involved (for helm dependency build)
+          awk -F/ '{print $2}' /tmp/targets.txt | sort -u | while read -r proj; do
+            helm repo add "${proj}-common" "https://helm.digit.org/${proj}/common" >/dev/null 2>&1 || true
+          done
+          helm repo update >/dev/null 2>&1 || true
+
+          rc=0
+          while IFS= read -r dir; do
+            echo "::group::$dir"
+
+            if ! helm dependency build "$dir" >/dev/null 2>&1; then
+              helm dependency update "$dir" >/dev/null 2>&1 || { echo "::error::$dir: dependency build failed (is the dependency published?)"; rc=1; echo "::endgroup::"; continue; }
+            fi
+
+            ctype="$(helm show chart "$dir" 2>/dev/null | awk -F': *' '/^type:/{print $2}')"
+            if [[ "$ctype" == "library" ]]; then
+              echo "library chart - no images to check"; rm -rf "$dir/charts" "$dir/Chart.lock"; echo "::endgroup::"; continue
+            fi
+
+            vals=()
+            [[ -f "$dir/ci/test-values.yaml" ]] && vals+=(-f "$dir/ci/test-values.yaml")
+
+            # render with the chart's REAL registry default (common.containerRegistry=egovio); do NOT
+            # override to a dummy, so the image refs are the ones that actually get deployed.
+            if ! helm template img-check "$dir" "${vals[@]}" > /tmp/rendered.yaml 2>/tmp/renderr.txt; then
+              echo "::error::$dir: failed to render - cannot verify images"; tail -15 /tmp/renderr.txt | sed 's/^/    /'
+              rc=1; rm -rf "$dir/charts" "$dir/Chart.lock"; echo "::endgroup::"; continue
+            fi
+            rm -rf "$dir/charts" "$dir/Chart.lock"
+
+            # unique image refs from the rendered manifests
+            grep -E '^[[:space:]]*image:[[:space:]]' /tmp/rendered.yaml \
+              | sed -E 's/^[[:space:]]*image:[[:space:]]*"?//; s/"[[:space:]]*$//' \
+              | awk 'NF{print $1}' | sort -u > /tmp/images.txt
+
+            if [[ ! -s /tmp/images.txt ]]; then
+              echo "(no container images referenced)"; echo "::endgroup::"; continue
+            fi
+
+            while IFS= read -r img; do
+              [[ -n "$img" ]] || continue
+              if echo "$img" | grep -qiE '(^|/)(bitnami|bitnamilegacy)/'; then
+                echo "::error::$dir: deprecated Bitnami image '$img' - mirror it to egovio and reference that instead"
+                rc=1; continue
+              fi
+              if crane manifest "$img" >/dev/null 2>&1; then
+                echo "  OK       $img"
+              else
+                echo "::error::$dir: image not found in its registry: '$img'"
+                rc=1
+              fi
+            done < /tmp/images.txt
+
+            echo "::endgroup::"
+          done < /tmp/targets.txt
+
+          if [[ "$rc" -ne 0 ]]; then
+            echo "::error::Image check failed - a changed chart references a missing or deprecated image (see annotations above)."
+            exit 1
+          fi
+          echo "All images referenced by the changed charts exist."
