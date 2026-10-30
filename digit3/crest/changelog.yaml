@@ -1,5 +1,14 @@
 releases:
   - date: "2026-10-30"
+    ref: "PR-113"
+    title: "Stop injecting the shared datasource block into crest"
+    author: "nikhilmulinti"
+    release_type: "patch"
+    charts:
+      - name: "crest"
+        from: "3.0.0"
+        to: "3.0.1"
+  - date: "2026-10-30"
     ref: "PR-111"
     title: "Add the crest module: crest and crest-ui charts"
     author: "nikhilmulinti"
