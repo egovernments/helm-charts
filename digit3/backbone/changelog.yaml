@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-10-30"
+    ref: "PR-112"
+    title: "postgresql: default reconciler kubectl image to egovio/kubectl:1.31"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "postgresql"
+        from: "3.0.1"
+        to: "3.0.2"
   - date: "2026-10-29"
     ref: "PR-106"
     title: "backbone: add READMEs for postgresql and vault"
