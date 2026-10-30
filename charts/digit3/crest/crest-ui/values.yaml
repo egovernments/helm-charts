@@ -1,0 +1,42 @@
+# ── Labels ────────────────────────────────────────────────────────────────────
+labels:
+  app: "crest-ui"
+  group: "crest"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# The bundle has no Vite base, so its assets are absolute /assets/... and it fetches
+# same-origin /api/v1: the app must own the root of its host. An empty context
+# renders path "/", and the crest chart takes /api on the same host.
+# Set global.domain per environment.
+ingress:
+  enabled: true
+  gateway: false
+  context: ""
+  # This chart owns the host certificate: it requests issuance of the
+  # <global.domain>-tls-certs Secret that the crest chart's /api Ingress reuses.
+  additionalAnnotations: |
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "crest-ui"
+replicas: 1
+# Static bundle on nginx: no appType, so common does not inject the Spring env block.
+appType: ""
+tracing-enabled: false
+
+# nginx serves a literal /healthz. With context "" the common template renders
+# "/" + "healthz", so the probe path is the one the container actually serves.
+healthChecks:
+  enabled: true
+  livenessProbePath: "healthz"
+  readinessProbePath: "healthz"
+
+# nginx serving a static bundle; the build happens at image build time.
+resources: |
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
