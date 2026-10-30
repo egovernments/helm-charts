@@ -20,13 +20,15 @@ ingress:
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 # The app never migrates on startup (spring.flyway.enabled is false); this owns it.
-# FLYWAY_SCHEMAS/FLYWAY_DEFAULT_SCHEMA keep CREST's tables out of the shared public
-# schema - its table names (users, project) are too generic to share one.
+# public, because CREST expects its own database - which is also what its
+# docker-compose and Testcontainers use, so migrations run against the same schema
+# everywhere. Point dbSchema at a dedicated schema only when sharing a database with
+# other services, where table names this generic (users, project) would collide.
 initContainers:
   dbMigration:
     enabled: true
     schemaTable: "crest_schema"
-    dbSchema: "crest"
+    dbSchema: "public"
     image:
       repository: "crest-db"
     env: |
@@ -61,7 +63,15 @@ initContainers:
 image:
   repository: "crest"
 replicas: 1
-appType: "java"
+# NOT "java", despite being a Spring Boot service. appType java makes common inject
+# its shared datasource block, and the SPRING_DATASOURCE_HIKARI_* entries in it
+# collide with the hikari settings in this app's own application.yml - startup dies
+# binding connection-init-sql onto an already-started pool:
+#   "The configuration of the pool is sealed once started"
+# CREST configures its datasource through CREST_DB_* (see the env block below), so it
+# needs none of that block; MANAGEMENT_ENDPOINTS_WEB_BASE_PATH, the one part it did
+# rely on, is set explicitly below.
+appType: ""
 heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 
 tracing-enabled: false
@@ -99,15 +109,19 @@ resources: |
     memory: "1Gi"
 
 # ── Container env ─────────────────────────────────────────────────────────────
-# appType "java" already injects SPRING_DATASOURCE_*, the Hikari pool, flyway-off,
-# timezone and the Tomcat settings - do not repeat them here.
-# CREST_DB_* is the app's own documented contract (application.yml reads it). It is
-# set from the same ConfigMap and Secret, so the datasource resolves by either name.
+# Everything the container needs, since appType is "" and common injects no shared
+# block. CREST_DB_* is the app's own documented contract, read by application.yml,
+# and resolves from the same egov-config and db Secret every other service uses.
 env: |
   - name: JAVA_OPTS
     value: {{ index .Values "heap" | quote }}
   - name: SERVER_PORT
     value: "8080"
+  # Actuator at the context root, so health is /health rather than /actuator/health
+  # and the probe paths above resolve. common sets this for appType java; this
+  # service opts out of that block, so it sets it itself.
+  - name: MANAGEMENT_ENDPOINTS_WEB_BASE_PATH
+    value: "/"
 
   # ── Datasource ───────────────────────────────────────────────────────────
   - name: CREST_DB_URL

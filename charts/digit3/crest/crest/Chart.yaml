@@ -2,7 +2,7 @@ apiVersion: v2
 name: crest
 description: Portable work records, timely payments and credentials for informal workers
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "main-693f8a8"
 dependencies:
   - name: common
