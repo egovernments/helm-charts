@@ -1,0 +1,33 @@
+apiVersion: v1
+entries:
+  crest:
+    - apiVersion: v2
+      appVersion: main-693f8a8
+      created: "2026-10-30T03:35:47.065198931Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Portable work records, timely payments and credentials for informal workers
+      digest: 018ba64da3ca70d3bf8b2022fa628ddf02983f99f2cab1f39d00267ff212af62
+      name: crest
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/crest/crest/crest-3.0.0.tgz
+      version: 3.0.0
+  crest-ui:
+    - apiVersion: v2
+      appVersion: main-e67932a
+      created: "2026-10-30T03:35:47.06611906Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Worker and console web apps for CREST
+      digest: ec0ffabd416d3390d56d5d28c73df3d1548dce40d269f0730f1847918136759d
+      name: crest-ui
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/crest/crest-ui/crest-ui-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-10-30T03:35:47.063701516Z"
