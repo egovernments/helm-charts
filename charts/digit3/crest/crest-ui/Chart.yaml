@@ -1,0 +1,10 @@
+apiVersion: v2
+name: crest-ui
+description: Worker and console web apps for CREST
+type: application
+version: 3.0.0
+appVersion: "main-e67932a"
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common

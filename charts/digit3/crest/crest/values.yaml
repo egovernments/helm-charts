@@ -1,0 +1,127 @@
+# ── Labels ────────────────────────────────────────────────────────────────────
+labels:
+  app: "crest"
+  group: "crest"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# The API and the UI share one origin: the UI fetches same-origin /api/v1, so
+# https://<domain>/api/* must reach this service while / reaches crest-ui.
+# Longest-prefix wins in nginx, so this rule takes /api/* and crest-ui keeps the rest.
+# gateway: false - the backend is this Service, not kong; CREST does not sit behind
+# the DIGIT gateway. Set global.domain per environment.
+ingress:
+  enabled: true
+  gateway: false
+  context: "api"
+  # No cert-manager annotation on purpose. This Ingress shares a host, and so the
+  # <global.domain>-tls-certs Secret, with crest-ui; only crest-ui requests issuance.
+  # Two Ingresses asking for the same Secret race for ownership of one Certificate.
+  # Same split the cluster already uses for injicertify / injicertify-wellknown.
+
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+# The app never migrates on startup (spring.flyway.enabled is false); this owns it.
+# FLYWAY_SCHEMAS/FLYWAY_DEFAULT_SCHEMA keep CREST's tables out of the shared public
+# schema - its table names (users, project) are too generic to share one.
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "crest_schema"
+    dbSchema: "crest"
+    image:
+      repository: "crest-db"
+    env: |
+      - name: "DB_URL"
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: db-url
+      - name: "SCHEMA_TABLE"
+        value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+      - name: "FLYWAY_USER"
+        valueFrom:
+          secretKeyRef:
+            name: db
+            key: flyway-username
+      - name: "FLYWAY_PASSWORD"
+        valueFrom:
+          secretKeyRef:
+            name: db
+            key: flyway-password
+      - name: "FLYWAY_LOCATIONS"
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: flyway-locations
+      - name: FLYWAY_SCHEMAS
+        value: {{ .Values.initContainers.dbMigration.dbSchema | quote }}
+      - name: FLYWAY_DEFAULT_SCHEMA
+        value: {{ .Values.initContainers.dbMigration.dbSchema | quote }}
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "crest"
+replicas: 1
+appType: "java"
+heap: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
+
+tracing-enabled: false
+
+# Probes hit the pod directly, so the path is the one the container serves, not the
+# ingress path - the common default would derive /api/health from ingress.context.
+# common sets the actuator base path to /, and the app enables the k8s probe groups.
+healthChecks:
+  enabled: true
+  livenessProbe: |
+    httpGet:
+      path: "/health/liveness"
+      port: {{ .Values.httpPort }}
+    initialDelaySeconds: 30
+    timeoutSeconds: 3
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe: |
+    httpGet:
+      path: "/health/readiness"
+      port: {{ .Values.httpPort }}
+    initialDelaySeconds: 30
+    timeoutSeconds: 3
+    periodSeconds: 30
+    successThreshold: 1
+    failureThreshold: 5
+
+resources: |
+  requests:
+    cpu: "150m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+# appType "java" already injects SPRING_DATASOURCE_*, the Hikari pool, flyway-off,
+# timezone and the Tomcat settings - do not repeat them here.
+# CREST_DB_* is the app's own documented contract (application.yml reads it). It is
+# set from the same ConfigMap and Secret, so the datasource resolves by either name.
+env: |
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: SERVER_PORT
+    value: "8080"
+
+  # ── Datasource ───────────────────────────────────────────────────────────
+  - name: CREST_DB_URL
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-url
+  - name: CREST_DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: username
+  - name: CREST_DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: password
