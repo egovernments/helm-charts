@@ -154,7 +154,7 @@ After the cluster is Ready, a `Job` (and an optional periodic `CronJob`) runs in
 | `reconciler.dbSecret.passwordKey` | Key holding the role password | `password` |
 | `reconciler.cron.enabled` | Run a periodic reconcile so edits apply without a redeploy | `true` |
 | `reconciler.cron.schedule` | Reconcile schedule | `*/10 * * * *` |
-| `reconciler.images.kubectl` | Image that reads egov-config + db via the Kubernetes API | `bitnami/kubectl:1.31` |
+| `reconciler.images.kubectl` | Image that reads egov-config + db via the Kubernetes API | `egovio/kubectl:1.31` |
 | `reconciler.images.psql` | Image that runs the reconcile SQL as superuser | `ghcr.io/cloudnative-pg/postgresql:18-standard-trixie` |
 | `custom_config.enabled` | Override the application namespace (otherwise `egov`) | `false` |
 | `custom_config.namespace` | Application namespace holding egov-config + db | `""` (-> `egov`) |

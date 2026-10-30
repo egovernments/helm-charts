@@ -823,7 +823,7 @@ reconciler:
     schedule: "*/10 * * * *"
   images:
     # reads egov-config + db from the app namespace via the Kubernetes API
-    kubectl: bitnami/kubectl:1.31
+    kubectl: egovio/kubectl:1.31
     # connects to the cluster as the superuser and runs the reconcile SQL
     psql: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
 
