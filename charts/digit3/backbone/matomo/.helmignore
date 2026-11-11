@@ -23,3 +23,6 @@
 img/
 # Changelog
 CHANGELOG.md
+
+# vendored dependency sources (packaged into charts/ at build time)
+upstream/
