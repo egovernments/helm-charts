@@ -1,0 +1,13 @@
+releases:
+  - date: "2026-11-11"
+    ref: "PR-116"
+    title: "feat(health): onboard beneficiary-idgen and health-service-request"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "beneficiary-idgen"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "health-service-request"
+        from: "0.0.0"
+        to: "3.0.0"
