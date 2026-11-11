@@ -1,0 +1,174 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "studio-pdf-helper-service"
+  group: "rainmaker"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "studio-pdf-helper-service"
+
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "studio_pdf_helper_service_schema"
+    image:
+      repository: "studio-pdf-helper-service-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: db-url
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-username
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-password
+        - name: JAVA_ENABLE_DEBUG
+          value: "TRUE"
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: flyway-locations
+        - name: FLYWAY_SCHEMAS
+          value: public
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: public
+
+# ── Container ─────────────────────────────────────────────────────────────────
+# Not a java-spring service (Node/other), so `common` injects no datasource/kafka;
+# this chart carries its own DB, Kafka and GitHub-App env explicitly.
+image:
+  repository: "studio-pdf-helper-service"
+replicas: 1
+appType: ""
+tracing-enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+db-port: "5432"
+db-sslmode: "disable"
+github-owner: "egovernments"
+github-config-repo: "configs"
+github-config-branch: "DIGIT-LTS"
+github-config-base-path: "pdf-service"
+kubernetes-namespace: "egov"
+topic-save-pdf-qr-generator: "save-pdf-qr-generator"
+github-devops-owner: "egovernments"
+github-devops-repo: "DIGIT-DevOps"
+github-devops-branch: "digit-lts"
+github-devops-file-path: "deploy-as-code/helm/environments/test-lts.yaml"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: false
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# appType "" -> common's java resources template is empty, so set resources here.
+resources: |
+  requests:
+    cpu: "50m"
+    memory: "256Mi"
+  limits:
+    cpu: "100m"
+    memory: "512Mi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Database ───────────────────────────────────────────────────────────────
+  - name: DB_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-host
+  - name: DB_NAME
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-name
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: username
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: password
+  - name: DB_PORT
+    value: {{ index .Values "db-port" | quote }}
+  - name: DB_SSLMODE
+    value: {{ index .Values "db-sslmode" | quote }}
+
+  # ── Kafka ────────────────────────────────────────────────────────────────
+  - name: KAFKA_BOOTSTRAP_SERVERS
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: kafka-brokers
+  - name: SAVE_PDF_QR_GENERATOR
+    value: {{ index .Values "topic-save-pdf-qr-generator" | quote }}
+
+  # ── GitHub config repo (pdf-service configs) ───────────────────────────────
+  - name: GITHUB_OWNER
+    value: {{ index .Values "github-owner" | quote }}
+  - name: GITHUB_CONFIG_REPO
+    value: {{ index .Values "github-config-repo" | quote }}
+  - name: GITHUB_CONFIG_BRANCH
+    value: {{ index .Values "github-config-branch" | quote }}
+  - name: GITHUB_CONFIG_BASE_PATH
+    value: {{ index .Values "github-config-base-path" | quote }}
+  - name: GITHUB_DEVOPS_OWNER
+    value: {{ index .Values "github-devops-owner" | quote }}
+  - name: GITHUB_DEVOPS_REPO
+    value: {{ index .Values "github-devops-repo" | quote }}
+  - name: GITHUB_DEVOPS_BRANCH
+    value: {{ index .Values "github-devops-branch" | quote }}
+  - name: GITHUB_DEVOPS_FILE_PATH
+    value: {{ index .Values "github-devops-file-path" | quote }}
+
+  # ── GitHub App credentials + kube API (from the github-config secret) ──────
+  - name: GITHUB_APP_ID
+    valueFrom:
+      secretKeyRef:
+        name: github-config
+        key: gitAppId
+  - name: GITHUB_APP_INSTALLATION_ID
+    valueFrom:
+      secretKeyRef:
+        name: github-config
+        key: gitAppInstallationId
+  - name: GITHUB_APP_PRIVATE_KEY
+    valueFrom:
+      secretKeyRef:
+        name: github-config
+        key: gitAppPrivateKey
+  - name: KUBE_API_URL
+    valueFrom:
+      secretKeyRef:
+        name: github-config
+        key: kubeapiurl
+  - name: KUBE_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: github-config
+        key: kubeToken
+  - name: KUBERNETES_NAMESPACE
+    value: {{ index .Values "kubernetes-namespace" | quote }}

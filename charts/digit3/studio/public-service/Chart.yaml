@@ -1,0 +1,10 @@
+apiVersion: v2
+name: public-service
+description: Public (citizen-facing) service application API for DIGIT Studio - workflow, billing and notification orchestration (v3 APIs)
+type: application
+version: 3.0.0
+appVersion: studio-digit3-migration-45a5551
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common

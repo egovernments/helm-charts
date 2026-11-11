@@ -1,0 +1,10 @@
+apiVersion: v2
+name: studio-pdf
+description: PDF generation service for DIGIT Studio (Node.js)
+type: application
+version: 3.0.0
+appVersion: studio-dynamic-dashboard-backend-353d7fd
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common

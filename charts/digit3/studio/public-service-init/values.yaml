@@ -1,0 +1,329 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "public-service-init"
+  group: "rainmaker"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "public-service-init"
+
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "public_service_init_schema"
+    image:
+      repository: "public-service-init-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: db-url
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-username
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-password
+        - name: JAVA_ENABLE_DEBUG
+          value: "TRUE"
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: flyway-locations
+        - name: FLYWAY_SCHEMAS
+          value: public
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: public
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "public-service-init"
+replicas: 1
+appType: "java"
+httpPort: 8080
+heap: "-Xmx256m -Xms118m"
+# OTel: flip per env (common injects the OTel env when true)
+tracing-enabled: false
+
+# the app serves health at the root path and sets no servlet context, so kubelet
+# probes are left to common defaults (disabled); gateway still routes /<context>.
+healthChecks:
+  enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+# Database (app reads DB_* directly; Spring datasource is injected by common)
+db-port: "5432"
+db-sslmode: "disable"
+
+# Sibling-service endpoint paths (v1 APIs)
+mdms-service-host: "http://mdms-v2.egov:8080/"
+workflow-transition-path: "egov-workflow-v2/egov-wf/process/_transition"
+workflow-search-path: "egov-workflow-v2/egov-wf/process/_search"
+wf-business-service-create-url: "egov-workflow-v2/egov-wf/businessservice/_create"
+wf-business-service-search-path: "egov-workflow-v2/egov-wf/businessservice/_search"
+wf-business-service-update-path: "egov-workflow-v2/egov-wf/businessservice/_update"
+individual-create-endpoint: "studio-individual/v1/_create"
+individual-update-endpoint: "studio-individual/v1/_update"
+individual-search-endpoint: "studio-individual/v1/_search"
+mdms-search-endpoint: "mdms-v2/v1/_search"
+mdms-v2-search-endpoint: "mdms-v2/v2/_search"
+mdms-search-v2-endpoint: "mdms-v2/v2"
+mdms-v2-create-endpoint: "mdms-v2/v2/_create"
+mdms-v2-update-endpoint: "mdms-v2/v2/_update"
+demand-create-endpoint: "billing-service/demand/_create"
+bill-fetch-endpoint: "billing-service/bill/v2/_fetchbill"
+idgen-service-generate-url: "egov-idgen/id/_generate"
+localization-context-path: "localization/messages/v1"
+localization-search-endpoint: "/_search"
+localization-upsert-endpoint: "/_upsert"
+service-request-create-endpoint: "studio-service-request/service/definition/v1/_create"
+service-request-search-endpoint: "studio-service-request/service/definition/v1/_search"
+service-request-update-endpoint: "studio-service-request/service/definition/v1/_update"
+
+# MDMS master/module config
+service-master-name: "ServiceConfiguration"
+service-module-name: "Studio"
+mdms-mapping: '{"documents": {"schemaCode": "DigitStudio.DocumentConfig2"}, "idgen":{"schemaCode": "common-masters.IdFormat"}, "bill":{"schemaCode":"BillingService"}}'
+taxhead: "TaxHeadMaster"
+taxperiod: "TaxPeriod"
+business-service: "BusinessService"
+localization-module: "rainmaker-studio-"
+
+# Kafka topics
+save-public-service-application-topic: "save-public-service-application"
+update-public-service-application-topic: "update-public-service-application"
+save-public-service-application-topic-indexer: "save-public-service-application-indexer"
+update-public-service-application-topic-indexer: "update-public-service-application-indexer"
+send-sms-topic: "egov.core.notification.sms"
+send-email-topic: "egov.core.notification.email"
+kafka-topics-payment-create-name: "egov.collection.payment-create"
+kafka-payment-consumer-enabled: "true"
+update-public-service: "update-public-service"
+save-public-service: "save-public-service"
+save-public-service-process: "save-public-service-process"
+save-service-version-config-mapping: "save-service-version-config-mapping"
+delete-business-service-topic: "delete-business-service-topic"
+
+# Misc
+notification-locale: "en_IN"
+tenant-migration-enabled: "true"
+studio-citizen-role: "STUDIO_CITIZEN"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+
+  # ── Database (app-specific DB_* vars) ──────────────────────────────────────
+  - name: DB_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-host
+  - name: DB_NAME
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-name
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: username
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: password
+  - name: DB_PORT
+    value: {{ index .Values "db-port" | quote }}
+  - name: DB_SSLMODE
+    value: {{ index .Values "db-sslmode" | quote }}
+
+  # ── Kafka brokers ──────────────────────────────────────────────────────────
+  - name: KAFKA_BOOTSTRAP_SERVERS
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: kafka-brokers
+
+  # ── External service hosts ─────────────────────────────────────────────────
+  - name: WORKFLOW_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: egov-workflow-v2
+  - name: INDIVIDUAL_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: individual
+  - name: BILLING_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: billing-service
+  - name: IDGEN_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: egov-idgen
+  - name: LOCALIZATION_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: egov-localization
+  - name: SERVICE_REQUEST_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: service-request
+  - name: STUDIO_PDF_HELPER_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: studio-pdf-helper-service
+  - name: KEYCLOAK_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: egov-service-host
+        key: keycloak
+        optional: true
+  - name: MDMS_SERVICE_HOST
+    value: {{ index .Values "mdms-service-host" | quote }}
+
+  # ── Keycloak client secret (optional) ──────────────────────────────────────
+  - name: STUDIO_KEYCLOAK_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: studio-keycloak
+        key: client-secret
+        optional: true
+
+  # ── Workflow ───────────────────────────────────────────────────────────────
+  - name: WORKFLOW_TRANSITION_PATH
+    value: {{ index .Values "workflow-transition-path" | quote }}
+  - name: WORKFLOW_SEARCH_PATH
+    value: {{ index .Values "workflow-search-path" | quote }}
+  - name: WF_BUSINESS_SERVICE_CREATE_URL
+    value: {{ index .Values "wf-business-service-create-url" | quote }}
+  - name: WF_BUSINESS_SERVICE_SEARCH_PATH
+    value: {{ index .Values "wf-business-service-search-path" | quote }}
+  - name: WF_BUSINESS_SERVICE_UPDATE_PATH
+    value: {{ index .Values "wf-business-service-update-path" | quote }}
+
+  # ── Individual ─────────────────────────────────────────────────────────────
+  - name: INDIVIDUAL_CREATE_ENDPOINT
+    value: {{ index .Values "individual-create-endpoint" | quote }}
+  - name: INDIVIDUAL_UPDATE_ENDPOINT
+    value: {{ index .Values "individual-update-endpoint" | quote }}
+  - name: INDIVIDUAL_SEARCH_ENDPOINT
+    value: {{ index .Values "individual-search-endpoint" | quote }}
+
+  # ── MDMS ───────────────────────────────────────────────────────────────────
+  - name: MDMS_SEARCH_ENDPOINT
+    value: {{ index .Values "mdms-search-endpoint" | quote }}
+  - name: MDMS_V2_SEARCH_ENDPOINT
+    value: {{ index .Values "mdms-v2-search-endpoint" | quote }}
+  - name: MDMS_SEARCH_V2_ENDPOINT
+    value: {{ index .Values "mdms-search-v2-endpoint" | quote }}
+  - name: MDMS_V2_CREATE_ENDPOINT
+    value: {{ index .Values "mdms-v2-create-endpoint" | quote }}
+  - name: MDMS_V2_UPDATE_ENDPOINT
+    value: {{ index .Values "mdms-v2-update-endpoint" | quote }}
+  - name: MDMS_MAPPING
+    value: {{ index .Values "mdms-mapping" | quote }}
+  - name: TAXHEAD
+    value: {{ index .Values "taxhead" | quote }}
+  - name: TAXPERIOD
+    value: {{ index .Values "taxperiod" | quote }}
+  - name: BusinessService
+    value: {{ index .Values "business-service" | quote }}
+
+  # ── Billing ────────────────────────────────────────────────────────────────
+  - name: DEMAND_CREATE_ENDPOINT
+    value: {{ index .Values "demand-create-endpoint" | quote }}
+  - name: BILL_FETCH_ENDPOINT
+    value: {{ index .Values "bill-fetch-endpoint" | quote }}
+
+  # ── IdGen ──────────────────────────────────────────────────────────────────
+  - name: IDGEN_SERVICE_GENERATE_URL
+    value: {{ index .Values "idgen-service-generate-url" | quote }}
+
+  # ── Localization ───────────────────────────────────────────────────────────
+  - name: LOCALIZATION_CONTEXT_PATH
+    value: {{ index .Values "localization-context-path" | quote }}
+  - name: LOCALIZATION_SEARCH_ENDPOINT
+    value: {{ index .Values "localization-search-endpoint" | quote }}
+  - name: LOCALIZATION_UPSERT_ENDPOINT
+    value: {{ index .Values "localization-upsert-endpoint" | quote }}
+  - name: LOCALIZATION_MODULE
+    value: {{ index .Values "localization-module" | quote }}
+
+  # ── Service / module masters ───────────────────────────────────────────────
+  - name: SERVICE_MASTER_NAME
+    value: {{ index .Values "service-master-name" | quote }}
+  - name: SERVICE_MODULE_NAME
+    value: {{ index .Values "service-module-name" | quote }}
+
+  # ── Service-request endpoints ──────────────────────────────────────────────
+  - name: SERVICE_REQUEST_CREATE_ENDPOINT
+    value: {{ index .Values "service-request-create-endpoint" | quote }}
+  - name: SERVICE_REQUEST_SEARCH_ENDPOINT
+    value: {{ index .Values "service-request-search-endpoint" | quote }}
+  - name: SERVICE_REQUEST_UPDATE_ENDPOINT
+    value: {{ index .Values "service-request-update-endpoint" | quote }}
+
+  # ── Kafka topics ───────────────────────────────────────────────────────────
+  - name: KAFKA_PAYMENT_CONSUMER_ENABLED
+    value: {{ index .Values "kafka-payment-consumer-enabled" | quote }}
+  - name: SAVE_PUBLIC_SERVICE_APPLICATION_TOPIC
+    value: {{ index .Values "save-public-service-application-topic" | quote }}
+  - name: UPDATE_PUBLIC_SERVICE_APPLICATION_TOPIC
+    value: {{ index .Values "update-public-service-application-topic" | quote }}
+  - name: SAVE_PUBLIC_SERVICE_APPLICATION_TOPIC_INDEXER
+    value: {{ index .Values "save-public-service-application-topic-indexer" | quote }}
+  - name: UPDATE_PUBLIC_SERVICE_APPLICATION_TOPIC_INDEXER
+    value: {{ index .Values "update-public-service-application-topic-indexer" | quote }}
+  - name: SEND_SMS_TOPIC
+    value: {{ index .Values "send-sms-topic" | quote }}
+  - name: SEND_EMAIL_TOPIC
+    value: {{ index .Values "send-email-topic" | quote }}
+  - name: KAFKA_TOPICS_PAYMENT_CREATE_NAME
+    value: {{ index .Values "kafka-topics-payment-create-name" | quote }}
+  - name: UPDATE_PUBLIC_SERVICE
+    value: {{ index .Values "update-public-service" | quote }}
+  - name: SAVE_PUBLIC_SERVICE
+    value: {{ index .Values "save-public-service" | quote }}
+  - name: SAVE_PUBLIC_SERVICE_PROCESS
+    value: {{ index .Values "save-public-service-process" | quote }}
+  - name: SAVE_SERVICE_VERSION_CONFIG_MAPPING
+    value: {{ index .Values "save-service-version-config-mapping" | quote }}
+  - name: DELETE_BUSINESS_SERVICE_TOPIC
+    value: {{ index .Values "delete-business-service-topic" | quote }}
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  - name: NOTIFICATION_LOCALE
+    value: {{ index .Values "notification-locale" | quote }}
+  - name: TENANT_MIGRATION_ENABLED
+    value: {{ index .Values "tenant-migration-enabled" | quote }}
+  - name: STUDIO_CITIZEN_ROLE
+    value: {{ index .Values "studio-citizen-role" | quote }}

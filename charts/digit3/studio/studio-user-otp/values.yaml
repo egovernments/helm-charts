@@ -1,0 +1,90 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "studio-user-otp"
+  group: "core"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "studio-user-otp"
+
+# ── Container ─────────────────────────────────────────────────────────────────
+# No DB migration; uses Redis for OTP storage.
+image:
+  repository: "studio-user-otp"
+replicas: 1
+appType: "java"
+heap: "-Xmx192m -Xms192m"
+tracing-enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+redis-host: "redis.backbone"
+redis-port: "6379"
+otp-host: "http://otp-java.egov:8080/otp"
+security-basic-enabled: "false"
+management-security-enabled: "false"
+topic-sms: "egov.core.notification.sms"
+flag-digitstudio-url: "true"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+cpu_requests: "200m"
+memory_requests: "512Mi"
+cpu_limits: "200m"
+memory_limits: "512Mi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_SERVLET_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: SECURITY_BASIC_ENABLED
+    value: {{ index .Values "security-basic-enabled" | quote }}
+  - name: MANAGEMENT_SECURITY_ENABLED
+    value: {{ index .Values "management-security-enabled" | quote }}
+
+  # ── Redis (OTP store) ──────────────────────────────────────────────────────
+  - name: SPRING_DATA_REDIS_HOST
+    value: {{ index .Values "redis-host" | quote }}
+  - name: SPRING_DATA_REDIS_PORT
+    value: {{ index .Values "redis-port" | quote }}
+
+  # ── External services ────────────────────────────────────────────────────
+  - name: OTP_HOST
+    value: {{ index .Values "otp-host" | quote }}
+  - name: USER_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-user
+        name: egov-service-host
+  - name: EGOV_LOCALISATION_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-localization
+        name: egov-service-host
+  - name: EGOV_MDMS_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-mdms-service
+        name: egov-service-host
+
+  # ── Notification ───────────────────────────────────────────────────────────
+  - name: SMS_TOPIC
+    value: {{ index .Values "topic-sms" | quote }}
+  - name: FLAG_DIGITSTUDIO_URL
+    value: {{ index .Values "flag-digitstudio-url" | quote }}

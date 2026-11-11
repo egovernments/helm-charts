@@ -1,0 +1,46 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "studio-calculator-service"
+  group: "rainmaker"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "studio-calculator-service"
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "studio-calculator-service"
+replicas: 1
+appType: ""        # lightweight plugin service; manages its own env
+tracing-enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""   # blank -> /<ingress.context>
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: false
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+resources: |
+  requests:
+    cpu: "50m"
+    memory: "256Mi"
+  limits:
+    cpu: "200m"
+    memory: "512Mi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
