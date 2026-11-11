@@ -2,7 +2,7 @@ apiVersion: v2
 name: digit-studio
 description: DIGIT Studio web UI (nginx static frontend) for DIGIT 3.0
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: studio-develop-dev-f9b92fd-2097
 dependencies:
   - name: common
