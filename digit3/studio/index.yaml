@@ -3,7 +3,21 @@ entries:
   digit-studio:
     - apiVersion: v2
       appVersion: studio-develop-dev-f9b92fd-2097
-      created: "2026-11-11T09:00:45.201687793Z"
+      created: "2026-11-11T11:28:18.967736166Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: DIGIT Studio web UI (nginx static frontend) for DIGIT 3.0
+      digest: 11daf53a8f88e94a6da268f28138da8b4800c7d19079073e944487cea3f2ad8e
+      name: digit-studio
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/digit-studio/digit-studio-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: studio-develop-dev-f9b92fd-2097
+      created: "2026-11-11T11:28:18.966966332Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -18,7 +32,7 @@ entries:
   public-service:
     - apiVersion: v2
       appVersion: studio-digit3-migration-45a5551
-      created: "2026-11-11T09:00:45.203116849Z"
+      created: "2026-11-11T11:28:18.968968537Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -33,7 +47,7 @@ entries:
   public-service-init:
     - apiVersion: v2
       appVersion: studio-digit3-migration-884d1d0
-      created: "2026-11-11T09:00:45.204447351Z"
+      created: "2026-11-11T11:28:18.970190583Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -48,7 +62,7 @@ entries:
   studio-calculator-service:
     - apiVersion: v2
       appVersion: java-migration-5bd1009
-      created: "2026-11-11T09:00:45.205355705Z"
+      created: "2026-11-11T11:28:18.971649776Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -63,7 +77,7 @@ entries:
   studio-hrms:
     - apiVersion: v2
       appVersion: develop-df51598
-      created: "2026-11-11T09:00:45.207484768Z"
+      created: "2026-11-11T11:28:18.972720557Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -78,7 +92,7 @@ entries:
   studio-individual:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-f283291
-      created: "2026-11-11T09:00:45.208730361Z"
+      created: "2026-11-11T11:28:18.973723517Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -93,7 +107,7 @@ entries:
   studio-pdf:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-353d7fd
-      created: "2026-11-11T09:00:45.209710219Z"
+      created: "2026-11-11T11:28:18.974439Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -108,7 +122,7 @@ entries:
   studio-pdf-helper-service:
     - apiVersion: v2
       appVersion: java-migration-5bd1009
-      created: "2026-11-11T09:00:45.210714212Z"
+      created: "2026-11-11T11:28:18.975210967Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -123,7 +137,7 @@ entries:
   studio-service-request:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-44ee338
-      created: "2026-11-11T09:00:45.211712214Z"
+      created: "2026-11-11T11:28:18.976024126Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -138,7 +152,7 @@ entries:
   studio-user-otp:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-76cd340
-      created: "2026-11-11T09:00:45.212633742Z"
+      created: "2026-11-11T11:28:18.976762202Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -150,4 +164,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/studio/studio-user-otp/studio-user-otp-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-11T09:00:45.200537167Z"
+generated: "2026-11-11T11:28:18.966043571Z"
