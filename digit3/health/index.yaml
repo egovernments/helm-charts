@@ -1,0 +1,33 @@
+apiVersion: v1
+entries:
+  beneficiary-idgen:
+    - apiVersion: v2
+      appVersion: master-perf-2d35084
+      created: "2026-11-11T09:02:03.067065321Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Beneficiary ID generation and dispatch for DIGIT Health - ID pool, bulk create/update, and per-user/device rate limiting backed by Redis + Redisson.
+      digest: af5665bea423ff3558febfc1d379f2b9b45b9d379c44cd4b8f7a2ad3505ab884
+      name: beneficiary-idgen
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/health/beneficiary-idgen/beneficiary-idgen-3.0.0.tgz
+      version: 3.0.0
+  health-service-request:
+    - apiVersion: v2
+      appVersion: master-product-2.2-d6ca977
+      created: "2026-11-11T09:02:03.067764454Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Service-definition and service-request registry for DIGIT Health (the health-domain twin of the generic service-request).
+      digest: 7d25a60f43695de9592d8a549093dc15d84ec13ed2932f64dcf0bc094d8ceee8
+      name: health-service-request
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/health/health-service-request/health-service-request-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-11-11T09:02:03.066004517Z"
