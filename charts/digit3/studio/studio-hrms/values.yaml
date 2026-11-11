@@ -1,0 +1,221 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "studio-hrms"
+  group: "core"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "studio-hrms"
+
+# ── Init container (flyway DB migration) ──────────────────────────────────────
+# Studio tables live in the `studio` schema. The image double-appends ?currentSchema,
+# so DB_URL points at the schema-less URL (egov-config/studio-db-url-no-schema) and the
+# schema is passed separately as SCHEMA_NAME.
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "egov_hrms_schema"
+    image:
+      repository: "studio-hrms-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: studio-db-url-no-schema
+        - name: "SCHEMA_NAME"
+          value: "studio"
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-username
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-password
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: flyway-locations
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "studio-hrms"
+replicas: 1
+appType: "java"
+heap: "-Xmx256m -Xms256m"
+java-args: "-Dspring.profiles.active=monitoring"
+tracing-enabled: false
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+cpu_requests: "300m"
+memory_requests: "512Mi"
+cpu_limits: "300m"
+memory_limits: "512Mi"
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""   # blank -> /<ingress.context>
+
+# endpoints (paths on the shared service hosts)
+egov-mdms-search-endpoint: "/mdms-v2/v1/_search"
+egov-mdmslegacy-search-endpoint: "mdms-v2/v1/_search"
+egov-filestore-url-endpoint: "/filestore/v1/files/url"
+egov-localization-search-endpoint: "/localization/messages/v1/_search"
+egov-idgen-createpath: "/egov-idgen/id/_generate"
+egov-idgen-emp-code-name: "employee.code"
+egov-idgen-emp-code-format: "EMP_[SEQ_EMPLOYEE_CODE]"
+egov-user-search-endpoint: "/user/v1/_search"
+egov-user-create-endpoint: "/user/users/_createnovalidate"
+egov-user-update-endpoint: "/user/users/_updatenovalidate"
+egov-individual-create-endpoint: "/studio-individual/v1/_create"
+egov-individual-update-endpoint: "/studio-individual/v1/_update"
+egov-individual-search-endpoint: "/studio-individual/v1/_search"
+egov-individual-delete-endpoint: "/studio-individual/v1/_delete"
+
+# kafka
+kafka-consumer-group: "studio-employee-group1"
+topic-save-service: "save-hrms-employee-studio"
+topic-update-service: "update-hrms-employee-studio"
+topic-notification-sms: "egov.core.notification.sms"
+
+# feature flags / behaviour
+data-sync-employee-required: "false"
+hrms-location-integration-enabled: "false"
+hrms-dev-mode: "true"
+hrms-employee-app-link: "https://egov-micro-dev.egovernments.org/employee/user/login"
+hrms-employee-default-password: "eGov@123"
+security-basic-enabled: "false"
+management-security-enabled: "false"
+
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ────────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: JAVA_ARGS
+    value: {{ index .Values "java-args" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_SERVLET_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: SECURITY_BASIC_ENABLED
+    value: {{ index .Values "security-basic-enabled" | quote }}
+  - name: MANAGEMENT_SECURITY_ENABLED
+    value: {{ index .Values "management-security-enabled" | quote }}
+
+  # ── External service hosts ─────────────────────────────────────────────────
+  - name: EGOV_MDMS_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-mdms-service }
+  - name: EGOV_MDMS_SEARCH_ENDPOINT
+    value: {{ index .Values "egov-mdms-search-endpoint" | quote }}
+  - name: EGOV_MDMSLEGACY_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-mdms-service }
+  - name: EGOV_MDMSLEGACY_SEARCH_ENDPOINT
+    value: {{ index .Values "egov-mdmslegacy-search-endpoint" | quote }}
+  - name: EGOV_FILESTORE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-filestore }
+  - name: EGOV_FILESTORE_URL_ENDPOINT
+    value: {{ index .Values "egov-filestore-url-endpoint" | quote }}
+  - name: EGOV_LOCALIZATION_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-localization }
+  - name: EGOV_LOCALIZATION_SEARCH_ENDPOINT
+    value: {{ index .Values "egov-localization-search-endpoint" | quote }}
+  - name: EGOV_IDGEN_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-idgen }
+  - name: EGOV_SERVICES_EGOV_IDGEN_CREATEPATH
+    value: {{ index .Values "egov-idgen-createpath" | quote }}
+  - name: EGOV_SERVICES_EGOV_IDGEN_EMP_CODE_NAME
+    value: {{ index .Values "egov-idgen-emp-code-name" | quote }}
+  - name: EGOV_SERVICES_EGOV_IDGEN_EMP_CODE_FORMAT
+    value: {{ index .Values "egov-idgen-emp-code-format" | quote }}
+  - name: EGOV_BOUNDARY_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: boundary-service }
+  - name: EGOV_USER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-user }
+  - name: EGOV_USER_SEARCH_ENDPOINT
+    value: {{ index .Values "egov-user-search-endpoint" | quote }}
+  - name: EGOV_USER_CREATE_ENDPOINT
+    value: {{ index .Values "egov-user-create-endpoint" | quote }}
+  - name: EGOV_USER_UPDATE_ENDPOINT
+    value: {{ index .Values "egov-user-update-endpoint" | quote }}
+  - name: EGOV_OTP_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-otp }
+  - name: EGOV_INDIVIDUAL_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: individual }
+  - name: EGOV.INDIVIDUAL.CREATE.ENDPOINT
+    value: {{ index .Values "egov-individual-create-endpoint" | quote }}
+  - name: EGOV.INDIVIDUAL.UPDATE.ENDPOINT
+    value: {{ index .Values "egov-individual-update-endpoint" | quote }}
+  - name: EGOV.INDIVIDUAL.SEARCH.ENDPOINT
+    value: {{ index .Values "egov-individual-search-endpoint" | quote }}
+  - name: EGOV.INDIVIDUAL.DELETE.ENDPOINT
+    value: {{ index .Values "egov-individual-delete-endpoint" | quote }}
+  - name: STATE_LEVEL_TENANT_ID
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-state-level-tenant-id }
+  - name: EGOV_ENVIRONMENT_DOMAIN
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-services-fqdn-name }
+
+  # ── Kafka ──────────────────────────────────────────────────────────────────
+  - name: SPRING_KAFKA_CONSUMER_GROUP_ID
+    value: {{ index .Values "kafka-consumer-group" | quote }}
+  - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
+    value: "org.apache.kafka.common.serialization.StringSerializer"
+  - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
+    value: "org.springframework.kafka.support.serializer.JsonSerializer"
+  - name: KAFKA_CONFIG_BOOTSTRAP_SERVER_CONFIG
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: kafka-brokers }
+  - name: KAFKA_TOPICS_SAVE_SERVICE
+    value: {{ index .Values "topic-save-service" | quote }}
+  - name: KAFKA_TOPICS_UPDATE_SERVICE
+    value: {{ index .Values "topic-update-service" | quote }}
+  - name: KAFKA_TOPICS_NOTIFICATION_SMS
+    value: {{ index .Values "topic-notification-sms" | quote }}
+
+  # ── Feature flags / behaviour ──────────────────────────────────────────────
+  - name: EGOV_SERVICES_DATA_SYNC_EMPLOYEE_REQUIRED
+    value: {{ index .Values "data-sync-employee-required" | quote }}
+  - name: EGOV_HRMS_LOCATION_INTEGRATION_ENABLED
+    value: {{ index .Values "hrms-location-integration-enabled" | quote }}
+  - name: EGOV_HRMS_DEV_MODE
+    value: {{ index .Values "hrms-dev-mode" | quote }}
+  - name: EGOV_HRMS_EMPLOYEE_APP_LINK
+    value: {{ index .Values "hrms-employee-app-link" | quote }}
+  - name: EGOV_HRMS_EMPLOYEE_DEFAULT_PASSWORD
+    value: {{ index .Values "hrms-employee-default-password" | quote }}
+
+# ── Extra env (overrides common's defaults; studio uses the `studio` schema) ───
+extraEnv:
+  app: |
+      - name: SPRING_DATASOURCE_URL
+        valueFrom:
+          configMapKeyRef:
+            name: egov-config
+            key: studio-db-url

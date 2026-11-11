@@ -1,0 +1,10 @@
+apiVersion: v2
+name: digit-studio
+description: DIGIT Studio web UI (nginx static frontend) for DIGIT 3.0
+type: application
+version: 3.0.0
+appVersion: studio-develop-dev-f9b92fd-2097
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common

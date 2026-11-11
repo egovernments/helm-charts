@@ -1,0 +1,141 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "studio-service-request"
+  group: "core"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "studio-service-request"
+
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+# Studio tables live in the `studio` schema, migrated from the studio db-url.
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "service_request_schema"
+    image:
+      repository: "studio-service-request-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: studio-db-url
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-username
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-password
+        - name: JAVA_ENABLE_DEBUG
+          value: "TRUE"
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: flyway-locations
+        - name: FLYWAY_SCHEMAS
+          value: studio
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: studio
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "studio-service-request"
+replicas: 1
+appType: "java"
+heap: "-Xmx320m -Xms256m"
+tracing-enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""  # blank -> /<ingress.context>
+kafka-consumer-group: "studio-service-request"
+topic-save-service: "save-service-studio"
+topic-update-service: "update-service-studio"
+topic-save-service-definition: "save-service-definition-studio"
+topic-update-service-definition: "update-service-definition-studio"
+mdms-search-endpoint: "/mdms-v2/v1/_search"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+# No probes on the live deployment; leave disabled (enable with /health when ready).
+healthChecks:
+  enabled: false
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+cpu_requests: "100m"
+memory_requests: "256Mi"
+cpu_limits: "200m"
+memory_limits: "512Mi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_CONTEXTPATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: SERVER_SERVLET_CONTEXTPATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+
+  # ── Kafka ────────────────────────────────────────────────────────────────
+  - name: SPRING_KAFKA_CONSUMER_GROUP_ID
+    value: {{ index .Values "kafka-consumer-group" | quote }}
+  - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
+    value: "org.apache.kafka.common.serialization.StringSerializer"
+  - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
+    value: "org.springframework.kafka.support.serializer.JsonSerializer"
+  - name: EGOV_SERVICE_CREATE_TOPIC
+    value: {{ index .Values "topic-save-service" | quote }}
+  - name: EGOV_SERVICE_UPDATE_TOPIC
+    value: {{ index .Values "topic-update-service" | quote }}
+  - name: EGOV_SERVICE_DEFINITION_CREATE_TOPIC
+    value: {{ index .Values "topic-save-service-definition" | quote }}
+  - name: EGOV_SERVICE_DEFINITION_UPDATE_TOPIC
+    value: {{ index .Values "topic-update-service-definition" | quote }}
+
+  # ── External services ────────────────────────────────────────────────────
+  - name: EGOV_MDMS_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-mdms-service
+        name: egov-service-host
+  - name: EGOV_MDMS_SEARCH_ENDPOINT
+    value: {{ index .Values "mdms-search-endpoint" | quote }}
+  - name: EGOV_IDGEN_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-idgen
+        name: egov-service-host
+  - name: EGOV_LOCALIZATION_HOST
+    valueFrom:
+      configMapKeyRef:
+        key: egov-localization
+        name: egov-service-host
+
+# ── Extra env ─────────────────────────────────────────────────────────────────
+# appType "java" injects SPRING_DATASOURCE_URL from egov-config/db-url. Studio runs
+# in its own schema off studio-db-url, so override it here (extraEnv.app wins over
+# the common java block).
+extraEnv:
+  app: |
+    - name: SPRING_DATASOURCE_URL
+      valueFrom:
+        configMapKeyRef:
+          name: egov-config
+          key: studio-db-url

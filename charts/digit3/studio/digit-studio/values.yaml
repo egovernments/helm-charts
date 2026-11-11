@@ -1,0 +1,51 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "digit-studio"
+  group: "web"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# Static web UI: routed by the plain nginx ingress, NOT through the kong gateway.
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: false
+  context: "digit-studio"
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "digit-studio"
+replicas: 1
+appType: ""        # nginx static frontend (no shared java env)
+httpPort: 80
+
+# ── Runtime config injection ──────────────────────────────────────────────────
+# nginx sub_filter rewrites runtime config into index.html at serve time.
+# The ConfigMap `digit-studio-js-injection` is managed by the cluster-configs chart.
+extraVolumes: |
+  - name: js-injection
+    configMap:
+      name: digit-studio-js-injection
+extraVolumeMounts: |
+  - name: js-injection
+    mountPath: /etc/nginx/conf.d/sub_filter.conf
+    subPath: sub_filter.conf
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+# common builds the path as /<ingress.context><probePath> -> /digit-studio/
+healthChecks:
+  enabled: true
+  livenessProbePath: "/"
+  readinessProbePath: "/"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# appType is "" so common's java resources template is empty; set explicitly.
+resources: |
+  requests:
+    cpu: "30m"
+    memory: "100Mi"
+  limits:
+    cpu: "100m"
+    memory: "256Mi"
