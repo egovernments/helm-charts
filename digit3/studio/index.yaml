@@ -1,0 +1,153 @@
+apiVersion: v1
+entries:
+  digit-studio:
+    - apiVersion: v2
+      appVersion: studio-develop-dev-f9b92fd-2097
+      created: "2026-11-11T09:00:45.201687793Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: DIGIT Studio web UI (nginx static frontend) for DIGIT 3.0
+      digest: 59707dbe3a51522b1ba61601e6ba4d210e4b114e44d1fcfce09ce5f06253fbc7
+      name: digit-studio
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/digit-studio/digit-studio-3.0.0.tgz
+      version: 3.0.0
+  public-service:
+    - apiVersion: v2
+      appVersion: studio-digit3-migration-45a5551
+      created: "2026-11-11T09:00:45.203116849Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Public (citizen-facing) service application API for DIGIT Studio - workflow, billing and notification orchestration (v3 APIs)
+      digest: 1bd272bcf21d25ff7830bc711f60d99c47382833e4851db3b894edc020f77ee4
+      name: public-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/public-service/public-service-3.0.0.tgz
+      version: 3.0.0
+  public-service-init:
+    - apiVersion: v2
+      appVersion: studio-digit3-migration-884d1d0
+      created: "2026-11-11T09:00:45.204447351Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Service-definition initializer for DIGIT Studio public-service (v1 APIs) - seeds and reconciles service/business-service configuration
+      digest: 48e5b97ca4a00a3aa70773dfbbc757a5636995753130ed959b02e3da968b309e
+      name: public-service-init
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/public-service-init/public-service-init-3.0.0.tgz
+      version: 3.0.0
+  studio-calculator-service:
+    - apiVersion: v2
+      appVersion: java-migration-5bd1009
+      created: "2026-11-11T09:00:45.205355705Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Pluggable calculation/plugin service for DIGIT Studio public services
+      digest: 8e2fa68f1370707b6909a0ee23c46d5e3ac6a4ecb56ed2f0c6c45c9b03b54267
+      name: studio-calculator-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-calculator-service/studio-calculator-service-3.0.0.tgz
+      version: 3.0.0
+  studio-hrms:
+    - apiVersion: v2
+      appVersion: develop-df51598
+      created: "2026-11-11T09:00:45.207484768Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: HRMS (employee management) for DIGIT Studio
+      digest: 65318f73b3a1dc9d8dda38d1cbb939bc672afd93683696c03dd24f42533949f1
+      name: studio-hrms
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-hrms/studio-hrms-3.0.0.tgz
+      version: 3.0.0
+  studio-individual:
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-f283291
+      created: "2026-11-11T09:00:45.208730361Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Individual (person) registry for DIGIT Studio
+      digest: 8eae799e668084cd319e7043535c83f5f4c98abbaec216447ea86840a69ffdbb
+      name: studio-individual
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-individual/studio-individual-3.0.0.tgz
+      version: 3.0.0
+  studio-pdf:
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-353d7fd
+      created: "2026-11-11T09:00:45.209710219Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: PDF generation service for DIGIT Studio (Node.js)
+      digest: 695daa4dc5bca81fd8b6e5928e9fb743fddcef769032f9490c5a8a59d6864cc1
+      name: studio-pdf
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-pdf/studio-pdf-3.0.0.tgz
+      version: 3.0.0
+  studio-pdf-helper-service:
+    - apiVersion: v2
+      appVersion: java-migration-5bd1009
+      created: "2026-11-11T09:00:45.210714212Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: PDF config helper for DIGIT Studio (manages pdf-service configs via the GitHub App)
+      digest: cdcf1f78d3d0fdddc09e6edb27970d1ee26abc33172252b9530a01e407a427a2
+      name: studio-pdf-helper-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-pdf-helper-service/studio-pdf-helper-service-3.0.0.tgz
+      version: 3.0.0
+  studio-service-request:
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-44ee338
+      created: "2026-11-11T09:00:45.211712214Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Service and service-definition registry for DIGIT Studio
+      digest: 8257beda2406e995221757c9b3661b4b1b2169b30891ea99ef5f531806c9b860
+      name: studio-service-request
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-service-request/studio-service-request-3.0.0.tgz
+      version: 3.0.0
+  studio-user-otp:
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-76cd340
+      created: "2026-11-11T09:00:45.212633742Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: User OTP service for DIGIT Studio
+      digest: a4a48276125c1dc5ac12d41142960c1328a90da61864e97b7a800c464722b32b
+      name: studio-user-otp
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-user-otp/studio-user-otp-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-11-11T09:00:45.200537167Z"
