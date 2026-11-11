@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-11"
+    ref: "PR-118"
+    title: "fix(studio): ship digit-studio js-injection ConfigMap"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "digit-studio"
+        from: "3.0.0"
+        to: "3.0.1"
+  - date: "2026-11-11"
     ref: "PR-115"
     title: "feat(studio): onboard DIGIT Studio module (10 service charts)"
     author: "shivam-eGov"
