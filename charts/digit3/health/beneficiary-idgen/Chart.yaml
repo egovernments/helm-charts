@@ -1,0 +1,10 @@
+apiVersion: v2
+name: beneficiary-idgen
+description: Beneficiary ID generation and dispatch for DIGIT Health - ID pool, bulk create/update, and per-user/device rate limiting backed by Redis + Redisson.
+type: application
+version: 3.0.0
+appVersion: master-perf-2d35084
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common
