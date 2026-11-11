@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-11"
+    ref: "PR-117"
+    title: "feat(backbone): add matomo chart (vendored, egovio-mirrored images)"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "matomo"
+        from: "0.0.0"
+        to: "3.0.0"
   - date: "2026-10-30"
     ref: "PR-112"
     title: "postgresql: default reconciler kubectl image to egovio/kubectl:1.31"
