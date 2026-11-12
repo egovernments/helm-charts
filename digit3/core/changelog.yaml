@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-12"
+    ref: "PR-119"
+    title: "feat(core): add employee-onboarding and localization-management charts"
+    author: "shivam-eGov"
+    release_type: "minor"
+    charts:
+      - name: "employee-onboarding"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "localization-management"
+        from: "0.0.0"
+        to: "3.0.0"
   - date: "2026-10-29"
     ref: "PR-109"
     title: "core: env overridability + per-chart READMEs + common 3.1.1 (patch)"
