@@ -1,0 +1,10 @@
+apiVersion: v2
+name: localization-management
+description: Localization management service for DIGIT 3.0 (bulk upload/download of localization messages)
+type: application
+version: 3.0.0
+appVersion: develop-modulith-c1f10f6
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common
