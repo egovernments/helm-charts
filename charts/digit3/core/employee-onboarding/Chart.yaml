@@ -1,0 +1,10 @@
+apiVersion: v2
+name: employee-onboarding
+description: Bulk employee onboarding service for DIGIT 3.0 (validates and provisions employees from an uploaded file)
+type: application
+version: 3.0.0
+appVersion: master-7859366
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common
