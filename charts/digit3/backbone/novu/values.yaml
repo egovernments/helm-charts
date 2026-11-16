@@ -79,6 +79,9 @@ redis:
       memory: "256Mi"
 
 mongodb:
+  # file ownership uid/gid for the MongoDB data directory
+  puid: "1000"
+  pgid: "1000"
   name: "novu-mongodb"
   labels:
     app: "novu-mongodb"

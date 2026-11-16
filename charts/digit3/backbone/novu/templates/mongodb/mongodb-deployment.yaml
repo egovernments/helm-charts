@@ -38,9 +38,9 @@ spec:
             - name: MONGO_INITDB_ROOT_PASSWORD
               value: {{ .Values.mongodb.auth.password | quote }}
             - name: PUID
-              value: "1000"
+              value: {{ .Values.mongodb.puid | default "1000" | quote }}
             - name: PGID
-              value: "1000"
+              value: {{ .Values.mongodb.pgid | default "1000" | quote }}
           {{- if .Values.mongodb.probes.enabled }}
           livenessProbe:
             exec:

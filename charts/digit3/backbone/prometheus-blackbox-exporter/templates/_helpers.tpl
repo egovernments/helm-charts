@@ -82,6 +82,8 @@ Return the appropriate apiVersion for rbac.
 {{- define "prometheus-blackbox-exporter.namespace" -}}
   {{- if .Values.namespaceOverride -}}
     {{- .Values.namespaceOverride -}}
+  {{- else if .Values.namespace -}}
+    {{- .Values.namespace -}}
   {{- else -}}
     {{- .Release.Namespace -}}
   {{- end -}}

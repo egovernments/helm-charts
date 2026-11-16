@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-postgres
-  namespace: monitoring
+  name: {{ .Values.persistence.claimName }}
+  namespace: {{ .Values.namespace }}
   labels:
     type: local
 spec: 
-  storageClassName: manual
+  storageClassName: {{ .Values.persistence.storageClass }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.persistence.size }}
 {{- end }}

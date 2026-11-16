@@ -36,8 +36,16 @@ extraVolumes: |
   - name: postgres-volume
   {{- if eq .Values.global.setup "quickstart" }} 
     persistentVolumeClaim:
-      claimName: pvc-postgres
+      claimName: {{ .Values.persistence.claimName }}
   {{- end}}    
 
 
 postgresDatabase: egov_ms      
+
+# Local hostPath volume, only created when global.setup == "quickstart"
+persistence:
+  volumeName: pv-postgres
+  claimName: pvc-postgres
+  storageClass: manual
+  size: 1Gi
+  hostPath: /kube/postgres
