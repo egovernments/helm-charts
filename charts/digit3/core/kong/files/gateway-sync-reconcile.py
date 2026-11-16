@@ -20,9 +20,13 @@ PROTECTED_PLUGINS = CFG.get("protectedPlugins", [])
 MIXED_PLUGINS = CFG.get("mixedPlugins", [])
 PREFIX = CFG.get("annotationPrefix", "gateway")
 A_ROUTE = "%s/route-path" % PREFIX
+A_ROUTEAUTH = "%s/route-auth" % PREFIX
 A_OPEN = "%s/open-paths" % PREFIX
 A_MIXED = "%s/mixed-paths" % PREFIX
+A_PROTECTED = "%s/protected-paths" % PREFIX
 A_METHODS = "%s/methods" % PREFIX
+# Main-route plugin stack by route-auth tier.
+AUTH_PLUGINS = {"open": [], "mixed": MIXED_PLUGINS, "protected": PROTECTED_PLUGINS}
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
 
 K8S = "https://kubernetes.default.svc"
@@ -105,11 +109,21 @@ def plugin_config(name, mixed=False):
     return cfg
 
 
+def _route(name, svc, path, methods):
+    return {
+        "name": name, "service": {"name": svc}, "paths": [_withslash(path)],
+        "hosts": [DOMAIN], "methods": methods, "strip_path": False,
+        "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
+    }
+
+
 def desired():
     # Build desired Kong entities from Services annotated with <prefix>/route-path.
     # Upstream host/port come from the Service itself (fixes the hostname/plural/hyphen
-    # class of bugs). Returns (services{name:body}, routes{name:body}, route_plugins{}).
-    svcs, routes, rplugins = {}, {}, {}
+    # class of bugs). The main route's tier is <prefix>/route-auth (open|mixed|protected,
+    # default protected); open/mixed/protected-paths are per-path exceptions layered on.
+    # Returns (services, routes, route_plugins, route_mixed).
+    svcs, routes, rplugins, rmixed = {}, {}, {}, {}
     for s in list_services():
         meta = s.get("metadata", {})
         ann = meta.get("annotations") or {}
@@ -129,30 +143,27 @@ def desired():
         methods = _paths(ann.get(A_METHODS)) or None
         rp = ann.get(A_ROUTE, "").strip()
         if rp:
+            auth = (ann.get(A_ROUTEAUTH) or "protected").strip().lower()
             rn = "%s-route" % name
-            routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [_withslash(rp)],
-                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
-                "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
-            }
-            rplugins[rn] = list(PROTECTED_PLUGINS)
+            routes[rn] = _route(rn, name, rp, methods)
+            rplugins[rn] = list(AUTH_PLUGINS.get(auth, PROTECTED_PLUGINS))
+            rmixed[rn] = auth == "mixed"
         for p in _paths(ann.get(A_OPEN)):
             rn = "%s-%s-public-route" % (name, slug(p))
-            routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [_withslash(p)],
-                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
-                "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
-            }
+            routes[rn] = _route(rn, name, p, methods)
             rplugins[rn] = []
+            rmixed[rn] = False
         for p in _paths(ann.get(A_MIXED)):
             rn = "%s-%s-mixed-route" % (name, slug(p))
-            routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [_withslash(p)],
-                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
-                "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
-            }
+            routes[rn] = _route(rn, name, p, methods)
             rplugins[rn] = list(MIXED_PLUGINS)
-    return svcs, routes, rplugins
+            rmixed[rn] = True
+        for p in _paths(ann.get(A_PROTECTED)):
+            rn = "%s-%s-protected-route" % (name, slug(p))
+            routes[rn] = _route(rn, name, p, methods)
+            rplugins[rn] = list(PROTECTED_PLUGINS)
+            rmixed[rn] = False
+    return svcs, routes, rplugins, rmixed
 
 
 def reconcile_plugins(route_name, want_names, mixed):
@@ -173,8 +184,7 @@ def reconcile_plugins(route_name, want_names, mixed):
 
 
 def main():
-    svcs, routes, rplugins = desired()
-    mixed_routes = {n for n in routes if n.endswith("-mixed-route")}
+    svcs, routes, rplugins, rmixed = desired()
 
     for name, body in svcs.items():
         print("service upsert %s -> %s:%s" % (name, body["host"], body["port"]))
@@ -184,7 +194,7 @@ def main():
         print("route upsert %s %s" % (rn, body["paths"]))
         if not DRY:
             kong("PUT", "/routes/%s" % rn, body)
-        reconcile_plugins(rn, rplugins.get(rn, []), rn in mixed_routes)
+        reconcile_plugins(rn, rplugins.get(rn, []), rmixed.get(rn, False))
 
     # Prune tagged entities no longer desired (routes before services).
     for r in kong_list_tagged("routes"):

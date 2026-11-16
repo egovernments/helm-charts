@@ -1376,9 +1376,11 @@ gatewaySync:
     host: "redis.backbone.svc.cluster.local"
     port: 6379
   servicePort: 8080            # fallback upstream port if the Service exposes none
-  # Namespaces searched for the backing k8s Services (host/port derived from them).
+  # Namespaces searched for annotated Services (host/port derived from them). Must
+  # cover every ns holding a gateway-managed Service - keycloak runs in its own ns.
   namespaces:
     - egov
+    - keycloak
   # Plugin stacks per tier. Protected = full auth; mixed = same minus keycloak-rbac.
   protectedPlugins: [dynamic-jwt, keycloak-rbac, header-enrichment, metadata-enrichment, token-revocation]
   mixedPlugins: [dynamic-jwt, header-enrichment, metadata-enrichment, token-revocation]

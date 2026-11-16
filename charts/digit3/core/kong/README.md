@@ -184,10 +184,17 @@ PROTECTED; a path is OPEN or MIXED only if listed. `<prefix>` is `gatewaySync.an
 
 | Annotation | Meaning |
 |---|---|
-| `gateway/route-path` | **Required** marker + protected route path (full auth stack). For digit3 charts this is **auto-emitted** by the common Service template from `ingress.context` whenever `ingress.gateway: true` - no need to set it by hand. |
-| `gateway/open-paths` | Comma-separated no-auth paths (must out-match the protected route) |
+| `gateway/route-path` | **Required** marker + main route path. For digit3 charts this is **auto-emitted** by the common Service template from `ingress.context` whenever `ingress.gateway: true` - no need to set it by hand (a `gateway: false` service that still needs a gateway route, like keycloak, sets it explicitly). |
+| `gateway/route-auth` | Main route tier: `open` (no auth), `mixed` (optional auth), or `protected` (full auth). Default `protected`. |
+| `gateway/open-paths` | Comma-separated no-auth paths - per-path exceptions (must out-match the main route) |
 | `gateway/mixed-paths` | Comma-separated optional-auth paths (no `keycloak-rbac`) |
+| `gateway/protected-paths` | Comma-separated full-auth paths - protect specific writes on an otherwise `open`/`mixed` main route |
 | `gateway/methods` | Optional HTTP method allowlist (default: all) |
+
+The main route's plugin stack comes from `route-auth`; `open-paths` / `mixed-paths` /
+`protected-paths` layer per-path exceptions on top (e.g. an `open` main route can still
+protect a specific write via `protected-paths`). Keycloak is the canonical `route-auth: open`
+case - it is the auth server, so `/keycloak` carries no auth plugins.
 
 Because `gateway/route-path` comes for free from `ingress.context`, every `gateway: true`
 digit3 service is already discoverable; a service only adds `service.additionalAnnotations`
