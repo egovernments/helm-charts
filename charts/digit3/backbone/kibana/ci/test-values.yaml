@@ -1,0 +1,4 @@
+# Values CI needs to render this chart standalone (normally from the environment file).
+global:
+  namespace: es-cluster
+  domain: digit.example.org

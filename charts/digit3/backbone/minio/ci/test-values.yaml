@@ -1,0 +1,3 @@
+# Values CI needs to render this chart standalone (normally from the environment file).
+global:
+  domain: digit.example.org

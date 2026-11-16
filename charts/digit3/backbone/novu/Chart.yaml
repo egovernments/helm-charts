@@ -1,0 +1,14 @@
+apiVersion: v2
+name: novu
+description: Novu community deployment
+
+type: application
+
+version: 3.0.0
+
+appVersion: 2.3.0
+
+dependencies:
+- name: common
+  version: 3.1.1
+  repository: https://helm.digit.org/digit3/common
