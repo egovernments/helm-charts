@@ -196,6 +196,14 @@ The main route's plugin stack comes from `route-auth`; `open-paths` / `mixed-pat
 protect a specific write via `protected-paths`). Keycloak is the canonical `route-auth: open`
 case - it is the auth server, so `/keycloak` carries no auth plugins.
 
+Path entries support two extras:
+- **Per-path methods**: a `PATH (M1,M2)` suffix scopes that route to those HTTP methods,
+  e.g. `account` keeps `/accounts/v3/config` open for reads but protects writes with
+  `gateway/protected-paths: "/accounts/v3/config (POST,PUT)"`.
+- **Regex paths**: a value starting with `~` is a Kong regex route, created with a high
+  `regex_priority` (`gatewaySync.regexPriority`) so it out-matches the protected main
+  route, e.g. `gateway/open-paths: "~/workflow/v3/process/definition/[^/]+$"`.
+
 Because `gateway/route-path` comes for free from `ingress.context`, every `gateway: true`
 digit3 service is already discoverable; a service only adds `service.additionalAnnotations`
 when it has open or mixed paths:
@@ -232,13 +240,15 @@ router a host match outranks path length), with `strip_path: false`.
 
 ### Before enabling
 
-- **Add `gateway/open-paths` (and `mixed-paths`) to each digit3/core service chart** that
-  has non-protected endpoints, using the ops-supplied 2.x -> 3.0 **mapped** paths (route-path
-  is automatic). The legacy whitelist predates the 3.0 modulith services and must not be
-  copied verbatim. Seeded here for the confirmed set - `account`, `localization`
-  (`/localization/v3/messages`), `mdms-v2` (`/mdms-v2/v1/mdms`, `/mdms-v2/v2`); the rest
-  (filestore, user-otp, otp, tenant, boundary, user, and the mixed tier) are pending path
-  verification, and `/mdms-v2/v2/_search` needs an open/not-open decision.
+- **Annotations are seeded from the live Kong config** (handoff section 7). Services that are
+  plain `protected` with route-path = `ingress.context` need nothing (route-path auto-emits).
+  Seeded here for the core services that need non-default routing: `account` (open main +
+  method-split protected writes), `localization`, `mdms-v2`, `workflow` (regex), `keycloak`
+  (open). Still to do, outside this chart: the studio-module services (separate release);
+  services with no chart in this repo yet (calculator, license-certificate, metabase, pdf-v3,
+  schema-registry, ui-access-control, vc, inbox); and `individual`, whose route-path must be
+  `/individuals` (plural) while its `ingress.context` is `individual` - needs a context fix
+  rather than a conflicting annotation.
 - **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
   optional/anonymous flag is confirmed; until then MIXED routes validate as protected
   (require a valid JWT), not as open.

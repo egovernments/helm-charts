@@ -1377,10 +1377,15 @@ gatewaySync:
     port: 6379
   servicePort: 8080            # fallback upstream port if the Service exposes none
   # Namespaces searched for annotated Services (host/port derived from them). Must
-  # cover every ns holding a gateway-managed Service - keycloak runs in its own ns.
+  # cover every ns holding a gateway-managed Service - services are spread across egov,
+  # studio and keycloak.
   namespaces:
     - egov
+    - studio
     - keycloak
+  # regex open/mixed paths (annotation value starting "~") are created as regex routes
+  # with this priority, so they out-match the protected main route.
+  regexPriority: 1000
   # Plugin stacks per tier. Protected = full auth; mixed = same minus keycloak-rbac.
   protectedPlugins: [dynamic-jwt, keycloak-rbac, header-enrichment, metadata-enrichment, token-revocation]
   mixedPlugins: [dynamic-jwt, header-enrichment, metadata-enrichment, token-revocation]

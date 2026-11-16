@@ -19,6 +19,7 @@ MIXED_ANON = CFG.get("mixedAnonymousFlag", {})
 PROTECTED_PLUGINS = CFG.get("protectedPlugins", [])
 MIXED_PLUGINS = CFG.get("mixedPlugins", [])
 PREFIX = CFG.get("annotationPrefix", "gateway")
+REGEX_PRIORITY = int(CFG.get("regexPriority", 1000))
 A_ROUTE = "%s/route-path" % PREFIX
 A_ROUTEAUTH = "%s/route-auth" % PREFIX
 A_OPEN = "%s/open-paths" % PREFIX
@@ -89,8 +90,29 @@ def _paths(value):
     return [p.strip() for p in (value or "").split(",") if p.strip()]
 
 
+def _entries(value):
+    # Parse a comma-separated path annotation into (path, methods) pairs. Splits on
+    # top-level commas only, so a "(GET,POST)" method group stays with its path.
+    # Each token is "PATH" or "PATH (M1,M2)". A path starting with "~" is a Kong regex.
+    out = []
+    for tok in re.split(r",(?![^(]*\))", value or ""):
+        tok = tok.strip()
+        if not tok:
+            continue
+        m = re.match(r"^(.*?)\s*\(([^)]*)\)\s*$", tok)
+        if m:
+            path = m.group(1).strip()
+            methods = [x.strip() for x in m.group(2).split(",") if x.strip()] or None
+        else:
+            path, methods = tok, None
+        out.append((path, methods))
+    return out
+
+
 def _withslash(p):
-    return p if p.startswith("/") else "/" + p
+    if p.startswith("~") or p.startswith("/"):
+        return p
+    return "/" + p
 
 
 def plugin_config(name, mixed=False):
@@ -110,11 +132,17 @@ def plugin_config(name, mixed=False):
 
 
 def _route(name, svc, path, methods):
-    return {
+    regex = path.startswith("~")
+    r = {
         "name": name, "service": {"name": svc}, "paths": [_withslash(path)],
         "hosts": [DOMAIN], "methods": methods, "strip_path": False,
         "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
     }
+    if regex:
+        # A regex route needs a high priority to out-match the protected main route
+        # (plain exact paths alone did not win in the traditional router).
+        r["regex_priority"] = REGEX_PRIORITY
+    return r
 
 
 def desired():
@@ -148,19 +176,19 @@ def desired():
             routes[rn] = _route(rn, name, rp, methods)
             rplugins[rn] = list(AUTH_PLUGINS.get(auth, PROTECTED_PLUGINS))
             rmixed[rn] = auth == "mixed"
-        for p in _paths(ann.get(A_OPEN)):
+        for p, m in _entries(ann.get(A_OPEN)):
             rn = "%s-%s-public-route" % (name, slug(p))
-            routes[rn] = _route(rn, name, p, methods)
+            routes[rn] = _route(rn, name, p, m or methods)
             rplugins[rn] = []
             rmixed[rn] = False
-        for p in _paths(ann.get(A_MIXED)):
+        for p, m in _entries(ann.get(A_MIXED)):
             rn = "%s-%s-mixed-route" % (name, slug(p))
-            routes[rn] = _route(rn, name, p, methods)
+            routes[rn] = _route(rn, name, p, m or methods)
             rplugins[rn] = list(MIXED_PLUGINS)
             rmixed[rn] = True
-        for p in _paths(ann.get(A_PROTECTED)):
+        for p, m in _entries(ann.get(A_PROTECTED)):
             rn = "%s-%s-protected-route" % (name, slug(p))
-            routes[rn] = _route(rn, name, p, methods)
+            routes[rn] = _route(rn, name, p, m or methods)
             rplugins[rn] = list(PROTECTED_PLUGINS)
             rmixed[rn] = False
     return svcs, routes, rplugins, rmixed

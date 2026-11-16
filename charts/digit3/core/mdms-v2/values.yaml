@@ -14,11 +14,9 @@ ingress:
 # gateway/route-path is auto-added by the common Service template from ingress.context
 # (when ingress.gateway is true), so only the no-auth open-paths are set here. These
 # are security-relevant - override per env, PR-reviewed here.
-# NOTE: /mdms-v2/v2/_search (new 3.0 path the login UI calls) is an open-or-not
-# decision still pending - not added here.
 service:
   additionalAnnotations: |
-    gateway/open-paths: "/mdms-v2/v1/mdms,/mdms-v2/v2"
+    gateway/open-paths: "/mdms-v2/v1/_search,/mdms-v2/v2/_search"
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:

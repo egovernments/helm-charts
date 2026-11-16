@@ -18,6 +18,7 @@ data:
       "clientId": {{ $gs.clientId | quote }},
       "servicePort": {{ $gs.servicePort }},
       "annotationPrefix": {{ $gs.annotationPrefix | quote }},
+      "regexPriority": {{ $gs.regexPriority }},
       "redis": {{ $gs.redis | toJson }},
       "namespaces": {{ $gs.namespaces | toJson }},
       "protectedPlugins": {{ $gs.protectedPlugins | toJson }},
