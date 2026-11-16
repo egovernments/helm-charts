@@ -10,6 +10,15 @@ ingress:
   # app context-path is /accounts
   context: "accounts"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added by the common Service template from ingress.context
+# (when ingress.gateway is true), so only the no-auth open-paths are set here. These
+# are security-relevant - override per env, PR-reviewed here.
+service:
+  additionalAnnotations: |
+    gateway/open-paths: "/accounts/v3/config,/accounts/v3/canonical/config"
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:

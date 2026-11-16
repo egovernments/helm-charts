@@ -184,20 +184,20 @@ PROTECTED; a path is OPEN or MIXED only if listed. `<prefix>` is `gatewaySync.an
 
 | Annotation | Meaning |
 |---|---|
-| `gateway/route-path` | **Required** marker + protected route path (e.g. `accounts` -> `/accounts`, full auth stack) |
+| `gateway/route-path` | **Required** marker + protected route path (full auth stack). For digit3 charts this is **auto-emitted** by the common Service template from `ingress.context` whenever `ingress.gateway: true` - no need to set it by hand. |
 | `gateway/open-paths` | Comma-separated no-auth paths (must out-match the protected route) |
 | `gateway/mixed-paths` | Comma-separated optional-auth paths (no `keycloak-rbac`) |
 | `gateway/methods` | Optional HTTP method allowlist (default: all) |
 
+Because `gateway/route-path` comes for free from `ingress.context`, every `gateway: true`
+digit3 service is already discoverable; a service only adds `service.additionalAnnotations`
+when it has open or mixed paths:
+
 ```yaml
-# in the account service chart (templates/service.yaml), overridable per env
-apiVersion: v1
-kind: Service
-metadata:
-  name: account
-  annotations:
-    gateway/route-path: accounts
-    gateway/open-paths: /accounts/v3/config,/accounts/v3/canonical/config
+# in the account service chart's values.yaml, overridable per env
+service:
+  additionalAnnotations: |
+    gateway/open-paths: "/accounts/v3/config,/accounts/v3/canonical/config"
 ```
 
 Every route is pinned to `gatewaySync.domain` as its host (required: in the traditional
@@ -225,11 +225,13 @@ router a host match outranks path length), with `strip_path: false`.
 
 ### Before enabling
 
-- **Add the `gateway/*` annotations to the digit3/core service charts** (separate PRs),
-  using the ops-supplied 2.x -> 3.0 **mapped** paths. The legacy gateway whitelist
-  predates the 3.0 modulith services and must not be copied verbatim (e.g. localization
-  moved to `/localization/v3/messages`, mdms to `/mdms-v2/v1/mdms`; `/mdms-v2/v2/_search`
-  is a new endpoint needing an open/not-open decision).
+- **Add `gateway/open-paths` (and `mixed-paths`) to each digit3/core service chart** that
+  has non-protected endpoints, using the ops-supplied 2.x -> 3.0 **mapped** paths (route-path
+  is automatic). The legacy whitelist predates the 3.0 modulith services and must not be
+  copied verbatim. Seeded here for the confirmed set - `account`, `localization`
+  (`/localization/v3/messages`), `mdms-v2` (`/mdms-v2/v1/mdms`, `/mdms-v2/v2`); the rest
+  (filestore, user-otp, otp, tenant, boundary, user, and the mixed tier) are pending path
+  verification, and `/mdms-v2/v2/_search` needs an open/not-open decision.
 - **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
   optional/anonymous flag is confirmed; until then MIXED routes validate as protected
   (require a valid JWT), not as open.
