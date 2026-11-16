@@ -1,0 +1,6 @@
+apiVersion: v2
+name: identity-bootstrap
+description: Idempotent one-time setup for the CMS identity stack - Secrets, Keycloak's database and the BFF / PGR provisioner employees
+type: application
+version: 3.0.0
+appVersion: "1.0.0"

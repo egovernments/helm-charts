@@ -1,0 +1,12 @@
+{{- /*
+  Routes only the public bridge paths, as exact matches, straight to novu-bridge (never
+  common.ingress: that takes one Prefix path and would expose the whole /novu-bridge
+  context). /tenants, /messages and /health stay cluster-internal.
+*/ -}}
+{{- if .Values.ingress.enabled }}
+{{- $paths := list }}
+{{- range .Values.ingress.publicPaths }}
+{{- $paths = append $paths (printf "/%s/novu-adapter/v1/%s" $.Values.ingress.context .) }}
+{{- end }}
+{{ include "novu-bridge.ingressExact" (dict "root" . "name" (include "common.name" .) "paths" $paths) }}
+{{- end }}

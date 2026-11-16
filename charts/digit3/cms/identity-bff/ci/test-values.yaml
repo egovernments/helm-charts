@@ -1,0 +1,6 @@
+# CI render only (chart-ci.yaml): a domain for the derived public URL, and an existing
+# Secret so the chart does not demand real secret values.
+global:
+  domain: ci.example.org
+secret:
+  existingSecret: identity-bff-ci

@@ -1,0 +1,198 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "xstate-chatbot"
+  group: "cms"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "xstate-chatbot"
+  # Source ranges allowed to reach the chatbot webhook (the WhatsApp provider's callbacks).
+  ip-whitelist: "0.0.0.0/0"
+  additionalAnnotations: |
+    nginx.ingress.kubernetes.io/whitelist-source-range: {{ index .Values "ingress" "ip-whitelist" | quote }}
+
+# ── Init container (flyway DB migration) ──────────────────────────────────────
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "xstate_chatbot_schema"
+    image:
+      repository: "xstate-chatbot-db"
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "xstate-chatbot"
+# Must stay 1. Conversation state is a read-modify-write on one row per citizen, serialised
+# only within a process and written last-writer-wins; a second replica can drop a
+# transition mid-complaint. Scaling out needs optimistic locking first.
+replicas: 1
+appType: ""                        # Node.js app: no shared java env from common
+tracing-enabled: false
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# appType is "" so common's java resources template is empty; set explicitly.
+resources: |
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "300m"
+    memory: "512Mi"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+# /health answers 503 while the configuration is incomplete (see the pod log).
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"     # common prepends ingress.context -> /xstate-chatbot/health
+  readinessProbePath: "/health"
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""                   # blank -> /<ingress.context>
+
+# Fallback mobile-number rule, used when the tenant has no MDMS
+# common-masters.MobileNumberValidation row. The chatbot refuses to start without them.
+# Defaults match the pg demo tenant (India); e.g. Mozambique: "+258", "^8[0-9]{8}$", "9".
+default-country-code: "+91"
+default-mobile-regex: "^[6-9][0-9]{9}$"
+mobile-number-length: "10"
+
+flow-reset-keywords: "Hi,Hey,Hello,mseva,Start,missedCall"
+tracer-opentracing-enabled: "true"
+
+# Optional (blank = not set; the app default applies)
+whatsapp-provider: ""
+valuefirst-whatsapp-number: ""
+valuefirst-send-message-url: ""
+valuefirst-notification-assigned-templateid: ""
+valuefirst-notification-resolved-templateid: ""
+valuefirst-notification-rejected-templateid: ""
+valuefirst-notification-reassigned-templateid: ""
+valuefirst-notification-commented-templateid: ""
+valuefirst-notification-welcome-templateid: ""
+valuefirst-notification-root-templateid: ""
+contact-card-whatsapp-number: ""
+contact-card-whatsapp-name: ""
+bill-supported-modules: ""
+pgr-version: ""
+pgr-update-topic: ""
+information-image-filestoreid: ""
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: SERVICE_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: ROOT_TENANTID
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-state-level-tenant-id }
+  - name: TRACER_OPENTRACING_ENABLED
+    value: {{ index .Values "tracer-opentracing-enabled" | quote }}
+  - name: FLOW_RESET_KEYWORDS
+    value: {{ index .Values "flow-reset-keywords" | quote }}
+  - name: DEFAULT_COUNTRY_CODE
+    value: {{ index .Values "default-country-code" | quote }}
+  - name: DEFAULT_MOBILE_REGEX
+    value: {{ index .Values "default-mobile-regex" | quote }}
+  - name: MOBILE_NUMBER_LENGTH
+    value: {{ index .Values "mobile-number-length" | quote }}
+
+  # ── Kafka / database (Node app: not covered by common's java block) ──────
+  - name: KAFKA_BOOTSTRAP_SERVER
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: kafka-brokers }
+  - name: DB_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: db-host }
+  - name: DB_NAME
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: db-name }
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef: { name: db, key: username }
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef: { name: db, key: password }
+
+  # ── External hosts ───────────────────────────────────────────────────────
+  - name: EGOV_SERVICES_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-services-fqdn-name }
+  - name: EXTERNAL_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-services-fqdn-name }
+  - name: URL_SHORTNER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-services-fqdn-name }
+  - name: USER_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-user-chatbot }
+  # Business calls go through the gateway (egov-service-host key `zuul`).
+  - name: MDMS_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+  - name: PGR_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+  - name: LOCALIZATION_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+  - name: EGOV_FILESTORE_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+  - name: BILL_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+  - name: COLLECTION_SERVICE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: zuul }
+
+  # ── Credentials (Secrets: chatbot, egov-location) ────────────────────────
+  # The employee account the bot creates citizens and files complaints as: use a dedicated
+  # account limited to citizen creation and PGR filing.
+  - name: USER_SERVICE_ACCOUNT_USERNAME
+    valueFrom:
+      secretKeyRef: { name: chatbot, key: service-account-username }
+  - name: USER_SERVICE_ACCOUNT_PASSWORD
+    valueFrom:
+      secretKeyRef: { name: chatbot, key: service-account-password }
+  - name: VALUEFIRST_USERNAME
+    valueFrom:
+      secretKeyRef: { name: chatbot, key: valuefirst-username }
+  - name: VALUEFIRST_PASSWORD
+    valueFrom:
+      secretKeyRef: { name: chatbot, key: valuefirst-password }
+  - name: GOOGLE_MAPS_API_KEY
+    valueFrom:
+      secretKeyRef: { name: egov-location, key: gmapskey }
+
+  # ── Optional WhatsApp / PGR settings ─────────────────────────────────────
+  {{- range $key, $env := dict
+        "whatsapp-provider" "WHATSAPP_PROVIDER"
+        "valuefirst-whatsapp-number" "WHATSAPP_BUSINESS_NUMBER"
+        "valuefirst-send-message-url" "VALUEFIRST_SEND_MESSAGE_URL"
+        "valuefirst-notification-assigned-templateid" "VALUEFIRST_NOTIFICATION_ASSIGNED_TEMPLATEID"
+        "valuefirst-notification-resolved-templateid" "VALUEFIRST_NOTIFICATION_RESOLVED_TEMPLATEID"
+        "valuefirst-notification-rejected-templateid" "VALUEFIRST_NOTIFICATION_REJECTED_TEMPLATEID"
+        "valuefirst-notification-reassigned-templateid" "VALUEFIRST_NOTIFICATION_REASSIGNED_TEMPLATEID"
+        "valuefirst-notification-commented-templateid" "VALUEFIRST_NOTIFICATION_COMMENTED_TEMPLATEID"
+        "valuefirst-notification-welcome-templateid" "VALUEFIRST_NOTIFICATION_WELCOME_TEMPLATEID"
+        "valuefirst-notification-root-templateid" "VALUEFIRST_NOTIFICATION_ROOT_TEMPLATEID"
+        "contact-card-whatsapp-number" "CONTACT_CARD_WHATSAPP_NUMBER"
+        "contact-card-whatsapp-name" "CONTACT_CARD_WHATSAPP_NAME"
+        "bill-supported-modules" "BILL_SUPPORTED_MODULES"
+        "pgr-version" "PGR_VERSION"
+        "pgr-update-topic" "PGR_UPDATE_TOPIC"
+        "information-image-filestoreid" "INFORMATION_IMAGE_FILESTORE_ID" }}
+  {{- if index $.Values $key }}
+  - name: {{ $env }}
+    value: {{ index $.Values $key | quote }}
+  {{- end }}
+  {{- end }}

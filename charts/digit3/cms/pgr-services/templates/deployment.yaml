@@ -1,0 +1,13 @@
+{{- /*
+  common.deployment (3.1.1) has no strategy override: with one replica it always renders
+  rollingUpdate/maxUnavailable: 0. pgr-services must use Recreate (see deploymentStrategy in
+  values.yaml), so render common's Deployment and replace spec.strategy on the result.
+*/ -}}
+{{- $deployment := include "common.deployment" . | fromYaml }}
+{{- if hasKey $deployment "Error" }}
+{{- fail (printf "pgr-services: could not parse common.deployment: %s" $deployment.Error) }}
+{{- end }}
+{{- with .Values.deploymentStrategy }}
+{{- $_ := set $deployment.spec "strategy" . }}
+{{- end }}
+{{ toYaml $deployment }}

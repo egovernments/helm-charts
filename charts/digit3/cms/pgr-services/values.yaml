@@ -1,0 +1,323 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "pgr-services"
+  group: "cms"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# The app hardcodes server.servlet.context-path=/pgr-services (no ${...}), so there is
+# no context-path override: ingress.context must stay "pgr-services".
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "pgr-services"
+
+# Anonymous public-dashboard routes, straight to pgr-services (bypassing the gateway);
+# see templates/public-analytics-ingress.yaml. limitRpm is a site-wide flood guard:
+# one dashboard load is ~20 requests, so 6000 allows ~300 loads a minute.
+publicAnalytics:
+  enabled: true
+  limitRpm: 6000
+  maxBodySize: "1m"
+  paths:
+    - packs
+    - _query
+    - catalog/_search
+    - _options
+
+# ── Deployment strategy ───────────────────────────────────────────────────────
+# Recreate, NOT a rolling update: an old and a new replica running side by side during
+# the thin-event cutover each publish the same notification under different transaction
+# ids, so citizens get duplicate SMS. Stop the old pod before starting the new one.
+# Applied by templates/deployment.yaml on top of common.deployment.
+# Upgrade order: novu-bridge BEFORE this chart (a bridge older than the thin-event stack
+# dead-letters thin events).
+deploymentStrategy:
+  type: Recreate
+
+# ── Init container (flyway DB migration) ──────────────────────────────────────
+# pgr-services, pgr-services-db, novu-bridge and novu-bridge-db must come from the same
+# build; in prod mode all of them run Chart.appVersion.
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "pgr_services_schema"
+    image:
+      repository: "pgr-services-db"
+    env: |
+        {{- if index .Values "pgr-ismultischema-enabled" }}
+        - name: SCHEMA_NAME
+          value: {{ index .Values "pgr-schemas" | quote }}
+        {{- end }}
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: db-url }
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-username }
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-password }
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: flyway-locations }
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "pgr-services"
+replicas: 1
+appType: "java"
+heap: "-Xmx192m -Xms192m"
+java-args: "-Dspring.profiles.active=monitoring"
+java-enable-debug: "false"
+tracing-enabled: false
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+cpu_requests: "100m"
+memory_requests: "256Mi"
+cpu_limits: "300m"
+memory_limits: "768Mi"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"     # common prepends ingress.context -> /pgr-services/health
+  readinessProbePath: "/health"
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+# multi-schema (state-level schemas) for the db-migration init container
+pgr-ismultischema-enabled: false
+pgr-schemas: ""
+
+# kafka
+kafka-consumer-group: "egov-pgr-services"
+
+# hosts / endpoints
+mdms-host: ""                      # blank -> egov-service-host/mdms-service-v2 (mdms-v2 directly)
+mdms-search-endpoint: "/mdms-v2/v1/_search"
+# Origin the workspace settings API sends MDMS / localization writes through, on the
+# admin's own token. Blank leaves EGOV_GATEWAY_HOST unset and every workspace write
+# fails with WORKSPACE_DEPENDENCY_UNAVAILABLE.
+gateway-host: "http://gateway.egov:8080"
+
+# notifications
+notification-sms-enabled: "true"
+notification-email-enabled: "false"
+new-complaint-enabled: "true"
+reassign-complaint-enabled: "true"
+reopen-complaint-enabled: "true"
+comment-by-employee-notif-enabled: "false"
+notification-allowed-status: "open,assigned,rejected,resolved"
+pgr-app-playstore-link: "https://goo.gl/ArDyQ1"
+
+# user events (in-app notifications)
+usr-events-notification-enabled: "true"
+usr-events-create-topic: "persist-user-events-async"
+usr-events-rate-link: "/citizen/otpLogin?mobileNo=$mobile&redirectTo=feedback/$servicerequestid"
+usr-events-reopen-link: "/citizen/otpLogin?mobileNo=$mobile&redirectTo=reopen-complaint/$servicerequestid"
+usr-events-rate-code: "RATE"
+usr-events-reopen-code: "REOPEN"
+
+# behaviour
+security-basic-enabled: "false"
+management-security-enabled: "false"
+tracer-request-logging-enabled: "true"
+# PGR_COMPLAIN_IDLE_TIME (ms). Leave blank: the reopen window is MDMS
+# RAINMAKER-PGR.UIConstants.REOPENSLA per tenant; the app's own backstop applies when unset.
+time-before-closing-complaint: ""
+# Central-instance (multi-state) mode; reads state-level-tenantid-length from egov-config.
+central-instance-enabled: false
+
+# Self-service tenant onboarding runner. DISABLED by default: it needs a provisioner
+# EMPLOYEE on a ROOT tenant holding MDMS_ADMIN, ACCOUNT_ADMIN, LOC_ADMIN and HRMS_ADMIN,
+# whose password (and the identity BFF's onboarding token) live in the Secret named
+# below. Secret keys: provisioner-password, onboarding-token, oauth-client-secret (optional).
+onboarding:
+  runnerEnabled: false
+  notificationDefaultsEnabled: true
+  identityBffUrl: ""               # e.g. http://identity-bff.egov:3000
+  provisionerUsername: ""          # e.g. PGR_PROVISIONER
+  provisionerTenantId: ""          # the state root, e.g. pg
+  oauthClientId: "egov-user-client"
+  secretName: "pgr-onboarding"
+  # Per-tenant Novu accounts: novu-bridge's internal admin API (in-cluster only).
+  # The token is novu-bridge's Secret key `internal-admin-token`. Blank = step disabled.
+  notificationAccountUrl: ""       # e.g. http://novu-bridge.egov:8080/novu-bridge
+  notificationAccountSecretName: "novu-bridge-tenant-accounts"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: JAVA_ARGS
+    value: {{ index .Values "java-args" | quote }}
+  - name: JAVA_ENABLE_DEBUG
+    value: {{ index .Values "java-enable-debug" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: SECURITY_BASIC_ENABLED
+    value: {{ index .Values "security-basic-enabled" | quote }}
+  - name: MANAGEMENT_SECURITY_ENABLED
+    value: {{ index .Values "management-security-enabled" | quote }}
+  - name: TRACER_REQUESTLOGGINGENABLED
+    value: {{ index .Values "tracer-request-logging-enabled" | quote }}
+  {{- if index .Values "global" "tracer-errors-provideexceptionindetails" }}
+  - name: TRACER_ERRORS_PROVIDEEXCEPTIONINDETAILS
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: tracer-errors-provideexceptionindetails }
+  {{- end }}
+  - name: STATE_LEVEL_TENANT_ID
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: state-level-tenant-id }
+  - name: EGOV_UI_APP_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: egov-services-fqdn-name }
+  {{- if index .Values "time-before-closing-complaint" }}
+  - name: PGR_COMPLAIN_IDLE_TIME
+    value: {{ index .Values "time-before-closing-complaint" | quote }}
+  {{- end }}
+
+  # ── Kafka ────────────────────────────────────────────────────────────────
+  - name: SPRING_KAFKA_CONSUMER_GROUP_ID
+    value: {{ index .Values "kafka-consumer-group" | quote }}
+  - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
+    value: "org.apache.kafka.common.serialization.StringSerializer"
+  {{- if index .Values "global" "serializers-timezone-in-ist" }}
+  - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
+    value: "org.egov.tracer.kafka.serializer.ISTTimeZoneJsonSerializer"
+  {{- end }}
+
+  # ── External service hosts ───────────────────────────────────────────────
+  - name: EGOV_IDGEN_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-idgen }
+  - name: EGOV_URL_SHORTNER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-url-shortening }
+  - name: EGOV_WORKFLOW_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-workflow-v2 }
+  - name: EGOV_MDMS_HOST
+  {{- if index .Values "mdms-host" }}
+    value: {{ index .Values "mdms-host" | quote }}
+  {{- else }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: mdms-service-v2 }
+  {{- end }}
+  - name: EGOV_MDMS_SEARCH_ENDPOINT
+    value: {{ index .Values "mdms-search-endpoint" | quote }}
+  - name: EGOV_LOCALIZATION_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-localization }
+  # PGR's ABAC lookup; unset, every employee complaint search fails.
+  - name: EGOV_ACCESSCONTROL_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-accesscontrol }
+  {{- if index .Values "gateway-host" }}
+  - name: EGOV_GATEWAY_HOST
+    value: {{ index .Values "gateway-host" | quote }}
+  {{- end }}
+  - name: EGOV_INFRA_SEARCHER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-searcher }
+  - name: EGOV_FILESTORE_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-filestore }
+  - name: EGOV_USER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-user }
+  - name: EGOV_BOUNDARY_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: boundary-service }
+  - name: EGOV_HRMS_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-hrms }
+  - name: EGOV_LOCATION_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-location }
+
+  # ── Notifications ────────────────────────────────────────────────────────
+  - name: NOTIFICATION_SMS_ENABLED
+    value: {{ index .Values "notification-sms-enabled" | quote }}
+  - name: NOTIFICATION_EMAIL_ENABLED
+    value: {{ index .Values "notification-email-enabled" | quote }}
+  - name: NEW_COMPLAINT_ENABLED
+    value: {{ index .Values "new-complaint-enabled" | quote }}
+  - name: REASSIGN_COMPLAINT_ENABLED
+    value: {{ index .Values "reassign-complaint-enabled" | quote }}
+  - name: REOPEN_COMPLAINT_ENABLED
+    value: {{ index .Values "reopen-complaint-enabled" | quote }}
+  - name: COMMENT_BY_EMPLOYEE_NOTIF_ENABLED
+    value: {{ index .Values "comment-by-employee-notif-enabled" | quote }}
+  - name: NOTIFICATION_ALLOWED_ON_STATUS
+    value: {{ index .Values "notification-allowed-status" | quote }}
+  - name: EGOV_PGR_APP_PLAYSTORE_LINK
+    value: {{ index .Values "pgr-app-playstore-link" | quote }}
+
+  # ── User events ──────────────────────────────────────────────────────────
+  - name: EGOV_USR_EVENTS_NOTIFICATION_ENABLED
+    value: {{ index .Values "usr-events-notification-enabled" | quote }}
+  - name: EGOV_USR_EVENTS_CREATE_TOPIC
+    value: {{ index .Values "usr-events-create-topic" | quote }}
+  - name: EGOV_USR_EVENTS_RATE_LINK
+    value: {{ index .Values "usr-events-rate-link" | quote }}
+  - name: EGOV_USR_EVENTS_REOPEN_LINK
+    value: {{ index .Values "usr-events-reopen-link" | quote }}
+  - name: EGOV_USR_EVENTS_RATE_CODE
+    value: {{ index .Values "usr-events-rate-code" | quote }}
+  - name: EGOV_USR_EVENTS_REOPEN_CODE
+    value: {{ index .Values "usr-events-reopen-code" | quote }}
+
+  # ── Self-service onboarding ──────────────────────────────────────────────
+  - name: PGR_ONBOARDING_RUNNER_ENABLED
+    value: {{ .Values.onboarding.runnerEnabled | quote }}
+  {{- if .Values.onboarding.runnerEnabled }}
+  - name: PGR_ONBOARDING_NOTIFICATION_DEFAULTS_ENABLED
+    value: {{ .Values.onboarding.notificationDefaultsEnabled | quote }}
+  - name: PGR_ONBOARDING_IDENTITY_BFF_URL
+    value: {{ required "onboarding.identityBffUrl is required when the runner is enabled" .Values.onboarding.identityBffUrl | quote }}
+  - name: PGR_ONBOARDING_IDENTITY_BFF_TOKEN
+    valueFrom:
+      secretKeyRef: { name: {{ .Values.onboarding.secretName }}, key: onboarding-token }
+  - name: DIGIT_PROVISIONER_USERNAME
+    value: {{ required "onboarding.provisionerUsername is required when the runner is enabled" .Values.onboarding.provisionerUsername | quote }}
+  - name: DIGIT_PROVISIONER_TENANT_ID
+    value: {{ required "onboarding.provisionerTenantId is required when the runner is enabled" .Values.onboarding.provisionerTenantId | quote }}
+  - name: DIGIT_PROVISIONER_PASSWORD
+    valueFrom:
+      secretKeyRef: { name: {{ .Values.onboarding.secretName }}, key: provisioner-password }
+  - name: DIGIT_OAUTH_CLIENT_ID
+    value: {{ .Values.onboarding.oauthClientId | quote }}
+  - name: DIGIT_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef: { name: {{ .Values.onboarding.secretName }}, key: oauth-client-secret, optional: true }
+  {{- if .Values.onboarding.notificationAccountUrl }}
+  - name: PGR_ONBOARDING_NOTIFICATION_ACCOUNT_URL
+    value: {{ .Values.onboarding.notificationAccountUrl | quote }}
+  - name: PGR_ONBOARDING_NOTIFICATION_ACCOUNT_TOKEN
+    valueFrom:
+      secretKeyRef: { name: {{ .Values.onboarding.notificationAccountSecretName }}, key: internal-admin-token }
+  {{- end }}
+  - name: EGOV_ENC_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: egov-enc-service }
+  {{- end }}
+
+# ── Extra env (merged after common's java block, so these win) ────────────────
+# common sets IS_ENVIRONMENT_CENTRAL_INSTANCE=false for every java service; central-instance
+# mode overrides it here (extraEnv.app is applied after extraEnv.java).
+extraEnv:
+  app: |
+    {{- if index .Values "central-instance-enabled" }}
+    - name: IS_ENVIRONMENT_CENTRAL_INSTANCE
+      value: "true"
+    - name: STATE_LEVEL_TENANTID_LENGTH
+      valueFrom:
+        configMapKeyRef: { name: egov-config, key: state-level-tenantid-length }
+    {{- end }}

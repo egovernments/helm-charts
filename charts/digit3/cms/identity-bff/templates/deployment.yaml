@@ -1,0 +1,5 @@
+{{- /* common.name merges the environment's `identity-bff:` block into .Values; run it
+       first so the generated env sees those overrides. */ -}}
+{{- $_ := include "common.name" . }}
+{{- $_ := set .Values "env" (include "identity-bff.env" .) }}
+{{- template "common.deployment" . -}}

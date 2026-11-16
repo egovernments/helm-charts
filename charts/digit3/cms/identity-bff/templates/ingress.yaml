@@ -1,0 +1,64 @@
+{{- /*
+  /identity/v1 straight to the BFF (no rewrite: the BFF serves the full path). Anchored
+  regex, so /internal/identity/v1/* (introspection, workload and operator routes) is never
+  published. Not routed through the gateway: these routes carry the BFF's own session
+  cookie, not a DIGIT token.
+*/ -}}
+{{- $_ := include "common.name" . }}
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ template "common.name" . }}
+{{- if .Values.global.namespace }}
+  namespace: {{ .Values.global.namespace }}
+{{- else if .Values.ingress.namespace }}
+  namespace: {{ .Values.ingress.namespace }}
+{{- else }}
+  namespace: {{ .Values.namespace }}
+{{- end }}
+  {{- $annotations := dict "nginx.ingress.kubernetes.io/use-regex" "true" "nginx.ingress.kubernetes.io/proxy-read-timeout" "120" }}
+  {{- $annotations = merge $annotations (.Values.ingress.annotations | default dict) }}
+  {{- if .Values.ingress.waf.enabled }}
+  {{- $annotations = merge $annotations (.Values.ingress.waf.annotations | default dict) }}
+  {{- end }}
+  annotations:
+{{- toYaml $annotations | nindent 4 }}
+{{- if .Values.ingress.additionalAnnotations }}
+  {{- tpl .Values.ingress.additionalAnnotations . | nindent 4 }}
+{{- end }}
+  labels:
+{{- include "common.labels" . | nindent 4 }}
+spec:
+  rules:
+{{- if .Values.ingress.host }}
+  {{- tpl .Values.ingress.host . | nindent 2 }}
+{{- else if .Values.ingress.hostName }}
+  - host: {{ .Values.ingress.hostName }}
+{{- else }}
+  - host: {{ .Values.global.domain }}
+{{- end }}
+    http:
+      paths:
+        - path: {{ printf "/%s(/|$)" (trimAll "/" .Values.ingress.context) }}
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: {{ template "common.name" . }}
+              port:
+                number: {{ .Values.httpPort }}
+{{- if ne (toString .Values.global.setup) "quickstart" }}
+  tls:
+{{- if .Values.ingress.tls }}
+  {{- tpl .Values.ingress.tls . | nindent 2 }}
+{{- else if .Values.ingress.hostName }}
+    - hosts:
+        - {{ .Values.ingress.hostName }}
+      secretName: {{ .Values.ingress.hostName }}-tls-certs
+{{- else }}
+    - hosts:
+        - {{ .Values.global.domain }}
+      secretName: {{ .Values.global.domain }}-tls-certs
+{{- end }}
+{{- end }}
+{{- end }}

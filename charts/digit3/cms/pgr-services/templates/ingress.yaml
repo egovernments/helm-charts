@@ -1,0 +1,20 @@
+{{- template "common.ingress" . -}}
+{{- /*
+  Anonymous public-dashboard aliases, straight to pgr-services (exact paths, bypassing the
+  gateway). The controller methods discard RequestInfo and force the PUBLIC floor. nginx
+  prefers these longer paths over the /pgr-services prefix route above.
+*/ -}}
+{{- if and .Values.ingress.enabled .Values.publicAnalytics.enabled }}
+{{- $paths := list }}
+{{- range .Values.publicAnalytics.paths }}
+{{- $paths = append $paths (printf "/%s/v2/analytics/public/%s" $.Values.ingress.context .) }}
+{{- end }}
+---
+{{ include "pgr-services.ingressExact" (dict
+      "root" .
+      "name" (printf "%s-public-analytics" (include "common.name" .))
+      "paths" $paths
+      "annotations" (dict
+        "nginx.ingress.kubernetes.io/limit-rpm" (.Values.publicAnalytics.limitRpm | toString)
+        "nginx.ingress.kubernetes.io/proxy-body-size" .Values.publicAnalytics.maxBodySize)) }}
+{{- end }}

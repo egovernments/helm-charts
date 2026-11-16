@@ -1,0 +1,10 @@
+apiVersion: v2
+name: configurator
+description: Configurator SPA (nginx) for CMS tenant onboarding and management
+type: application
+version: 3.0.0
+appVersion: "v2.20"
+dependencies:
+  - name: common
+    version: 3.1.1
+    repository: https://helm.digit.org/digit3/common

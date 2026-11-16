@@ -1,0 +1,62 @@
+# identity-bootstrap: the identity stack's manual prerequisites as one idempotent Helm hook
+# Job (post-install/post-upgrade). Install it BEFORE keycloak and identity-bff.
+#
+# Every step creates what is missing and never rewrites what exists:
+#   1. secrets   identitySecret and onboardingSecret: generates each missing key, keeps
+#                every present one. keycloak-smtp-password and keycloak-google-client-secret
+#                cannot be generated: with SMTP auth / Google sign-in on, the Job stops until
+#                an operator adds them (kubectl -n <ns> patch secret identity-secrets ...).
+#   2. database  Keycloak's role and database on egov-config's db-host, as the platform
+#                user from the `db` Secret.
+#   3. accounts  the ACCOUNT_ADMIN employee identity-bff signs in as, and the PGR onboarding
+#                provisioner, on the state tenant; then a sign-in check.
+#
+# Wiring: set identity-bff `secret.existingSecret` to identitySecret, and pgr-services
+# `onboarding.secretName` to onboardingSecret.
+
+images:
+  curl: curlimages/curl:8.10.1
+  psql: postgres:16-alpine
+
+# Kubernetes Secrets this Job owns (keycloak + identity-bff read identitySecret;
+# pgr-services reads onboardingSecret).
+identitySecret: identity-secrets
+onboardingSecret: pgr-onboarding
+
+# The keycloak-smtp-password key is required (identity.keycloak.configure.smtp.auth).
+smtpAuth: false
+# The keycloak-google-client-secret key is required (identity.keycloak.configure.googleClientId).
+googleSignin: false
+
+# Keycloak's database; match the keycloak release's db values. Empty host =
+# egov-config's db-host.
+keycloakDb:
+  host: ""
+  port: "5432"
+  database: keycloak
+  username: keycloak
+
+# The Postgres user that creates them: the `db` Secret's keys, connected to the
+# platform database (egov-config's db-name), or to `postgres` on a Keycloak host
+# of its own. prefer: TLS where the server offers it (RDS), plain otherwise (the
+# in-cluster backbone postgresql).
+platformDbSecret: db
+platformDbUserKey: username
+platformDbPasswordKey: password
+dbSslMode: prefer
+
+# The DIGIT employees, each on the tenant its service signs in on: identity-bff's
+# DIGIT_ADMIN_TENANT_ID and pgr-services' onboarding.provisionerTenantId (keep them
+# in step); empty = egov-config's state-level-tenant-id.
+# Passwords: identity-secrets' digit-admin-password and digit-provisioner-password.
+egovUserHost: "http://egov-user.egov:8080"
+adminUsername: "IDENTITY_ADMIN"
+adminTenant: ""
+adminMobile: "7777777776"
+provisionerUsername: "PGR_PROVISIONER"
+provisionerTenant: ""
+provisionerMobile: "7777777777"
+
+# Ceiling for the whole Job, egov-user's start included. Keep it below the helm
+# --timeout of the release.
+activeDeadlineSeconds: 900
