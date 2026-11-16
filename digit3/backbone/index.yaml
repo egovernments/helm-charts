@@ -1,5 +1,259 @@
 apiVersion: v1
 entries:
+  cert-manager:
+    - annotations:
+        artifacthub.io/license: Apache-2.0
+        artifacthub.io/prerelease: '{{IS_PRERELEASE}}'
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/cert-manager (DIGIT-modified)
+        digit.org/upstream-app-version: v1.13.3
+        digit.org/upstream-chart: jetstack/cert-manager
+        digit.org/upstream-chart-version: 1.13.3
+      apiVersion: v1
+      appVersion: v1.13.3
+      created: "2026-11-16T12:25:35.644648922Z"
+      description: A Helm chart for cert-manager
+      digest: 4af396590b6def0cc5968b9117bc51991288d6c8aca778ac81fa115bd8b4e2f5
+      home: https://github.com/cert-manager/cert-manager
+      icon: https://raw.githubusercontent.com/cert-manager/cert-manager/d53c0b9270f8cd90d908460d69502694e1838f5f/logo/logo-small.png
+      keywords:
+        - cert-manager
+        - kube-lego
+        - letsencrypt
+        - tls
+      kubeVersion: '>= 1.22.0-0'
+      maintainers:
+        - email: cert-manager-maintainers@googlegroups.com
+          name: cert-manager-maintainers
+          url: https://cert-manager.io
+      name: cert-manager
+      sources:
+        - https://github.com/cert-manager/cert-manager
+      urls:
+        - https://helm.digit.org/digit3/backbone/cert-manager/cert-manager-3.0.0.tgz
+      version: 3.0.0
+  elasticsearch-data:
+    - apiVersion: v1
+      appVersion: "1.0"
+      created: "2026-11-16T12:25:35.645155388Z"
+      description: A Helm chart for Confluent Kafka on Kubernetes
+      digest: f6349b9d50075ca435cd74fa499fa071c3f09cdc327f5dee8a301e4cf53cc8ea
+      name: elasticsearch-data
+      urls:
+        - https://helm.digit.org/digit3/backbone/elasticsearch-data/elasticsearch-data-3.0.0.tgz
+      version: 3.0.0
+  elasticsearch-master:
+    - apiVersion: v1
+      appVersion: "1.0"
+      created: "2026-11-16T12:25:35.64559144Z"
+      description: A Helm chart for Confluent Kafka on Kubernetes
+      digest: eb96ca4840239e6c04fbee73dca5d91c6ed8fe74fe9935963016987f46b7f07d
+      name: elasticsearch-master
+      urls:
+        - https://helm.digit.org/digit3/backbone/elasticsearch-master/elasticsearch-master-3.0.0.tgz
+      version: 3.0.0
+  es-curator:
+    - apiVersion: v2
+      appVersion: 8.0.15
+      created: "2026-11-16T12:25:35.64630127Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: a067c45baa9e6c983438b06053d63710af51350ba85a964ccd25ded73396ef2f
+      name: es-curator
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/es-curator/es-curator-3.0.0.tgz
+      version: 3.0.0
+  fluent-bit:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-11-16T12:25:35.646545065Z"
+      description: A Helm chart for Kubernetes
+      digest: c8e3f3ce1fd6215b476b6acf8abb858a64d7ecadb330b5e1cd91ef42fbbdd5e0
+      name: fluent-bit
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/fluent-bit/fluent-bit-3.0.0.tgz
+      version: 3.0.0
+  ingress-nginx:
+    - annotations:
+        artifacthub.io/changes: |
+          - Update Ingress-Nginx version controller-v1.12.1
+        artifacthub.io/prerelease: "false"
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/ingress-nginx (DIGIT-modified)
+        digit.org/upstream-app-version: 1.12.1
+        digit.org/upstream-chart: kubernetes/ingress-nginx
+        digit.org/upstream-chart-version: 4.12.1
+      apiVersion: v2
+      appVersion: 1.12.1
+      created: "2026-11-16T12:25:35.648327227Z"
+      description: Ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer
+      digest: 10be923a3658483e088a38c4f7ea9048924968678cfc02e12977e717a85624dd
+      home: https://github.com/kubernetes/ingress-nginx
+      icon: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nginx_logo.svg/500px-Nginx_logo.svg.png
+      keywords:
+        - ingress
+        - nginx
+      kubeVersion: '>=1.21.0-0'
+      maintainers:
+        - name: cpanato
+        - name: Gacko
+        - name: strongjz
+        - name: tao12345666333
+      name: ingress-nginx
+      sources:
+        - https://github.com/kubernetes/ingress-nginx
+      urls:
+        - https://helm.digit.org/digit3/backbone/ingress-nginx/ingress-nginx-3.0.0.tgz
+      version: 3.0.0
+  jenkins:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/jenkins (DIGIT-modified)
+        digit.org/upstream-app-version: 2.555.1
+        digit.org/upstream-chart: jenkinsci/jenkins
+        digit.org/upstream-chart-version: 5.9.18
+      apiVersion: v2
+      appVersion: 2.555.1
+      created: "2026-11-16T12:25:35.65058523Z"
+      description: Open source continuous integration server. It supports multiple SCM tools including CVS, Subversion and Git. It can execute Apache Ant and Apache Maven-based projects as well as arbitrary scripts.
+      digest: ba86b2b72e39635ee0dbc26a0d10b16abeee0e50cecf080e091c2d20736140d1
+      home: https://jenkins.io/
+      icon: https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png
+      maintainers:
+        - name: jenkinsci
+          url: https://github.com/jenkinsci/helm-charts
+      name: jenkins
+      sources:
+        - https://github.com/jenkinsci/jenkins
+        - https://github.com/jenkinsci/helm-charts
+        - https://github.com/jenkinsci/configuration-as-code-plugin
+      urls:
+        - https://helm.digit.org/digit3/backbone/jenkins/jenkins-3.0.0.tgz
+      version: 3.0.0
+  jupyterhub:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/jupyterhub (DIGIT-modified)
+        digit.org/upstream-app-version: 4.1.4
+        digit.org/upstream-chart: jupyterhub/zero-to-jupyterhub-k8s
+        digit.org/upstream-chart-version: unpublished (built from source by chartpress)
+      apiVersion: v2
+      appVersion: 4.1.4
+      created: "2026-11-16T12:25:35.652272771Z"
+      description: Multi-user Jupyter installation
+      digest: 8f89c2d1057703ce5dd29d0f0e2b83b96546816005a5cb329b259043a5a2f7f2
+      home: https://z2jh.jupyter.org
+      icon: https://hub.jupyter.org/helm-chart/images/hublogo.svg
+      keywords:
+        - jupyter
+        - jupyterhub
+        - z2jh
+      kubeVersion: '>=1.23.0-0'
+      maintainers:
+        - email: erik@sundellopensource.se
+          name: Erik Sundell
+        - name: Simon Li
+          url: https://github.com/manics/
+      name: jupyterhub
+      sources:
+        - https://github.com/jupyterhub/zero-to-jupyterhub-k8s
+      urls:
+        - https://helm.digit.org/digit3/backbone/jupyterhub/jupyterhub-3.0.0.tgz
+      version: 3.0.0
+  kafka-connect:
+    - apiVersion: v2
+      appVersion: latest
+      created: "2026-11-16T12:25:35.652910093Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: 00b22ed9fbee02e49c770664cd529d78b5a1fcecc1d8d07931b5d9e6acd7c5fc
+      name: kafka-connect
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/kafka-connect/kafka-connect-3.0.0.tgz
+      version: 3.0.0
+  kafka-connect-restart-tasks:
+    - apiVersion: v2
+      appVersion: 1-master-02d88e7f
+      created: "2026-11-16T12:25:35.653397822Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: b7ec4554da0156c5ddae3ec89b160a52bddbea5de844c01895febd6c195eee3d
+      name: kafka-connect-restart-tasks
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/kafka-connect-restart-tasks/kafka-connect-restart-tasks-3.0.0.tgz
+      version: 3.0.0
+  kafka-kraft:
+    - annotations:
+        category: Infrastructure
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/kafka-kraft (DIGIT-modified)
+        digit.org/upstream-app-version: 3.6.1
+        digit.org/upstream-chart: bitnami/kafka
+        digit.org/upstream-chart-version: 26.2.0
+        images: |
+          - name: jmx-exporter
+            image: docker.io/bitnami/jmx-exporter:0.19.0-debian-11-r95
+          - name: kafka-exporter
+            image: docker.io/bitnami/kafka-exporter:1.7.0-debian-11-r132
+          - name: kafka
+            image: docker.io/bitnami/kafka:3.6.1-debian-11-r0
+          - name: kubectl
+            image: docker.io/bitnami/kubectl:1.28.2-debian-11-r16
+          - name: os-shell
+            image: docker.io/bitnami/os-shell:11-debian-11-r90
+        licenses: Apache-2.0
+      apiVersion: v2
+      appVersion: 3.6.1
+      created: "2026-11-16T12:25:35.656938953Z"
+      description: Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
+      digest: a7277567eb8ba493a2ac33c9fbcd87d8f1d7395aedb14e7e6a6f9ad586303da8
+      home: https://bitnami.com
+      icon: https://bitnami.com/assets/stacks/kafka/img/kafka-stack-220x234.png
+      keywords:
+        - kafka
+        - zookeeper
+        - streaming
+        - producer
+        - consumer
+      maintainers:
+        - name: VMware, Inc.
+          url: https://github.com/bitnami/charts
+      name: kafka-kraft
+      sources:
+        - https://github.com/bitnami/charts/tree/main/bitnami/kafka
+      urls:
+        - https://helm.digit.org/digit3/backbone/kafka-kraft/kafka-kraft-3.0.0.tgz
+      version: 3.0.0
+  kibana:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/kibana (DIGIT-modified)
+        digit.org/upstream-app-version: 8.5.1
+        digit.org/upstream-chart: elastic/kibana
+        digit.org/upstream-chart-version: 8.5.1
+      apiVersion: v1
+      appVersion: 8.5.1
+      created: "2026-11-16T12:25:35.657410657Z"
+      description: Official Elastic helm chart for Kibana
+      digest: 2b03dbd00cfab858dd5f879bd2c485c90ae6bde23f070c926785ed843c8312a3
+      home: https://github.com/elastic/helm-charts
+      icon: https://helm.elastic.co/icons/kibana.png
+      maintainers:
+        - email: helm-charts@elastic.co
+          name: Elastic
+      name: kibana
+      sources:
+        - https://github.com/elastic/kibana
+      urls:
+        - https://helm.digit.org/digit3/backbone/kibana/kibana-3.0.0.tgz
+      version: 3.0.0
   matomo:
     - annotations:
         category: Analytics
@@ -19,7 +273,7 @@ entries:
         tanzuCategory: application
       apiVersion: v2
       appVersion: 5.3.2
-      created: "2026-11-11T09:26:03.922721814Z"
+      created: "2026-11-16T12:25:35.662530036Z"
       dependencies:
         - condition: mariadb.enabled
           name: mariadb
@@ -50,6 +304,109 @@ entries:
       urls:
         - https://helm.digit.org/digit3/backbone/matomo/matomo-3.0.0.tgz
       version: 3.0.0
+  minio:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/minio (DIGIT-modified)
+        digit.org/upstream-app-version: RELEASE.2024-12-18T13-15-44Z
+        digit.org/upstream-chart: minio/minio
+        digit.org/upstream-chart-version: 5.4.0
+      apiVersion: v1
+      appVersion: RELEASE.2024-12-18T13-15-44Z
+      created: "2026-11-16T12:25:35.66348959Z"
+      description: High Performance Object Storage
+      digest: 3baeda4ed48cf6f4ae09c1fd684c13fa4bb557539f369e48ab7bd11629726d06
+      home: https://min.io
+      icon: https://min.io/resources/img/logo/MINIO_wordmark.png
+      keywords:
+        - minio
+        - storage
+        - object-storage
+        - s3
+        - cluster
+      maintainers:
+        - email: dev@minio.io
+          name: MinIO, Inc
+      name: minio
+      sources:
+        - https://github.com/minio/minio
+      urls:
+        - https://helm.digit.org/digit3/backbone/minio/minio-3.0.0.tgz
+      version: 3.0.0
+  novu:
+    - apiVersion: v2
+      appVersion: 2.3.0
+      created: "2026-11-16T12:25:35.664502954Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Novu community deployment
+      digest: 4c8cc3e2a834d575334fb1b22608892bc84a96354edb52161c833b104733c75b
+      name: novu
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/novu/novu-3.0.0.tgz
+      version: 3.0.0
+  oauth2-proxy:
+    - apiVersion: v2
+      appVersion: v5.1.0
+      created: "2026-11-16T12:25:35.665107166Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: 756e53ba5d314697641a7080f667cd44192740b78fa41d259471f4bd47c4e47d
+      name: oauth2-proxy
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/oauth2-proxy/oauth2-proxy-3.0.0.tgz
+      version: 3.0.0
+  pgadmin:
+    - apiVersion: v2
+      appVersion: v4.7.7
+      created: "2026-11-16T12:25:35.665702305Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: a51a2402eb30fb6dd03c5233cd9b34db1a743ce93ebadbe9fab52b91a50d6ece
+      name: pgadmin
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/pgadmin/pgadmin-3.0.0.tgz
+      version: 3.0.0
+  playground:
+    - apiVersion: v2
+      appVersion: "1.3"
+      created: "2026-11-16T12:25:35.666817192Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: 59559c0a107607d4cb9b7f0f7daf40ecaad8c16cfdd328ac45c3ae46e067fd9e
+      name: playground
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/playground/playground-3.0.0.tgz
+      version: 3.0.0
+  postgres:
+    - apiVersion: v2
+      appVersion: "14"
+      created: "2026-11-16T12:25:35.667433232Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: 8e6d41cfeeece574a5c35dd2cc0a0c91d02e9df129157955eb1b294bc30462c3
+      name: postgres
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/postgres/postgres-3.0.0.tgz
+      version: 3.0.0
   postgresql:
     - annotations:
         digit.org/upstream-app-version: "18"
@@ -58,7 +415,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-11T09:26:03.928762385Z"
+      created: "2026-11-16T12:25:35.671256865Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: 10be6a74602c13d5d8c875a12bf3667471155713854cf4ae2f3f091204db089b
       home: https://cloudnative-pg.io
@@ -83,7 +440,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-11T09:26:03.9266654Z"
+      created: "2026-11-16T12:25:35.669991194Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: a9c12cbc39b6599275f9ff8a201c40a6b6ac0266a8fb7e649bc8842e52b66699
       home: https://cloudnative-pg.io
@@ -108,7 +465,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-11T09:26:03.924671241Z"
+      created: "2026-11-16T12:25:35.668707056Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: 95669edcfdc9faf0171de5b9d3263865a12cca2176d2f98830ef0a30b8b4638d
       home: https://cloudnative-pg.io
@@ -126,6 +483,86 @@ entries:
       urls:
         - https://helm.digit.org/digit3/backbone/postgresql/postgresql-3.0.0.tgz
       version: 3.0.0
+  prometheus-blackbox-exporter:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/prometheus-blackbox-exporter (DIGIT-modified)
+        digit.org/upstream-app-version: v0.24.0
+        digit.org/upstream-chart: prometheus-community/prometheus-blackbox-exporter
+        digit.org/upstream-chart-version: 8.2.0
+      apiVersion: v2
+      appVersion: v0.24.0
+      created: "2026-11-16T12:25:35.67258571Z"
+      description: Prometheus Blackbox Exporter
+      digest: 1b5433b149e780ab95480198c8db57cba8f6e0d66f87f625cedb4ccfe0c78bfe
+      home: https://github.com/prometheus/blackbox_exporter
+      keywords:
+        - prometheus
+        - blackbox
+        - monitoring
+      maintainers:
+        - email: sri.padma@egovernments.org
+          name: padma
+      name: prometheus-blackbox-exporter
+      sources:
+        - https://github.com/prometheus/blackbox_exporter
+        - https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-blackbox-exporter
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/prometheus-blackbox-exporter/prometheus-blackbox-exporter-3.0.0.tgz
+      version: 3.0.0
+  prometheus-kafka-exporter:
+    - apiVersion: v2
+      appVersion: latest
+      created: "2026-11-16T12:25:35.673208631Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: d8ee58ac0262b49f98139c5ac91eab27ea4e5483f2f76eb136083aa65241add2
+      name: prometheus-kafka-exporter
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/prometheus-kafka-exporter/prometheus-kafka-exporter-3.0.0.tgz
+      version: 3.0.0
+  prometheus-postgres-exporter:
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/prometheus-postgres-exporter (DIGIT-modified)
+        digit.org/upstream-app-version: 0.8.0
+        digit.org/upstream-chart: prometheus-community/prometheus-postgres-exporter
+        digit.org/upstream-chart-version: 1.3.1
+      apiVersion: v1
+      appVersion: 0.8.0
+      created: "2026-11-16T12:25:35.673580737Z"
+      deprecated: true
+      description: DEPRECATED A Helm chart for prometheus postgres-exporter
+      digest: 0e5c0258f6cd9fdddda7c910f87819a190363958e9a1f7f357bdb40a05cf8204
+      home: https://github.com/wrouesnel/postgres_exporter
+      keywords:
+        - postgresql
+        - prometheus
+        - exporter
+      name: prometheus-postgres-exporter
+      sources:
+        - https://github.com/wrouesnel/postgres_exporter
+      urls:
+        - https://helm.digit.org/digit3/backbone/prometheus-postgres-exporter/prometheus-postgres-exporter-3.0.0.tgz
+      version: 3.0.0
+  redis:
+    - apiVersion: v2
+      appVersion: 7.2.4
+      created: "2026-11-16T12:25:35.674077008Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: A Helm chart for Kubernetes
+      digest: 15cda97f23fa2bd8c4dc97aba7e899d7b442f72253296910ea70bcf9aa3d6fd6
+      name: redis
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/redis/redis-3.0.0.tgz
+      version: 3.0.0
   vault:
     - annotations:
         charts.openshift.io/name: HashiCorp Vault
@@ -134,7 +571,7 @@ entries:
         digit.org/upstream-chart-version: 0.29.1
       apiVersion: v2
       appVersion: 1.18.1
-      created: "2026-11-11T09:26:03.934196313Z"
+      created: "2026-11-16T12:25:35.677493562Z"
       description: Official HashiCorp Vault Chart
       digest: 400ba39c645a042a08f3bce1004357a73cb51b45908bd4851094bae9bb3672b5
       home: https://www.vaultproject.io
@@ -164,7 +601,7 @@ entries:
         digit.org/upstream-chart-version: 0.29.1
       apiVersion: v2
       appVersion: 1.18.1
-      created: "2026-11-11T09:26:03.931877996Z"
+      created: "2026-11-16T12:25:35.675465222Z"
       description: Official HashiCorp Vault Chart
       digest: 46848aa08022feb337239da699dae8aaa575a4d3b850a7915deec1b5a84e9ec3
       home: https://www.vaultproject.io
@@ -187,4 +624,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/backbone/vault/vault-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-11T09:26:03.914351404Z"
+generated: "2026-11-16T12:25:35.641382502Z"
