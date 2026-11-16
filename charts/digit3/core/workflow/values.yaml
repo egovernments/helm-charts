@@ -15,7 +15,7 @@ ingress:
 # protected; one no-auth GET endpoint is exposed as a Kong regex open-path.
 service:
   additionalAnnotations: |
-    gateway/open-paths: "~/workflow/v3/process/definition/[^/]+$"
+    gateway/open-paths: "~/workflow/v3/process/definition/[^/]+$ (GET)"
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:

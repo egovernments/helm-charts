@@ -11,7 +11,10 @@ ingress:
   namespace: egov
   enabled: true
   gateway: true
-  context: "individual"
+  # Service serves on /individuals (plural): live SERVER_CONTEXT_PATH=/individuals and
+  # the live Kong route is /individuals. This drives the ingress path, the derived
+  # context-path env, and the auto-emitted gateway/route-path - all must be plural.
+  context: "individuals"
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:

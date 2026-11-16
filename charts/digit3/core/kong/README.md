@@ -240,15 +240,16 @@ router a host match outranks path length), with `strip_path: false`.
 
 ### Before enabling
 
-- **Annotations are seeded from the live Kong config** (handoff section 7). Services that are
-  plain `protected` with route-path = `ingress.context` need nothing (route-path auto-emits).
-  Seeded here for the core services that need non-default routing: `account` (open main +
-  method-split protected writes), `localization`, `mdms-v2`, `workflow` (regex), `keycloak`
-  (open). Still to do, outside this chart: the studio-module services (separate release);
+- **Annotations are seeded from the live Kong config** (verified against digit-lts). All 22
+  `gateway: true` core services are covered: the 16 plain-`protected` ones need nothing
+  (route-path auto-emits from `ingress.context` and the default tier is protected), and the
+  reconciler-produced routes were diffed against live - they match for every core service.
+  Non-default routing is annotated per service: `account` (open main + method-split protected
+  writes), `localization`, `mdms-v2`, `workflow` (regex), `keycloak` (open). `individual`'s
+  `ingress.context` was corrected to `individuals` (plural) to match the live service.
+- **Still outside this chart/PR**: the studio-module services (separate release) and the
   services with no chart in this repo yet (calculator, license-certificate, metabase, pdf-v3,
-  schema-registry, ui-access-control, vc, inbox); and `individual`, whose route-path must be
-  `/individuals` (plural) while its `ingress.context` is `individual` - needs a context fix
-  rather than a conflicting annotation.
+  schema-registry, ui-access-control, vc, inbox) - add their annotations when those land.
 - **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
   optional/anonymous flag is confirmed; until then MIXED routes validate as protected
   (require a valid JWT), not as open.

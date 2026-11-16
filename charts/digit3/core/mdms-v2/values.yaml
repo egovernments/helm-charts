@@ -16,7 +16,7 @@ ingress:
 # are security-relevant - override per env, PR-reviewed here.
 service:
   additionalAnnotations: |
-    gateway/open-paths: "/mdms-v2/v1/_search,/mdms-v2/v2/_search"
+    gateway/open-paths: "/mdms-v2/v1/_search (POST,GET),/mdms-v2/v2/_search (POST,GET)"
 
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
