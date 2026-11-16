@@ -148,6 +148,112 @@ These are injected from `cluster-configs` resources and must exist in the target
 | `KONG_PG_USER` / `pg_user` | secret `db` / `username` |
 | `KONG_PG_PASSWORD` / `pg_password` | secret `db` / `password` |
 
+## Gateway-sync (declarative routing)
+
+Optional, disabled by default (`gatewaySync.enabled: false`). Makes Kong routing
+declarative and self-healing instead of hand-seeded via the Admin API: a reconciler
+keeps Kong services/routes/plugins in sync with **per-Service annotations** - the
+single source of truth. It is **tag-scoped** (`gateway-sync`) and only ever touches
+entities carrying that tag, so the core team's hand-made routes are never modified or
+deleted.
+
+There is deliberately **no central route list** in this chart. Each service declares
+its own routing via annotations on its backing Service (in that service's own chart),
+so routing is defaulted and overridden per service - no cross-service list to merge.
+
+**What it ships** (all gated on `gatewaySync.enabled`):
+
+| Object | Purpose |
+|---|---|
+| ConfigMap `kong-gateway-sync` | Global config (`config.json`) + the reconciler script |
+| CronJob `kong-gateway-sync` | Runs the reconciler every `gatewaySync.schedule` |
+| Job `kong-gateway-sync-init` | Helm `post-install,post-upgrade` hook; one reconcile on deploy |
+| ServiceAccount + ClusterRole/Binding | `get,list,watch` on `services` (discovery + host/port) |
+
+The reconciler is a pure-stdlib Python script (no pip/custom image - runs on any
+`python3 >= 3.8` image). Each pass: discovers annotated Services, builds the desired
+Kong entities (upstream host/port looked up from the **real** k8s Service, which fixes
+the hostname/plural/hyphen class of bugs), upserts them by name, and prunes tagged
+entities no longer desired (Service or annotation removed).
+
+### The annotation contract
+
+Put these on the backing **Service** (in that service's own chart). Default tier is
+PROTECTED; a path is OPEN or MIXED only if listed. `<prefix>` is `gatewaySync.annotationPrefix`
+(default `gateway`).
+
+| Annotation | Meaning |
+|---|---|
+| `gateway/route-path` | **Required** marker + main route path. For digit3 charts this is **auto-emitted** by the common Service template from `ingress.context` whenever `ingress.gateway: true` - no need to set it by hand (a `gateway: false` service that still needs a gateway route, like keycloak, sets it explicitly). |
+| `gateway/route-auth` | Main route tier: `open` (no auth), `mixed` (optional auth), or `protected` (full auth). Default `protected`. |
+| `gateway/open-paths` | Comma-separated no-auth paths - per-path exceptions (must out-match the main route) |
+| `gateway/mixed-paths` | Comma-separated optional-auth paths (no `keycloak-rbac`) |
+| `gateway/protected-paths` | Comma-separated full-auth paths - protect specific writes on an otherwise `open`/`mixed` main route |
+| `gateway/methods` | Optional HTTP method allowlist (default: all) |
+
+The main route's plugin stack comes from `route-auth`; `open-paths` / `mixed-paths` /
+`protected-paths` layer per-path exceptions on top (e.g. an `open` main route can still
+protect a specific write via `protected-paths`). Keycloak is the canonical `route-auth: open`
+case - it is the auth server, so `/keycloak` carries no auth plugins.
+
+Path entries support two extras:
+- **Per-path methods**: a `PATH (M1,M2)` suffix scopes that route to those HTTP methods,
+  e.g. `account` keeps `/accounts/v3/config` open for reads but protects writes with
+  `gateway/protected-paths: "/accounts/v3/config (POST,PUT)"`.
+- **Regex paths**: a value starting with `~` is a Kong regex route, created with a high
+  `regex_priority` (`gatewaySync.regexPriority`) so it out-matches the protected main
+  route, e.g. `gateway/open-paths: "~/workflow/v3/process/definition/[^/]+$"`.
+
+Because `gateway/route-path` comes for free from `ingress.context`, every `gateway: true`
+digit3 service is already discoverable; a service only adds `service.additionalAnnotations`
+when it has open or mixed paths:
+
+```yaml
+# in the account service chart's values.yaml, overridable per env
+service:
+  additionalAnnotations: |
+    gateway/open-paths: "/accounts/v3/config,/accounts/v3/canonical/config"
+```
+
+Every route is pinned to `gatewaySync.domain` as its host (required: in the traditional
+router a host match outranks path length), with `strip_path: false`.
+
+### Gateway-sync parameters
+
+| Key | Description | Default |
+|---|---|---|
+| `gatewaySync.enabled` | Create the reconciler + config | `false` |
+| `gatewaySync.domain` | Public API host every route matches on | `test-lts.digit.org` |
+| `gatewaySync.schedule` | CronJob cadence | `*/2 * * * *` |
+| `gatewaySync.runOnInstall` | Run one reconcile on deploy (hook Job) | `true` |
+| `gatewaySync.kongAdminUrl` | Kong Admin API | `http://kong-kong-admin.egov.svc.cluster.local:8001` |
+| `gatewaySync.keycloakBaseUrl` | Keycloak base URL (injected into auth plugins) | `http://keycloak.keycloak.svc.cluster.local:8080/keycloak` |
+| `gatewaySync.clientId` | keycloak-rbac client id | `auth-server` |
+| `gatewaySync.redis.host` / `.port` | token-revocation Redis | `redis.backbone.svc.cluster.local` / `6379` |
+| `gatewaySync.namespaces` | Namespaces discovered for annotated Services (empty = cluster-wide) | `[egov]` |
+| `gatewaySync.annotationPrefix` | Annotation key prefix | `gateway` |
+| `gatewaySync.tag` | Ownership tag (reconciler scope) | `gateway-sync` |
+| `gatewaySync.image.repository` / `.tag` | Reconciler image (any python3 image) | `python` / `3.12-slim` |
+| `gatewaySync.protectedPlugins` / `.mixedPlugins` | Plugin stack per tier | see values |
+| `gatewaySync.mixedAnonymousFlag` | `dynamic-jwt` delta for MIXED (optional-auth) | `{}` |
+| `gatewaySync.pluginConfigs` | Auth plugin configs (keycloak/redis/client injected) | see values |
+
+### Before enabling
+
+- **Annotations are seeded from the live Kong config** (verified against digit-lts). All 22
+  `gateway: true` core services are covered: the 16 plain-`protected` ones need nothing
+  (route-path auto-emits from `ingress.context` and the default tier is protected), and the
+  reconciler-produced routes were diffed against live - they match for every core service.
+  Non-default routing is annotated per service: `account` (open main + method-split protected
+  writes), `localization`, `mdms-v2`, `workflow` (regex), `keycloak` (open). `individual`'s
+  `ingress.context` was corrected to `individuals` (plural) to match the live service.
+- **Still outside this chart/PR**: the studio-module services (separate release) and the
+  services with no chart in this repo yet (calculator, license-certificate, metabase, pdf-v3,
+  schema-registry, ui-access-control, vc, inbox) - add their annotations when those land.
+- **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
+  optional/anonymous flag is confirmed; until then MIXED routes validate as protected
+  (require a valid JWT), not as open.
+
 ## Source
 
 - Chart: [`charts/digit3/core/kong`](https://github.com/egovernments/helm-charts/tree/master/charts/digit3/core/kong)
