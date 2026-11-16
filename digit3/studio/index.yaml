@@ -3,7 +3,7 @@ entries:
   digit-studio:
     - apiVersion: v2
       appVersion: studio-develop-dev-f9b92fd-2097
-      created: "2026-11-11T11:28:18.967736166Z"
+      created: "2026-11-16T15:54:11.463514724Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -17,7 +17,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: studio-develop-dev-f9b92fd-2097
-      created: "2026-11-11T11:28:18.966966332Z"
+      created: "2026-11-16T15:54:11.462730085Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -32,7 +32,21 @@ entries:
   public-service:
     - apiVersion: v2
       appVersion: studio-digit3-migration-45a5551
-      created: "2026-11-11T11:28:18.968968537Z"
+      created: "2026-11-16T15:54:11.465868512Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Public (citizen-facing) service application API for DIGIT Studio - workflow, billing and notification orchestration (v3 APIs)
+      digest: c7c10eb812767d87a9af88f32ebcdac8c7573360df90774972bd701261824fe7
+      name: public-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/public-service/public-service-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: studio-digit3-migration-45a5551
+      created: "2026-11-16T15:54:11.464670401Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -47,7 +61,21 @@ entries:
   public-service-init:
     - apiVersion: v2
       appVersion: studio-digit3-migration-884d1d0
-      created: "2026-11-11T11:28:18.970190583Z"
+      created: "2026-11-16T15:54:11.468827709Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Service-definition initializer for DIGIT Studio public-service (v1 APIs) - seeds and reconciles service/business-service configuration
+      digest: df3e178f5c6f18708acd2e5c7614529040b52f7d15a1d6f44d4368d375dc351b
+      name: public-service-init
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/public-service-init/public-service-init-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: studio-digit3-migration-884d1d0
+      created: "2026-11-16T15:54:11.467696759Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -62,7 +90,7 @@ entries:
   studio-calculator-service:
     - apiVersion: v2
       appVersion: java-migration-5bd1009
-      created: "2026-11-11T11:28:18.971649776Z"
+      created: "2026-11-16T15:54:11.469585468Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -77,7 +105,7 @@ entries:
   studio-hrms:
     - apiVersion: v2
       appVersion: develop-df51598
-      created: "2026-11-11T11:28:18.972720557Z"
+      created: "2026-11-16T15:54:11.470482496Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -92,7 +120,7 @@ entries:
   studio-individual:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-f283291
-      created: "2026-11-11T11:28:18.973723517Z"
+      created: "2026-11-16T15:54:11.471438052Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -107,7 +135,21 @@ entries:
   studio-pdf:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-353d7fd
-      created: "2026-11-11T11:28:18.974439Z"
+      created: "2026-11-16T15:54:11.473221383Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: PDF generation service for DIGIT Studio (Node.js)
+      digest: 118fe3d5dd2ad6f0cae6b98d9a65ceb43c51a1664768ff7b372f1d60a351cad4
+      name: studio-pdf
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-pdf/studio-pdf-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-353d7fd
+      created: "2026-11-16T15:54:11.472162431Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -122,7 +164,21 @@ entries:
   studio-pdf-helper-service:
     - apiVersion: v2
       appVersion: java-migration-5bd1009
-      created: "2026-11-11T11:28:18.975210967Z"
+      created: "2026-11-16T15:54:11.475133962Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: PDF config helper for DIGIT Studio (manages pdf-service configs via the GitHub App)
+      digest: c516eaa1ac7250ab945ffdd71669afa169dac808033cfb04d17ef062309c2013
+      name: studio-pdf-helper-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-pdf-helper-service/studio-pdf-helper-service-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: java-migration-5bd1009
+      created: "2026-11-16T15:54:11.474330855Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -137,7 +193,21 @@ entries:
   studio-service-request:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-44ee338
-      created: "2026-11-11T11:28:18.976024126Z"
+      created: "2026-11-16T15:54:11.476721428Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Service and service-definition registry for DIGIT Studio
+      digest: 3c647b6a38104f75151c764c0603c6c2c09927934e08b96c8e82ebe12cfa6bd6
+      name: studio-service-request
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/studio/studio-service-request/studio-service-request-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: studio-dynamic-dashboard-backend-44ee338
+      created: "2026-11-16T15:54:11.475926253Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -152,7 +222,7 @@ entries:
   studio-user-otp:
     - apiVersion: v2
       appVersion: studio-dynamic-dashboard-backend-76cd340
-      created: "2026-11-11T11:28:18.976762202Z"
+      created: "2026-11-16T15:54:11.477443473Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -164,4 +234,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/studio/studio-user-otp/studio-user-otp-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-11T11:28:18.966043571Z"
+generated: "2026-11-16T15:54:11.461813207Z"
