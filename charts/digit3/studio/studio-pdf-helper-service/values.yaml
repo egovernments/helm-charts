@@ -13,6 +13,15 @@ ingress:
   gateway: true
   context: "studio-pdf-helper-service"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added from ingress.context; the main route is protected,
+# with one no-auth GET endpoint exposed as a Kong regex open-path.
+service:
+  additionalAnnotations: |
+    gateway/route-auth: protected
+    gateway/open-paths: "~/studio-pdf-helper-service/_scanQR$ (GET)"
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
