@@ -1,6 +1,6 @@
 # ── Labels ──────────────────────────────────────────────────────────────────
 labels:
-  app: "user-preferences"
+  app: "digit-user-preferences-service"
   group: "cms"
 
 # ── Namespace ─────────────────────────────────────────────────────────────────
