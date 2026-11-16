@@ -1,0 +1,132 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "user-preferences"
+  group: "cms"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: true
+  context: "user-preference"
+
+# ── Init container (flyway DB migration) ──────────────────────────────────────
+# Adds to the standard migration env:
+#   FLYWAY_VALIDATE_ON_MIGRATE=false - V20260205120000__create_user_preference.sql was
+#     edited after it shipped, so databases migrated by an older -db image hold a different
+#     checksum and validation would block the pod in Init. (Alternative: a one-off
+#     `flyway repair`, after which validation can be switched back on.)
+#   FLYWAY_OUT_OF_ORDER / BASELINE_ON_MIGRATE / IGNORE_MIGRATION_PATTERNS - same as the
+#     compose migrators.
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "digit_user_preferences_service_schema"
+    image:
+      repository: "digit-user-preferences-service-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: db-url }
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-username }
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-password }
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: flyway-locations }
+        - name: "FLYWAY_IGNORE_MIGRATION_PATTERNS"
+          value: "*:missing"
+        - name: "FLYWAY_OUT_OF_ORDER"
+          value: "true"
+        - name: "FLYWAY_BASELINE_ON_MIGRATE"
+          value: "true"
+        - name: "SCHEMA_NAME"
+          value: "public"
+        - name: "FLYWAY_VALIDATE_ON_MIGRATE"
+          value: {{ index .Values "flyway-validate-on-migrate" | quote }}
+
+# ── Container ─────────────────────────────────────────────────────────────────
+# Image: the Spring Boot build. (Old 2.12 / master-* tags are the retired Go binary,
+# which cannot read the shared datasource env.)
+image:
+  repository: "digit-user-preferences-service"
+replicas: 1
+appType: "java"
+heap: "-Xmx192m -Xms192m"
+java-args: "-Dspring.profiles.active=monitoring"
+tracing-enabled: false
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+cpu_requests: "100m"
+memory_requests: "256Mi"
+cpu_limits: "300m"
+memory_limits: "512Mi"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+# The API is mounted under the context path per controller, but actuator /health stays at
+# the container ROOT. common's default probes prepend /<ingress.context>, so the probe
+# blocks are overridden in full here to hit /health.
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+  livenessProbe: |
+    httpGet:
+      path: {{ .Values.healthChecks.livenessProbePath | quote }}
+      port: {{ .Values.httpPort }}
+    initialDelaySeconds: 30
+    timeoutSeconds: 3
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe: |
+    httpGet:
+      path: {{ .Values.healthChecks.readinessProbePath | quote }}
+      port: {{ .Values.httpPort }}
+    initialDelaySeconds: 30
+    timeoutSeconds: 3
+    periodSeconds: 30
+    successThreshold: 1
+    failureThreshold: 5
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+context-path: ""                   # blank -> /<ingress.context>
+# DB_SSL_MODE is applied as a driver property, so it survives the injected datasource url.
+db-ssl-mode: "require"
+# Both endpoints key on the userId in the body; a citizen may only act on their own record.
+enforce-ownership: "true"
+# Roles that may act on another user's record within their tenant. EMPLOYEE is excluded
+# on purpose: HRMS gives it to every employee.
+privileged-roles: "SUPERUSER,ACCOUNT_ADMIN,SYSTEM"
+flyway-validate-on-migrate: "false"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+# Datasource url/username/password come from common's java block (egov-config + db secret).
+env: |
+  # ── Service ──────────────────────────────────────────────────────────────
+  - name: JAVA_OPTS
+    value: {{ index .Values "heap" | quote }}
+  - name: JAVA_ARGS
+    value: {{ index .Values "java-args" | quote }}
+  - name: SERVER_PORT
+    value: {{ .Values.httpPort | quote }}
+  - name: SERVER_CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+
+  # ── Database ─────────────────────────────────────────────────────────────
+  - name: DB_SSL_MODE
+    value: {{ index .Values "db-ssl-mode" | quote }}
+
+  # ── Access control ───────────────────────────────────────────────────────
+  - name: ENFORCE_OWNERSHIP
+    value: {{ index .Values "enforce-ownership" | quote }}
+  - name: PRIVILEGED_ROLES
+    value: {{ index .Values "privileged-roles" | quote }}

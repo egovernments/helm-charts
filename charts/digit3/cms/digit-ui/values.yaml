@@ -1,0 +1,99 @@
+# ── Labels ──────────────────────────────────────────────────────────────────
+labels:
+  app: "digit-ui"
+  group: "web"
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+namespace: egov
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# Static SPA on the plain nginx ingress (NOT through the gateway). Canonical UI URLs are
+# tenant-scoped: /<slug>/digit-ui/... (templates/tenant-ingress.yaml). Static assets are
+# still served from the tenantless /digit-ui/ prefix (templates/static-assets-ingress.yaml).
+ingress:
+  namespace: egov
+  enabled: true
+  gateway: false
+  context: "digit-ui"
+  # Old tenantless /digit-ui route (templates/ingress.yaml). Keep off.
+  legacyPathEnabled: false
+  # Optional migration redirect: /digit-ui/... -> /<slug>/digit-ui/... Blank = off.
+  defaultTenantSlug: ""
+
+# ── Container ─────────────────────────────────────────────────────────────────
+image:
+  repository: "digit-ui-esbuild"
+replicas: 1
+appType: ""                        # nginx static frontend (no shared java env)
+httpPort: 80
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# appType is "" so common's java resources template is empty; set explicitly.
+resources: |
+  requests:
+    cpu: "30m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+healthChecks:
+  enabled: true
+  livenessProbePath: "/"           # common prepends ingress.context -> /digit-ui/
+  readinessProbePath: "/"
+
+# ── globalConfigs.js ──────────────────────────────────────────────────────────
+# Served by this chart, same-origin (templates/globalconfigs-configmap.yaml), instead of
+# fetched from object storage. The SPA calls Digit.Utils.getConfig during boot, so a missing
+# file is a blank page with HTTP 200 that no probe sees. Every key the SPA reads must be in
+# files/globalConfigs.js.tpl. Set enabled: false to fall back to `custom-js-injection`.
+globalConfigs:
+  enabled: true
+  stateTenantId: "pg"
+  contextPath: "digit-ui"
+  gmapsApiKey: ""
+  finEnv: "dev"
+  centralInstanceEnabled: false
+  footerBWLogoURL: "/digit-ui/brand/digit-footer-bw.png"
+  footerLogoURL: "/digit-ui/brand/digit-footer.png"
+  digitHomeURL: "https://www.digit.org/"
+  assetS3Bucket: ""
+  configModuleName: "commonMDMSConfig"
+  localeRegion: "IN"
+  localeDefault: "en"
+  mdmsContext: "mdms-v2"
+  hrmsContext: "egov-hrms"
+  invalidEmployeeRoles: ["SYSTEM"]
+  pgrBoundaryHighestLevel: "District"
+  pgrBoundaryLowestLevel: "Ward"
+  boundaryType: "Ward"
+  hierarchyType: "ADMIN"
+  complaintHierarchyType: ""
+  mapCenter: {"lat": 20.5937, "lng": 78.9629}
+  mapTenant: "pg"
+  employeeModuleDenylist: ["IM"]
+  coreMobileConfigs: {"countryCode": "+91", "mobileNumberRegex": "^[6-9][0-9]{9}$"}
+  corePostalConfigs: {}
+  dashboardMetricsEnabled: false
+  citizenBannerEnabled: false
+
+# Legacy alternative to globalConfigs (needs globalConfigs.enabled: false): a ConfigMap
+# named digit-ui holding an nginx sub_filter that injects your own hosted script, e.g.
+#   custom-js-injection: |
+#     sub_filter.conf: "sub_filter '<head>' '<head><script src=https://<bucket>/globalConfigs.js></script>';"
+custom-js-injection: ""
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+# nginx default.conf + globalConfigs.js from the <name>-config ConfigMap. globalConfigs.js is
+# served from a directory mount (/host-nginx) so ConfigMap updates are picked up live.
+extraVolumes: |
+  - name: digit-ui-config
+    configMap:
+      name: {{ template "common.name" . }}-config
+extraVolumeMounts: |
+  - mountPath: /etc/nginx/conf.d/default.conf
+    name: digit-ui-config
+    subPath: default.conf
+  - mountPath: /host-nginx
+    name: digit-ui-config

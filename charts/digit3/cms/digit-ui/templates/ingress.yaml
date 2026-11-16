@@ -1,0 +1,5 @@
+{{- /* Legacy tenantless /digit-ui route. Off by default: canonical UI URLs are
+       tenant-scoped (tenant-ingress.yaml). */ -}}
+{{- if .Values.ingress.legacyPathEnabled -}}
+{{- template "common.ingress" . -}}
+{{- end -}}
