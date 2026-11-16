@@ -148,6 +148,77 @@ These are injected from `cluster-configs` resources and must exist in the target
 | `KONG_PG_USER` / `pg_user` | secret `db` / `username` |
 | `KONG_PG_PASSWORD` / `pg_password` | secret `db` / `password` |
 
+## Gateway-sync (declarative routing)
+
+Optional, disabled by default (`gatewaySync.enabled: false`). Makes Kong routing
+declarative and self-healing instead of hand-seeded via the Admin API: a reconciler
+keeps Kong services/routes/plugins in sync with the `gatewaySync.services` whitelist
+below. It is **tag-scoped** (`gateway-sync`) and only ever touches entities carrying
+that tag, so the core team's hand-made routes are never modified or deleted.
+
+**What it ships** (all gated on `gatewaySync.enabled`):
+
+| Object | Purpose |
+|---|---|
+| ConfigMap `kong-gateway-sync` | The whitelist/config (`config.json`) + the reconciler script |
+| CronJob `kong-gateway-sync` | Runs the reconciler every `gatewaySync.schedule` |
+| Job `kong-gateway-sync-init` | Helm `post-install,post-upgrade` hook; one reconcile on deploy |
+| ServiceAccount + ClusterRole/Binding | `get,list,watch` on `services` (to derive upstream host/port) |
+
+The reconciler is a pure-stdlib Python script (no pip/custom image - runs on any
+`python3 >= 3.8` image). Each pass: builds the desired Kong entities from the
+whitelist (upstream host/port looked up from the **real** k8s Service, which fixes
+the hostname/plural/hyphen class of bugs), upserts them by name, and prunes tagged
+entities no longer desired.
+
+**Three tiers** per service entry: `routePath` (protected, full auth stack),
+`openPaths` (no auth), `mixedPaths` (optional auth - no `keycloak-rbac`). Every route
+is pinned to `gatewaySync.domain` as its host (required: in the traditional router a
+host match outranks path length), with `strip_path: false`.
+
+```yaml
+# environments/<env>.yaml
+kong:
+  gatewaySync:
+    enabled: true
+    domain: "my-env.digit.org"
+    services:
+      - name: account              # k8s Service name
+        routePath: /accounts       # protected route
+        openPaths: [/accounts/v3/config]
+        mixedPaths: []
+```
+
+### Gateway-sync parameters
+
+| Key | Description | Default |
+|---|---|---|
+| `gatewaySync.enabled` | Create the reconciler + config | `false` |
+| `gatewaySync.domain` | Public API host every route matches on | `test-lts.digit.org` |
+| `gatewaySync.schedule` | CronJob cadence | `*/2 * * * *` |
+| `gatewaySync.runOnInstall` | Run one reconcile on deploy (hook Job) | `true` |
+| `gatewaySync.kongAdminUrl` | Kong Admin API | `http://kong-kong-admin.egov.svc.cluster.local:8001` |
+| `gatewaySync.keycloakBaseUrl` | Keycloak base URL (injected into auth plugins) | `http://keycloak.keycloak.svc.cluster.local:8080/keycloak` |
+| `gatewaySync.clientId` | keycloak-rbac client id | `auth-server` |
+| `gatewaySync.redis.host` / `.port` | token-revocation Redis | `redis.backbone.svc.cluster.local` / `6379` |
+| `gatewaySync.namespaces` | Namespaces searched for backing Services | `[egov]` |
+| `gatewaySync.tag` | Ownership tag (reconciler scope) | `gateway-sync` |
+| `gatewaySync.image.repository` / `.tag` | Reconciler image (any python3 image) | `python` / `3.12-slim` |
+| `gatewaySync.protectedPlugins` / `.mixedPlugins` | Plugin stack per tier | see values |
+| `gatewaySync.mixedAnonymousFlag` | `dynamic-jwt` delta for MIXED (optional-auth) | `{}` |
+| `gatewaySync.pluginConfigs` | Auth plugin configs (keycloak/redis/client injected) | see values |
+| `gatewaySync.services` | The route/whitelist model (one entry per backend) | `[]` |
+
+### Before enabling
+
+- **Populate `gatewaySync.services`** with the ops-supplied 2.x -> 3.0 **mapped** path
+  list. The legacy gateway whitelist predates the 3.0 modulith services and must not
+  be copied verbatim (e.g. localization moved to `/localization/v3/messages`, mdms to
+  `/mdms-v2/v1/mdms`; `/mdms-v2/v2/_search` is a new endpoint needing an open/not-open
+  decision).
+- **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
+  optional/anonymous flag is confirmed; until then MIXED routes validate as protected.
+
 ## Source
 
 - Chart: [`charts/digit3/core/kong`](https://github.com/egovernments/helm-charts/tree/master/charts/digit3/core/kong)
