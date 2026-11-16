@@ -2,7 +2,7 @@ apiVersion: v2
 name: studio-service-request
 description: Service and service-definition registry for DIGIT Studio
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: studio-dynamic-dashboard-backend-44ee338
 dependencies:
   - name: common
