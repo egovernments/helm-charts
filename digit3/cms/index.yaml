@@ -1,0 +1,134 @@
+apiVersion: v1
+entries:
+  configurator:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.186040593Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Configurator SPA (nginx) for CMS tenant onboarding and management
+      digest: 3942d9cedbab7a075cfffb983ed1cc72f4bdc2ba309027c28c1d0efa940486aa
+      name: configurator
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/configurator/configurator-3.0.0.tgz
+      version: 3.0.0
+  digit-config-service:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.186855666Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Schema-validated, tenant-scoped configuration store for notification template bindings, provider details and channel toggles
+      digest: a38d1cc3b6630cc4e5e645206514ee5f6505fdbc33c71c98ea99ce32d4cbb605
+      name: digit-config-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/digit-config-service/digit-config-service-3.0.0.tgz
+      version: 3.0.0
+  digit-ui:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.188368164Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: DIGIT citizen and employee web UI (nginx) for the Citizen Complaint Resolution System
+      digest: 426ab2859f28829615c8d9fc75357ecfc925f4ac8ecc8aa4de0a50ee043812e8
+      name: digit-ui
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/digit-ui/digit-ui-3.0.0.tgz
+      version: 3.0.0
+  digit-user-preferences-service:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.189230425Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: User preferences service storing notification consent and language settings
+      digest: fa0332d7a3d4a895ac4d4da935b05e0f1c6effb94809f280fe47ce2afd45e9ec
+      name: digit-user-preferences-service
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/digit-user-preferences-service/digit-user-preferences-service-3.0.0.tgz
+      version: 3.0.0
+  identity-bff:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.190265882Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Identity BFF - browser sign-in through Keycloak, tenant choice and the user-scoped DIGIT token
+      digest: 9c9002dc0b103fcc74f5c379789a1e03c2085d1bc34cd14420f807da88056d4a
+      name: identity-bff
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/identity-bff/identity-bff-3.0.0.tgz
+      version: 3.0.0
+  identity-bootstrap:
+    - apiVersion: v2
+      appVersion: 1.0.0
+      created: "2026-11-16T07:33:52.190547513Z"
+      description: Idempotent one-time setup for the CMS identity stack - Secrets, Keycloak's database and the BFF / PGR provisioner employees
+      digest: ed6cdffe4aa71a8cd6c36f2e75575df78683fe6422453b2babfcbeaec4d730be
+      name: identity-bootstrap
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/identity-bootstrap/identity-bootstrap-3.0.0.tgz
+      version: 3.0.0
+  novu-bridge:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.191436352Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Bridges CMS domain events from Kafka to Novu for SMS, email and WhatsApp notifications
+      digest: 1c6b35c89e3f852cede982fbd275512ef60fcfe7e50fe11a25911db3def8a2d5
+      name: novu-bridge
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/novu-bridge/novu-bridge-3.0.0.tgz
+      version: 3.0.0
+  pgr-services:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.192414572Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: Public Grievance Redressal (PGR) complaint service for the Citizen Complaint Resolution System
+      digest: e27de817d83ef8d44bf4a775eacaf58d4501f7def79110d11ef9b3cccc85f8d7
+      name: pgr-services
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/pgr-services/pgr-services-3.0.0.tgz
+      version: 3.0.0
+  xstate-chatbot:
+    - apiVersion: v2
+      appVersion: v2.20
+      created: "2026-11-16T07:33:52.193870066Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.1
+      description: WhatsApp chatbot (XState) for filing and tracking citizen complaints
+      digest: 7609acf9f080522ebe2739a3eac5e080ab5a366940288229fe4d1f26f0762089
+      name: xstate-chatbot
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/cms/xstate-chatbot/xstate-chatbot-3.0.0.tgz
+      version: 3.0.0
+generated: "2026-11-16T07:33:52.185123582Z"
