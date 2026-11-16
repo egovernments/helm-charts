@@ -1,7 +1,7 @@
 apiVersion: v2
 name: jenkins
 home: https://jenkins.io/
-version: 5.9.18
+version: 3.0.0
 appVersion: 2.555.1
 description: Open source continuous integration server. It supports multiple SCM tools
   including CVS, Subversion and Git. It can execute Apache Ant and Apache Maven-based
