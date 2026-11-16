@@ -11,6 +11,14 @@ ingress:
   gateway: true
   context: "boundary-management"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added by the common Service template from ingress.context;
+# the main route is protected (full auth stack).
+service:
+  additionalAnnotations: |
+    gateway/route-auth: protected
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 # migrate.sh loops over SCHEMA_NAME (comma separated) appending ?currentSchema=;
 # SCHEMA_NAME is mandatory - unset, the loop runs zero times and nothing migrates.

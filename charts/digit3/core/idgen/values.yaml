@@ -9,6 +9,14 @@ ingress:
   gateway: true
   context: "idgen"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added by the common Service template from ingress.context;
+# the main route is protected (full auth stack).
+service:
+  additionalAnnotations: |
+    gateway/route-auth: protected
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 # Runs with elevated flyway creds before the app starts; app-boot Flyway is off
 # (SPRING_FLYWAY_ENABLED=false). History table idgen_schema matches migrate.sh -table.

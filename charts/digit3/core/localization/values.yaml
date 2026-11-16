@@ -16,6 +16,7 @@ ingress:
 # are security-relevant - override per env, PR-reviewed here.
 service:
   additionalAnnotations: |
+    gateway/route-auth: protected
     gateway/open-paths: "/localization/messages/v1/_search (POST,GET)"
 
 # ── Init containers (flyway DB migration) ──────────────────────────────────────
