@@ -13,6 +13,15 @@ ingress:
   gateway: false
   context: "keycloak"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Keycloak IS the auth server, so its gateway route carries NO auth plugins
+# (route-auth: open). ingress.gateway is false here, so the common Service template
+# does not auto-emit gateway/route-path - it is set explicitly for the reconciler.
+service:
+  additionalAnnotations: |
+    gateway/route-path: keycloak
+    gateway/route-auth: open
+
 # ── Container ──────────────────────────────────────────────────────────────────
 image:
   repository: "keycloak"

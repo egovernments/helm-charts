@@ -9,6 +9,16 @@ ingress:
   gateway: true
   context: "mdms-v2"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added by the common Service template from ingress.context
+# (when ingress.gateway is true), so only the no-auth open-paths are set here. These
+# are security-relevant - override per env, PR-reviewed here.
+service:
+  additionalAnnotations: |
+    gateway/route-auth: protected
+    gateway/open-paths: "/mdms-v2/v1/_search (POST,GET),/mdms-v2/v2/_search (POST,GET)"
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:

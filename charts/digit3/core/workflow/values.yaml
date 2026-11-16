@@ -9,6 +9,15 @@ ingress:
   gateway: true
   context: "workflow"
 
+# ── Gateway-sync annotations ──────────────────────────────────────────────────
+# Declarative Kong routing, consumed by the kong chart's gateway-sync reconciler.
+# gateway/route-path is auto-added from ingress.context. The main /workflow route is
+# protected; one no-auth GET endpoint is exposed as a Kong regex open-path.
+service:
+  additionalAnnotations: |
+    gateway/route-auth: protected
+    gateway/open-paths: "~/workflow/v3/process/definition/[^/]+$ (GET)"
+
 # ── Init containers (flyway DB migration) ─────────────────────────────────────
 initContainers:
   dbMigration:
