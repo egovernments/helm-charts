@@ -20,3 +20,5 @@
 .idea/
 *.tmproj
 OWNERS
+__pycache__/
+*.pyc
