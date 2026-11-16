@@ -152,42 +152,56 @@ These are injected from `cluster-configs` resources and must exist in the target
 
 Optional, disabled by default (`gatewaySync.enabled: false`). Makes Kong routing
 declarative and self-healing instead of hand-seeded via the Admin API: a reconciler
-keeps Kong services/routes/plugins in sync with the `gatewaySync.services` whitelist
-below. It is **tag-scoped** (`gateway-sync`) and only ever touches entities carrying
-that tag, so the core team's hand-made routes are never modified or deleted.
+keeps Kong services/routes/plugins in sync with **per-Service annotations** - the
+single source of truth. It is **tag-scoped** (`gateway-sync`) and only ever touches
+entities carrying that tag, so the core team's hand-made routes are never modified or
+deleted.
+
+There is deliberately **no central route list** in this chart. Each service declares
+its own routing via annotations on its backing Service (in that service's own chart),
+so routing is defaulted and overridden per service - no cross-service list to merge.
 
 **What it ships** (all gated on `gatewaySync.enabled`):
 
 | Object | Purpose |
 |---|---|
-| ConfigMap `kong-gateway-sync` | The whitelist/config (`config.json`) + the reconciler script |
+| ConfigMap `kong-gateway-sync` | Global config (`config.json`) + the reconciler script |
 | CronJob `kong-gateway-sync` | Runs the reconciler every `gatewaySync.schedule` |
 | Job `kong-gateway-sync-init` | Helm `post-install,post-upgrade` hook; one reconcile on deploy |
-| ServiceAccount + ClusterRole/Binding | `get,list,watch` on `services` (to derive upstream host/port) |
+| ServiceAccount + ClusterRole/Binding | `get,list,watch` on `services` (discovery + host/port) |
 
 The reconciler is a pure-stdlib Python script (no pip/custom image - runs on any
-`python3 >= 3.8` image). Each pass: builds the desired Kong entities from the
-whitelist (upstream host/port looked up from the **real** k8s Service, which fixes
+`python3 >= 3.8` image). Each pass: discovers annotated Services, builds the desired
+Kong entities (upstream host/port looked up from the **real** k8s Service, which fixes
 the hostname/plural/hyphen class of bugs), upserts them by name, and prunes tagged
-entities no longer desired.
+entities no longer desired (Service or annotation removed).
 
-**Three tiers** per service entry: `routePath` (protected, full auth stack),
-`openPaths` (no auth), `mixedPaths` (optional auth - no `keycloak-rbac`). Every route
-is pinned to `gatewaySync.domain` as its host (required: in the traditional router a
-host match outranks path length), with `strip_path: false`.
+### The annotation contract
+
+Put these on the backing **Service** (in that service's own chart). Default tier is
+PROTECTED; a path is OPEN or MIXED only if listed. `<prefix>` is `gatewaySync.annotationPrefix`
+(default `gateway`).
+
+| Annotation | Meaning |
+|---|---|
+| `gateway/route-path` | **Required** marker + protected route path (e.g. `accounts` -> `/accounts`, full auth stack) |
+| `gateway/open-paths` | Comma-separated no-auth paths (must out-match the protected route) |
+| `gateway/mixed-paths` | Comma-separated optional-auth paths (no `keycloak-rbac`) |
+| `gateway/methods` | Optional HTTP method allowlist (default: all) |
 
 ```yaml
-# environments/<env>.yaml
-kong:
-  gatewaySync:
-    enabled: true
-    domain: "my-env.digit.org"
-    services:
-      - name: account              # k8s Service name
-        routePath: /accounts       # protected route
-        openPaths: [/accounts/v3/config]
-        mixedPaths: []
+# in the account service chart (templates/service.yaml), overridable per env
+apiVersion: v1
+kind: Service
+metadata:
+  name: account
+  annotations:
+    gateway/route-path: accounts
+    gateway/open-paths: /accounts/v3/config,/accounts/v3/canonical/config
 ```
+
+Every route is pinned to `gatewaySync.domain` as its host (required: in the traditional
+router a host match outranks path length), with `strip_path: false`.
 
 ### Gateway-sync parameters
 
@@ -201,23 +215,24 @@ kong:
 | `gatewaySync.keycloakBaseUrl` | Keycloak base URL (injected into auth plugins) | `http://keycloak.keycloak.svc.cluster.local:8080/keycloak` |
 | `gatewaySync.clientId` | keycloak-rbac client id | `auth-server` |
 | `gatewaySync.redis.host` / `.port` | token-revocation Redis | `redis.backbone.svc.cluster.local` / `6379` |
-| `gatewaySync.namespaces` | Namespaces searched for backing Services | `[egov]` |
+| `gatewaySync.namespaces` | Namespaces discovered for annotated Services (empty = cluster-wide) | `[egov]` |
+| `gatewaySync.annotationPrefix` | Annotation key prefix | `gateway` |
 | `gatewaySync.tag` | Ownership tag (reconciler scope) | `gateway-sync` |
 | `gatewaySync.image.repository` / `.tag` | Reconciler image (any python3 image) | `python` / `3.12-slim` |
 | `gatewaySync.protectedPlugins` / `.mixedPlugins` | Plugin stack per tier | see values |
 | `gatewaySync.mixedAnonymousFlag` | `dynamic-jwt` delta for MIXED (optional-auth) | `{}` |
 | `gatewaySync.pluginConfigs` | Auth plugin configs (keycloak/redis/client injected) | see values |
-| `gatewaySync.services` | The route/whitelist model (one entry per backend) | `[]` |
 
 ### Before enabling
 
-- **Populate `gatewaySync.services`** with the ops-supplied 2.x -> 3.0 **mapped** path
-  list. The legacy gateway whitelist predates the 3.0 modulith services and must not
-  be copied verbatim (e.g. localization moved to `/localization/v3/messages`, mdms to
-  `/mdms-v2/v1/mdms`; `/mdms-v2/v2/_search` is a new endpoint needing an open/not-open
-  decision).
+- **Add the `gateway/*` annotations to the digit3/core service charts** (separate PRs),
+  using the ops-supplied 2.x -> 3.0 **mapped** paths. The legacy gateway whitelist
+  predates the 3.0 modulith services and must not be copied verbatim (e.g. localization
+  moved to `/localization/v3/messages`, mdms to `/mdms-v2/v1/mdms`; `/mdms-v2/v2/_search`
+  is a new endpoint needing an open/not-open decision).
 - **Set `gatewaySync.mixedAnonymousFlag`** once the custom `dynamic-jwt` plugin's
-  optional/anonymous flag is confirmed; until then MIXED routes validate as protected.
+  optional/anonymous flag is confirmed; until then MIXED routes validate as protected
+  (require a valid JWT), not as open.
 
 ## Source
 

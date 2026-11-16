@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Gateway-sync reconciler. Keeps Kong routes/services/plugins in sync with the
-# declarative whitelist in config.json. Idempotent full pass; only ever touches
-# Kong entities carrying the managed tag. Pure stdlib (no pip install needed).
+# per-Service gateway annotations (the single source of truth) and prunes them when
+# a Service or annotation is removed. Idempotent full pass; only ever touches Kong
+# entities carrying the managed tag. Pure stdlib (no pip install needed).
 import json, os, re, ssl, sys, urllib.error, urllib.request
 
 CFG = json.load(open(os.environ.get("CONFIG_PATH", "/etc/gateway-sync/config.json")))
@@ -17,7 +18,11 @@ PC = CFG.get("pluginConfigs", {})
 MIXED_ANON = CFG.get("mixedAnonymousFlag", {})
 PROTECTED_PLUGINS = CFG.get("protectedPlugins", [])
 MIXED_PLUGINS = CFG.get("mixedPlugins", [])
-SERVICES = CFG.get("services", [])
+PREFIX = CFG.get("annotationPrefix", "gateway")
+A_ROUTE = "%s/route-path" % PREFIX
+A_OPEN = "%s/open-paths" % PREFIX
+A_MIXED = "%s/mixed-paths" % PREFIX
+A_METHODS = "%s/methods" % PREFIX
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
 
 K8S = "https://kubernetes.default.svc"
@@ -42,32 +47,20 @@ def k8s_get(path):
     return _req(K8S + path, headers={"Authorization": "Bearer " + TOKEN}, ctx=_K8S_CTX)
 
 
-def find_service(name):
-    # Look the Service up in the configured namespaces so host/port come from the
-    # real object (fixes the hostname/plural/hyphen class of bugs).
-    nss = NAMESPACES or [None]
-    for ns in nss:
-        path = ("/api/v1/namespaces/%s/services/%s" % (ns, name)) if ns else None
-        if path is None:
-            continue
-        try:
-            svc = k8s_get(path)
-            port = DEF_PORT
-            ports = svc.get("spec", {}).get("ports") or []
-            if ports:
-                port = int(ports[0].get("port", DEF_PORT))
-            return ns, port
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                continue
-            raise
-    return None, None
+def list_services():
+    # Discover Services across the target namespaces (or cluster-wide if none set).
+    items = []
+    if NAMESPACES:
+        for ns in NAMESPACES:
+            items += k8s_get("/api/v1/namespaces/%s/services" % ns).get("items", [])
+    else:
+        items += k8s_get("/api/v1/services").get("items", [])
+    return items
 
 
 def kong(method, path, body=None):
-    url = ADMIN + path
     try:
-        return _req(url, method=method, body=body)
+        return _req(ADMIN + path, method=method, body=body)
     except urllib.error.HTTPError as e:
         if method == "GET" and e.code == 404:
             return None
@@ -88,6 +81,14 @@ def slug(path):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", path.lower())).strip("-") or "root"
 
 
+def _paths(value):
+    return [p.strip() for p in (value or "").split(",") if p.strip()]
+
+
+def _withslash(p):
+    return p if p.startswith("/") else "/" + p
+
+
 def plugin_config(name, mixed=False):
     cfg = dict(PC.get(name, {}))
     if name in ("dynamic-jwt", "keycloak-rbac"):
@@ -105,43 +106,50 @@ def plugin_config(name, mixed=False):
 
 
 def desired():
-    # Returns (services{name:body}, routes{name:body}, route_plugins{route:[names]})
+    # Build desired Kong entities from Services annotated with <prefix>/route-path.
+    # Upstream host/port come from the Service itself (fixes the hostname/plural/hyphen
+    # class of bugs). Returns (services{name:body}, routes{name:body}, route_plugins{}).
     svcs, routes, rplugins = {}, {}, {}
-    for s in SERVICES:
-        name = s["name"]
-        ns, port = find_service(name)
-        if ns is None:
-            sys.stderr.write("skip %s: no k8s Service in %s\n" % (name, NAMESPACES))
+    for s in list_services():
+        meta = s.get("metadata", {})
+        ann = meta.get("annotations") or {}
+        if A_ROUTE not in ann:
             continue
+        name = meta["name"]
+        ns = meta["namespace"]
+        port = DEF_PORT
+        ports = s.get("spec", {}).get("ports") or []
+        if ports:
+            port = int(ports[0].get("port", DEF_PORT))
         host = "%s.%s.svc.cluster.local" % (name, ns)
         svcs[name] = {
             "name": name, "host": host, "port": port, "protocol": "http",
             "path": None, "retries": 5, "connect_timeout": 60000, "tags": [TAG],
         }
-        methods = s.get("methods")
-        rp = s.get("routePath")
+        methods = _paths(ann.get(A_METHODS)) or None
+        rp = ann.get(A_ROUTE, "").strip()
         if rp:
             rn = "%s-route" % name
             routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [rp], "hosts": [DOMAIN],
-                "methods": methods, "strip_path": False, "path_handling": "v0",
-                "protocols": ["http", "https"], "tags": [TAG],
+                "name": rn, "service": {"name": name}, "paths": [_withslash(rp)],
+                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
+                "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
             }
             rplugins[rn] = list(PROTECTED_PLUGINS)
-        for p in s.get("openPaths", []) or []:
+        for p in _paths(ann.get(A_OPEN)):
             rn = "%s-%s-public-route" % (name, slug(p))
             routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [p], "hosts": [DOMAIN],
-                "methods": s.get("openMethods") or methods, "strip_path": False,
+                "name": rn, "service": {"name": name}, "paths": [_withslash(p)],
+                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
                 "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
             }
             rplugins[rn] = []
-        for p in s.get("mixedPaths", []) or []:
+        for p in _paths(ann.get(A_MIXED)):
             rn = "%s-%s-mixed-route" % (name, slug(p))
             routes[rn] = {
-                "name": rn, "service": {"name": name}, "paths": [p], "hosts": [DOMAIN],
-                "methods": methods, "strip_path": False, "path_handling": "v0",
-                "protocols": ["http", "https"], "tags": [TAG],
+                "name": rn, "service": {"name": name}, "paths": [_withslash(p)],
+                "hosts": [DOMAIN], "methods": methods, "strip_path": False,
+                "path_handling": "v0", "protocols": ["http", "https"], "tags": [TAG],
             }
             rplugins[rn] = list(MIXED_PLUGINS)
     return svcs, routes, rplugins

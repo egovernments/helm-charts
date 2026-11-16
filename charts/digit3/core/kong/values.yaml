@@ -1420,16 +1420,13 @@ gatewaySync:
       logout_path_segment: logout
       redis_database: 0
       redis_timeout: 1000
-  # Route/whitelist model. One entry per backend Service:
-  #   name:       k8s Service name (upstream host/port derived from it - gotcha #6)
-  #   routePath:  protected route path (full auth)
-  #   openPaths:  no-auth exact paths (must out-match routePath - gotchas #1,#2)
-  #   mixedPaths: optional-auth paths
-  #   methods:    optional HTTP method allowlist (default: all)
-  # Seed with the ops-supplied 2.x->3.0 mapped list before enabling (gotcha #7).
-  # Example:
-  #   - name: account
-  #     routePath: /accounts
-  #     openPaths: [/accounts/v3/config]
-  #     mixedPaths: []
-  services: []
+  # Routing is annotation-driven: the reconciler discovers Services carrying
+  # <annotationPrefix>/route-path and reads the contract from their annotations.
+  # There is deliberately NO central services[] list here - each service chart
+  # declares its own routing, which is the single source of truth. Annotations
+  # (put on the backing Service in that service's own chart):
+  #   gateway/route-path:  accounts                        # protected route -> /accounts
+  #   gateway/open-paths:  /accounts/v3/config,/...        # no-auth (comma-separated)
+  #   gateway/mixed-paths: ""                              # optional-auth (comma-separated)
+  #   gateway/methods:     ""                              # optional HTTP method allowlist
+  annotationPrefix: "gateway"
