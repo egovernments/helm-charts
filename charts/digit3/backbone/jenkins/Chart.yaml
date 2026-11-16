@@ -1,0 +1,21 @@
+apiVersion: v2
+name: jenkins
+home: https://jenkins.io/
+version: 5.9.18
+appVersion: 2.555.1
+description: Open source continuous integration server. It supports multiple SCM tools
+  including CVS, Subversion and Git. It can execute Apache Ant and Apache Maven-based
+  projects as well as arbitrary scripts.
+sources:
+- https://github.com/jenkinsci/jenkins
+- https://github.com/jenkinsci/helm-charts
+- https://github.com/jenkinsci/configuration-as-code-plugin
+maintainers:
+- name: jenkinsci
+  url: https://github.com/jenkinsci/helm-charts
+icon: https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png
+annotations:
+  digit.org/upstream-chart: jenkinsci/jenkins
+  digit.org/upstream-chart-version: "5.9.18"
+  digit.org/upstream-app-version: "2.555.1"
+  digit.org/source: "egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/jenkins (DIGIT-modified)"
