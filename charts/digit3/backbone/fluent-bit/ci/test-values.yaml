@@ -1,7 +1,0 @@
-# Values CI needs to render this chart standalone (normally from the environment's cluster-configs).
-cluster-configs:
-  configmaps:
-    egov-config:
-      data:
-        kafka-brokers: kafka-kraft.backbone:9092
-        kafka-infra-brokers: kafka-kraft.backbone:9092
