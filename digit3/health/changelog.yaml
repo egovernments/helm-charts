@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-17"
+    ref: "PR-131"
+    title: "chore(health): bump common dependency 3.1.1 -> 3.1.2"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "beneficiary-idgen"
+        from: "3.0.0"
+        to: "3.0.1"
+      - name: "health-service-request"
+        from: "3.0.0"
+        to: "3.0.1"
   - date: "2026-11-11"
     ref: "PR-116"
     title: "feat(health): onboard beneficiary-idgen and health-service-request"
