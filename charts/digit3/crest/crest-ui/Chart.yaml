@@ -2,7 +2,7 @@ apiVersion: v2
 name: crest-ui
 description: Worker and console web apps for CREST
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "main-e67932a"
 dependencies:
   - name: common
