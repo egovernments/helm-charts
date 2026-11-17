@@ -2,7 +2,15 @@ apiVersion: v1
 entries:
   common:
     - apiVersion: v1
-      created: "2026-10-29T12:25:10.967393427Z"
+      created: "2026-11-17T08:34:04.919632237Z"
+      description: base chartbuilding components and helpers
+      digest: aeed870d2e2bce69cc22a716cf7c0a4b16488d74ce3d786b3f0be0cf6ca38904
+      name: common
+      urls:
+        - https://helm.digit.org/digit3/common/common/common-3.1.2.tgz
+      version: 3.1.2
+    - apiVersion: v1
+      created: "2026-11-17T08:34:04.918838493Z"
       description: base chartbuilding components and helpers
       digest: 86dfcf73288ae3776866b365b8e0ecc9cccff00fc678c82fa5191dfe8f050165
       name: common
@@ -11,7 +19,7 @@ entries:
       version: 3.1.1
     - apiVersion: v1
       appVersion: 1.0.0
-      created: "2026-10-29T12:25:10.966611532Z"
+      created: "2026-11-17T08:34:04.918372487Z"
       description: base chartbuilding components and helpers
       digest: 0c51c1df99c7ab9a412d895dbbceb50d85f9cce4ddf83db01a063e9f48e8340e
       name: common
@@ -20,11 +28,11 @@ entries:
       version: 3.1.0
     - apiVersion: v1
       appVersion: 1.0.0
-      created: "2026-10-29T12:25:10.965166136Z"
+      created: "2026-11-17T08:34:04.917891983Z"
       description: base chartbuilding components and helpers
       digest: 8f33d7a12c2ec5a655dcfc1b5301da87fa07c9e8da28f25e0e9b0637a67ce766
       name: common
       urls:
         - https://helm.digit.org/digit3/common/common/common-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-29T12:25:10.964107693Z"
+generated: "2026-11-17T08:34:04.917244536Z"
