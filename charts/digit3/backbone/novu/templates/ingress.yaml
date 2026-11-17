@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}-ingress
+  name: {{ .Values.ingress.name | default "novu-ingress" }}
   namespace: {{ include "novu.namespace" . }}
   {{- with .Values.ingress.annotations }}
   annotations:
