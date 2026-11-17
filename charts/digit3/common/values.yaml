@@ -72,6 +72,8 @@ initContainers:
             configMapKeyRef:
                 name: egov-config
                 key: flyway-locations
+    # Appended after env; lets a service add db-migration env (e.g. FLYWAY_IGNORE_MIGRATION_PATTERNS) without redefining the whole block.
+    extraEnv: ""
 
   gitSync:
     enabled: false

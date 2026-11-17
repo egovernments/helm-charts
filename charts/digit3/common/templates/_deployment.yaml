@@ -88,9 +88,14 @@ spec:
         image: {{ template "common.image" (dict "Values" $.Values "appVersion" $.Chart.AppVersion "repository" .image.repository "tag" .image.tag) }}
         imagePullPolicy: {{ .image.pullPolicy }}
       {{- end }}
-        {{- if .Values.initContainers.dbMigration.env }}
+        {{- if or .Values.initContainers.dbMigration.env .Values.initContainers.dbMigration.extraEnv }}
         env:
-          {{- tpl  .Values.initContainers.dbMigration.env . | nindent 12 }}
+          {{- with .Values.initContainers.dbMigration.env }}
+          {{- tpl . $ | nindent 12 }}
+          {{- end }}
+          {{- with .Values.initContainers.dbMigration.extraEnv }}
+          {{- tpl . $ | nindent 12 }}
+          {{- end }}
         {{- end }}
       {{- end }}
       {{- if .Values.initContainers.gitSync.enabled }}
