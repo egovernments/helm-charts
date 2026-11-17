@@ -2,7 +2,7 @@ apiVersion: v2
 name: digit-ui
 description: DIGIT citizen and employee web UI (nginx) for the Citizen Complaint Resolution System
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "v2.20"
 dependencies:
   - name: common

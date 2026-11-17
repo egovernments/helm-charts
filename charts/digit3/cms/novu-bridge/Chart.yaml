@@ -2,7 +2,7 @@ apiVersion: v2
 name: novu-bridge
 description: Bridges CMS domain events from Kafka to Novu for SMS, email and WhatsApp notifications
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "v2.20"
 dependencies:
   - name: common

@@ -2,7 +2,7 @@ apiVersion: v2
 name: xstate-chatbot
 description: WhatsApp chatbot (XState) for filing and tracking citizen complaints
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "v2.20"
 dependencies:
   - name: common
