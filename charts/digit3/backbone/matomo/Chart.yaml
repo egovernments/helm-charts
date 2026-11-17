@@ -24,31 +24,30 @@ annotations:
 apiVersion: v2
 appVersion: 5.3.2
 dependencies:
-- condition: mariadb.enabled
-  name: mariadb
-  repository: "file://upstream/mariadb"
-  version: 22.0.0
-- name: common
-  repository: "file://upstream/common"
-  tags:
-  - bitnami-common
-  version: 2.41.0
-description: Matomo, formerly known as Piwik, is a real time web analytics program.
-  It provides detailed reports on website visitors.
+  - condition: mariadb.enabled
+    name: mariadb
+    repository: "file://upstream/mariadb"
+    version: 22.0.0
+  - name: common
+    repository: "file://upstream/common"
+    tags:
+      - bitnami-common
+    version: 2.41.0
+description: Matomo, formerly known as Piwik, is a real time web analytics program. It provides detailed reports on website visitors.
 home: https://bitnami.com
 icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/matomo/img/matomo-stack-220x234.png
 keywords:
-- matomo
-- analytics
-- http
-- web
-- application
-- php
+  - matomo
+  - analytics
+  - http
+  - web
+  - application
+  - php
 maintainers:
-- name: Broadcom, Inc. All Rights Reserved.
-  url: https://github.com/bitnami/charts
+  - name: Broadcom, Inc. All Rights Reserved.
+    url: https://github.com/bitnami/charts
 name: matomo
 sources:
-- https://github.com/bitnami/charts/tree/main/bitnami/matomo
+  - https://github.com/bitnami/charts/tree/main/bitnami/matomo
 # digit3 3.x convention (seed); not the upstream chart version (see annotations).
-version: 3.0.0
+version: 3.1.0
