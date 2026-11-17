@@ -2,7 +2,7 @@ apiVersion: v2
 name: public-service-init
 description: Service-definition initializer for DIGIT Studio public-service (v1 APIs) - seeds and reconciles service/business-service configuration
 type: application
-version: 3.0.1
+version: 3.0.2
 appVersion: studio-digit3-migration-884d1d0
 dependencies:
   - name: common

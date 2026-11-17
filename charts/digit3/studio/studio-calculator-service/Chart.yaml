@@ -2,7 +2,7 @@ apiVersion: v2
 name: studio-calculator-service
 description: Pluggable calculation/plugin service for DIGIT Studio public services
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: java-migration-5bd1009
 dependencies:
   - name: common

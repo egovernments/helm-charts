@@ -2,7 +2,7 @@ apiVersion: v2
 name: studio-hrms
 description: HRMS (employee management) for DIGIT Studio
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: develop-df51598
 dependencies:
   - name: common

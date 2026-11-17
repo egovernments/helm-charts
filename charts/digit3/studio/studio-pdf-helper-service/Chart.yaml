@@ -2,7 +2,7 @@ apiVersion: v2
 name: studio-pdf-helper-service
 description: PDF config helper for DIGIT Studio (manages pdf-service configs via the GitHub App)
 type: application
-version: 3.0.1
+version: 3.0.2
 appVersion: java-migration-5bd1009
 dependencies:
   - name: common

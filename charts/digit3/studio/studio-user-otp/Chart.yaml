@@ -2,7 +2,7 @@ apiVersion: v2
 name: studio-user-otp
 description: User OTP service for DIGIT Studio
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: studio-dynamic-dashboard-backend-76cd340
 dependencies:
   - name: common
