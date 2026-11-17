@@ -10,7 +10,7 @@ entries:
         digit.org/upstream-chart-version: 1.13.3
       apiVersion: v1
       appVersion: v1.13.3
-      created: "2026-11-17T08:45:08.453615449Z"
+      created: "2026-11-17T11:16:34.416060238Z"
       description: A Helm chart for cert-manager
       digest: 4af396590b6def0cc5968b9117bc51991288d6c8aca778ac81fa115bd8b4e2f5
       home: https://github.com/cert-manager/cert-manager
@@ -34,7 +34,7 @@ entries:
   elasticsearch-data:
     - apiVersion: v1
       appVersion: "1.0"
-      created: "2026-11-17T08:45:08.454165047Z"
+      created: "2026-11-17T11:16:34.41668037Z"
       description: A Helm chart for Confluent Kafka on Kubernetes
       digest: f6349b9d50075ca435cd74fa499fa071c3f09cdc327f5dee8a301e4cf53cc8ea
       name: elasticsearch-data
@@ -44,7 +44,7 @@ entries:
   elasticsearch-master:
     - apiVersion: v1
       appVersion: "1.0"
-      created: "2026-11-17T08:45:08.454674612Z"
+      created: "2026-11-17T11:16:34.417231188Z"
       description: A Helm chart for Confluent Kafka on Kubernetes
       digest: eb96ca4840239e6c04fbee73dca5d91c6ed8fe74fe9935963016987f46b7f07d
       name: elasticsearch-master
@@ -54,7 +54,7 @@ entries:
   es-curator:
     - apiVersion: v2
       appVersion: 8.0.15
-      created: "2026-11-17T08:45:08.45623728Z"
+      created: "2026-11-17T11:16:34.419277513Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -68,7 +68,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: 8.0.15
-      created: "2026-11-17T08:45:08.45540603Z"
+      created: "2026-11-17T11:16:34.418138431Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -83,7 +83,7 @@ entries:
   fluent-bit:
     - apiVersion: v2
       appVersion: 1.16.0
-      created: "2026-11-17T08:45:08.45684751Z"
+      created: "2026-11-17T11:16:34.419930765Z"
       description: A Helm chart for Kubernetes
       digest: c8e3f3ce1fd6215b476b6acf8abb858a64d7ecadb330b5e1cd91ef42fbbdd5e0
       name: fluent-bit
@@ -102,7 +102,7 @@ entries:
         digit.org/upstream-chart-version: 4.12.1
       apiVersion: v2
       appVersion: 1.12.1
-      created: "2026-11-17T08:45:08.459461988Z"
+      created: "2026-11-17T11:16:34.42206991Z"
       description: Ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer
       digest: 10be923a3658483e088a38c4f7ea9048924968678cfc02e12977e717a85624dd
       home: https://github.com/kubernetes/ingress-nginx
@@ -130,7 +130,7 @@ entries:
         digit.org/upstream-chart-version: 5.9.18
       apiVersion: v2
       appVersion: 2.555.1
-      created: "2026-11-17T08:45:08.461540935Z"
+      created: "2026-11-17T11:16:34.424229225Z"
       description: Open source continuous integration server. It supports multiple SCM tools including CVS, Subversion and Git. It can execute Apache Ant and Apache Maven-based projects as well as arbitrary scripts.
       digest: ba86b2b72e39635ee0dbc26a0d10b16abeee0e50cecf080e091c2d20736140d1
       home: https://jenkins.io/
@@ -154,7 +154,7 @@ entries:
         digit.org/upstream-chart-version: unpublished (built from source by chartpress)
       apiVersion: v2
       appVersion: 4.1.4
-      created: "2026-11-17T08:45:08.464297041Z"
+      created: "2026-11-17T11:16:34.426996814Z"
       description: Multi-user Jupyter installation
       digest: 8f89c2d1057703ce5dd29d0f0e2b83b96546816005a5cb329b259043a5a2f7f2
       home: https://z2jh.jupyter.org
@@ -178,7 +178,7 @@ entries:
   kafka-connect:
     - apiVersion: v2
       appVersion: latest
-      created: "2026-11-17T08:45:08.465597605Z"
+      created: "2026-11-17T11:16:34.428430319Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -192,7 +192,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: latest
-      created: "2026-11-17T08:45:08.464965943Z"
+      created: "2026-11-17T11:16:34.427734964Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -207,7 +207,7 @@ entries:
   kafka-connect-restart-tasks:
     - apiVersion: v2
       appVersion: 1-master-02d88e7f
-      created: "2026-11-17T08:45:08.466720609Z"
+      created: "2026-11-17T11:16:34.42972216Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -221,7 +221,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: 1-master-02d88e7f
-      created: "2026-11-17T08:45:08.46614766Z"
+      created: "2026-11-17T11:16:34.429083541Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -254,7 +254,7 @@ entries:
         licenses: Apache-2.0
       apiVersion: v2
       appVersion: 3.6.1
-      created: "2026-11-17T08:45:08.470736056Z"
+      created: "2026-11-17T11:16:34.433957046Z"
       description: Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
       digest: a7277567eb8ba493a2ac33c9fbcd87d8f1d7395aedb14e7e6a6f9ad586303da8
       home: https://bitnami.com
@@ -282,7 +282,7 @@ entries:
         digit.org/upstream-chart-version: 8.5.1
       apiVersion: v1
       appVersion: 8.5.1
-      created: "2026-11-17T08:45:08.471297251Z"
+      created: "2026-11-17T11:16:34.434568384Z"
       description: Official Elastic helm chart for Kibana
       digest: 2b03dbd00cfab858dd5f879bd2c485c90ae6bde23f070c926785ed843c8312a3
       home: https://github.com/elastic/helm-charts
@@ -315,7 +315,56 @@ entries:
         tanzuCategory: application
       apiVersion: v2
       appVersion: 5.3.2
-      created: "2026-11-17T08:45:08.477114999Z"
+      created: "2026-11-17T11:16:34.447689515Z"
+      dependencies:
+        - condition: mariadb.enabled
+          name: mariadb
+          repository: file://upstream/mariadb
+          version: 22.0.0
+        - name: common
+          repository: file://upstream/common
+          tags:
+            - bitnami-common
+          version: 2.41.0
+      description: Matomo, formerly known as Piwik, is a real time web analytics program. It provides detailed reports on website visitors.
+      digest: 03f1c62c9ce0a5fd12a69fc2bb601dc473017b2f7aeaacaabad1eb04dfe290b4
+      home: https://bitnami.com
+      icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/matomo/img/matomo-stack-220x234.png
+      keywords:
+        - matomo
+        - analytics
+        - http
+        - web
+        - application
+        - php
+      maintainers:
+        - name: Broadcom, Inc. All Rights Reserved.
+          url: https://github.com/bitnami/charts
+      name: matomo
+      sources:
+        - https://github.com/bitnami/charts/tree/main/bitnami/matomo
+      urls:
+        - https://helm.digit.org/digit3/backbone/matomo/matomo-3.1.0.tgz
+      version: 3.1.0
+    - annotations:
+        category: Analytics
+        digit.org/upstream-app-version: 5.3.2
+        digit.org/upstream-chart: bitnami/matomo
+        digit.org/upstream-chart-version: 11.0.0
+        images: |
+          - name: apache-exporter
+            image: docker.io/egovio/apache-exporter:1.0.10-debian-12-r55
+          - name: matomo
+            image: docker.io/egovio/matomo:5.3.2-debian-12-r12
+          - name: os-shell
+            image: docker.io/egovio/os-shell:12-debian-12-r50
+          - name: mariadb
+            image: docker.io/egovio/mariadb:12.0.2-debian-12-r0
+        licenses: Apache-2.0
+        tanzuCategory: application
+      apiVersion: v2
+      appVersion: 5.3.2
+      created: "2026-11-17T11:16:34.441314042Z"
       dependencies:
         - condition: mariadb.enabled
           name: mariadb
@@ -354,7 +403,34 @@ entries:
         digit.org/upstream-chart-version: 5.4.0
       apiVersion: v1
       appVersion: RELEASE.2024-12-18T13-15-44Z
-      created: "2026-11-17T08:45:08.478161Z"
+      created: "2026-11-17T11:16:34.450047889Z"
+      description: High Performance Object Storage
+      digest: 8874f444ed5031533436fcfaf0d8a075ab82fdf5ff952d4aed7c1d58ee7a6b47
+      home: https://min.io
+      icon: https://min.io/resources/img/logo/MINIO_wordmark.png
+      keywords:
+        - minio
+        - storage
+        - object-storage
+        - s3
+        - cluster
+      maintainers:
+        - email: dev@minio.io
+          name: MinIO, Inc
+      name: minio
+      sources:
+        - https://github.com/minio/minio
+      urls:
+        - https://helm.digit.org/digit3/backbone/minio/minio-3.1.0.tgz
+      version: 3.1.0
+    - annotations:
+        digit.org/source: egovernments/DIGIT-DevOps master deploy-as-code/helm/charts/backbone-services/minio (DIGIT-modified)
+        digit.org/upstream-app-version: RELEASE.2024-12-18T13-15-44Z
+        digit.org/upstream-chart: minio/minio
+        digit.org/upstream-chart-version: 5.4.0
+      apiVersion: v1
+      appVersion: RELEASE.2024-12-18T13-15-44Z
+      created: "2026-11-17T11:16:34.448878912Z"
       description: High Performance Object Storage
       digest: 3baeda4ed48cf6f4ae09c1fd684c13fa4bb557539f369e48ab7bd11629726d06
       home: https://min.io
@@ -377,7 +453,21 @@ entries:
   novu:
     - apiVersion: v2
       appVersion: 2.3.0
-      created: "2026-11-17T08:45:08.480437172Z"
+      created: "2026-11-17T11:16:34.453889032Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Novu community deployment
+      digest: 46fcd98343c7ca1a0a992a28de1eaca4aee6a40d1f579897abae0cb579cb1d67
+      name: novu
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/backbone/novu/novu-3.1.0.tgz
+      version: 3.1.0
+    - apiVersion: v2
+      appVersion: 2.3.0
+      created: "2026-11-17T11:16:34.452633876Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -391,7 +481,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: 2.3.0
-      created: "2026-11-17T08:45:08.479318359Z"
+      created: "2026-11-17T11:16:34.451323186Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -406,7 +496,7 @@ entries:
   oauth2-proxy:
     - apiVersion: v2
       appVersion: v5.1.0
-      created: "2026-11-17T08:45:08.481695037Z"
+      created: "2026-11-17T11:16:34.45604326Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -420,7 +510,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: v5.1.0
-      created: "2026-11-17T08:45:08.481063486Z"
+      created: "2026-11-17T11:16:34.45462622Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -435,7 +525,7 @@ entries:
   pgadmin:
     - apiVersion: v2
       appVersion: v4.7.7
-      created: "2026-11-17T08:45:08.483973973Z"
+      created: "2026-11-17T11:16:34.457716084Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -449,7 +539,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: v4.7.7
-      created: "2026-11-17T08:45:08.482380252Z"
+      created: "2026-11-17T11:16:34.456930403Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -464,7 +554,7 @@ entries:
   playground:
     - apiVersion: v2
       appVersion: "1.3"
-      created: "2026-11-17T08:45:08.485233218Z"
+      created: "2026-11-17T11:16:34.458945762Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -478,7 +568,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: "1.3"
-      created: "2026-11-17T08:45:08.484643425Z"
+      created: "2026-11-17T11:16:34.458327293Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -493,7 +583,7 @@ entries:
   postgres:
     - apiVersion: v2
       appVersion: "14"
-      created: "2026-11-17T08:45:08.486458736Z"
+      created: "2026-11-17T11:16:34.460293347Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -507,7 +597,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: "14"
-      created: "2026-11-17T08:45:08.485853955Z"
+      created: "2026-11-17T11:16:34.45960277Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -527,7 +617,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-17T08:45:08.491655141Z"
+      created: "2026-11-17T11:16:34.465859413Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: 10be6a74602c13d5d8c875a12bf3667471155713854cf4ae2f3f091204db089b
       home: https://cloudnative-pg.io
@@ -552,7 +642,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-17T08:45:08.49014024Z"
+      created: "2026-11-17T11:16:34.464216674Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: a9c12cbc39b6599275f9ff8a201c40a6b6ac0266a8fb7e649bc8842e52b66699
       home: https://cloudnative-pg.io
@@ -577,7 +667,7 @@ entries:
         digit.org/upstream-operand-image: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
       apiVersion: v2
       appVersion: "18"
-      created: "2026-11-17T08:45:08.487895425Z"
+      created: "2026-11-17T11:16:34.462359433Z"
       description: PostgreSQL 18 on CloudNativePG for the DIGIT backbone. Vendored from the official cloudnative-pg/cluster chart, with a reconciler that provisions the application database + role (from egov-config and the db secret) after the cluster is ready.
       digest: 95669edcfdc9faf0171de5b9d3263865a12cca2176d2f98830ef0a30b8b4638d
       home: https://cloudnative-pg.io
@@ -603,7 +693,7 @@ entries:
         digit.org/upstream-chart-version: 8.2.0
       apiVersion: v2
       appVersion: v0.24.0
-      created: "2026-11-17T08:45:08.492337574Z"
+      created: "2026-11-17T11:16:34.466598644Z"
       description: Prometheus Blackbox Exporter
       digest: 1b5433b149e780ab95480198c8db57cba8f6e0d66f87f625cedb4ccfe0c78bfe
       home: https://github.com/prometheus/blackbox_exporter
@@ -625,7 +715,7 @@ entries:
   prometheus-kafka-exporter:
     - apiVersion: v2
       appVersion: latest
-      created: "2026-11-17T08:45:08.49363332Z"
+      created: "2026-11-17T11:16:34.46799983Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -639,7 +729,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: latest
-      created: "2026-11-17T08:45:08.493014024Z"
+      created: "2026-11-17T11:16:34.467300279Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -659,7 +749,7 @@ entries:
         digit.org/upstream-chart-version: 1.3.1
       apiVersion: v1
       appVersion: 0.8.0
-      created: "2026-11-17T08:45:08.49405175Z"
+      created: "2026-11-17T11:16:34.468483126Z"
       deprecated: true
       description: DEPRECATED A Helm chart for prometheus postgres-exporter
       digest: 0e5c0258f6cd9fdddda7c910f87819a190363958e9a1f7f357bdb40a05cf8204
@@ -677,7 +767,7 @@ entries:
   redis:
     - apiVersion: v2
       appVersion: 7.2.4
-      created: "2026-11-17T08:45:08.495370408Z"
+      created: "2026-11-17T11:16:34.470596102Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -691,7 +781,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: 7.2.4
-      created: "2026-11-17T08:45:08.494606549Z"
+      created: "2026-11-17T11:16:34.469880777Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -711,7 +801,7 @@ entries:
         digit.org/upstream-chart-version: 0.29.1
       apiVersion: v2
       appVersion: 1.18.1
-      created: "2026-11-17T08:45:08.499098477Z"
+      created: "2026-11-17T11:16:34.474220139Z"
       description: Official HashiCorp Vault Chart
       digest: 400ba39c645a042a08f3bce1004357a73cb51b45908bd4851094bae9bb3672b5
       home: https://www.vaultproject.io
@@ -741,7 +831,7 @@ entries:
         digit.org/upstream-chart-version: 0.29.1
       apiVersion: v2
       appVersion: 1.18.1
-      created: "2026-11-17T08:45:08.497395984Z"
+      created: "2026-11-17T11:16:34.472374164Z"
       description: Official HashiCorp Vault Chart
       digest: 46848aa08022feb337239da699dae8aaa575a4d3b850a7915deec1b5a84e9ec3
       home: https://www.vaultproject.io
@@ -764,4 +854,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/backbone/vault/vault-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-17T08:45:08.450457095Z"
+generated: "2026-11-17T11:16:34.412542881Z"
