@@ -2,7 +2,7 @@ apiVersion: v2
 name: health-service-request
 description: Service-definition and service-request registry for DIGIT Health (the health-domain twin of the generic service-request).
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: master-product-2.2-d6ca977
 dependencies:
   - name: common
