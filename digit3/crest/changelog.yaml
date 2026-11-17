@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-17"
+    ref: "PR-130"
+    title: "chore(crest): bump common dependency 3.1.1 -> 3.1.2"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "crest"
+        from: "3.0.1"
+        to: "3.0.2"
+      - name: "crest-ui"
+        from: "3.0.0"
+        to: "3.0.1"
   - date: "2026-10-30"
     ref: "PR-113"
     title: "Stop injecting the shared datasource block into crest"
