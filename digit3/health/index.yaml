@@ -3,7 +3,21 @@ entries:
   beneficiary-idgen:
     - apiVersion: v2
       appVersion: master-perf-2d35084
-      created: "2026-11-11T09:02:03.067065321Z"
+      created: "2026-11-17T08:47:07.405195632Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Beneficiary ID generation and dispatch for DIGIT Health - ID pool, bulk create/update, and per-user/device rate limiting backed by Redis + Redisson.
+      digest: 887334045ba40e03fea9bc640e874a86d516fc1077f201b08620600f98e71b0e
+      name: beneficiary-idgen
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/health/beneficiary-idgen/beneficiary-idgen-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: master-perf-2d35084
+      created: "2026-11-17T08:47:07.404078232Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -18,7 +32,21 @@ entries:
   health-service-request:
     - apiVersion: v2
       appVersion: master-product-2.2-d6ca977
-      created: "2026-11-11T09:02:03.067764454Z"
+      created: "2026-11-17T08:47:07.406908541Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Service-definition and service-request registry for DIGIT Health (the health-domain twin of the generic service-request).
+      digest: 7a44a1e403f71326a6966d769cd6cb79704324be36b74f5f8019cf0453820319
+      name: health-service-request
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/health/health-service-request/health-service-request-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: master-product-2.2-d6ca977
+      created: "2026-11-17T08:47:07.406067544Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -30,4 +58,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/health/health-service-request/health-service-request-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-11T09:02:03.066004517Z"
+generated: "2026-11-17T08:47:07.402100036Z"
