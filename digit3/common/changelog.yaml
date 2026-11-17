@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-17"
+    ref: "PR-125"
+    title: "feat(common): appendable initContainers.dbMigration.extraEnv"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "common"
+        from: "3.1.1"
+        to: "3.1.2"
   - date: "2026-10-29"
     ref: "PR-103"
     title: "common: overridable gateway backend + refreshed docs"
