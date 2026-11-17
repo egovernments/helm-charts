@@ -3,7 +3,21 @@ entries:
   crest:
     - apiVersion: v2
       appVersion: main-693f8a8
-      created: "2026-10-30T08:53:22.13445148Z"
+      created: "2026-11-17T08:46:45.8178593Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Portable work records, timely payments and credentials for informal workers
+      digest: df0a5a8aeb2f0b64b5c15324505206ae1afa3564ffd3c680c43b76de46948caa
+      name: crest
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/crest/crest/crest-3.0.2.tgz
+      version: 3.0.2
+    - apiVersion: v2
+      appVersion: main-693f8a8
+      created: "2026-11-17T08:46:45.817312968Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -17,7 +31,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: main-693f8a8
-      created: "2026-10-30T08:53:22.133563659Z"
+      created: "2026-11-17T08:46:45.816616014Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -32,7 +46,21 @@ entries:
   crest-ui:
     - apiVersion: v2
       appVersion: main-e67932a
-      created: "2026-10-30T08:53:22.134993472Z"
+      created: "2026-11-17T08:46:45.818809911Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Worker and console web apps for CREST
+      digest: 37ec4382cdfc3aca94395159a5094683b8d7f9417e3b4228081541e95a420ef9
+      name: crest-ui
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/crest/crest-ui/crest-ui-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: main-e67932a
+      created: "2026-11-17T08:46:45.818344941Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -44,4 +72,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/crest/crest-ui/crest-ui-3.0.0.tgz
       version: 3.0.0
-generated: "2026-10-30T08:53:22.132346505Z"
+generated: "2026-11-17T08:46:45.815544201Z"
