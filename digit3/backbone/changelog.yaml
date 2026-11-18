@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-18"
+    ref: "PR-138"
+    title: "feat(digit3/backbone/minio)!: use the digit-lts MinIO chart (+ standalone, shared secret keys, bucket sidecar)"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "minio"
+        from: "3.3.0"
+        to: "3.4.0"
+  - date: "2026-11-18"
     ref: "PR-137"
     title: "fix(digit3/backbone/minio): post-job connects to the client Service (standalone mode failed)"
     author: "SriPadma8997-egov"
