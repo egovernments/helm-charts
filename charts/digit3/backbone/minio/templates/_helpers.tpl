@@ -164,6 +164,14 @@ imagePullSecrets:
 {{- end -}}
 
 {{/*
+FQDN of the client Service (exists in standalone AND distributed mode). The post-job
+connects here; minio.svcFQDN is the headless "-svc" Service of distributed mode only.
+*/}}
+{{- define "minio.clientFQDN" -}}
+{{ include "minio.fullname" . }}.{{ .Values.namespace | default .Release.Namespace }}.svc.cluster.local
+{{- end -}}
+
+{{/*
 Formats volumeMount for MinIO TLS keys and trusted certs
 */}}
 {{- define "minio.tlsKeysVolumeMount" -}}
