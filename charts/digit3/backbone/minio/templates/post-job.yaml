@@ -110,7 +110,7 @@ spec:
           {{- end }}
           env:
             - name: MINIO_ENDPOINT
-              value: {{ template `minio.svcFQDN` $ }}
+              value: {{ template `minio.clientFQDN` $ }}
             - name: MINIO_PORT
               value: {{ .Values.service.port | quote }}
           volumeMounts:
@@ -144,7 +144,7 @@ spec:
           {{- end }}
           env:
             - name: MINIO_ENDPOINT
-              value: {{ template `minio.svcFQDN` $ }}
+              value: {{ template `minio.clientFQDN` $ }}
             - name: MINIO_PORT
               value: {{ .Values.service.port | quote }}
           volumeMounts:
@@ -177,7 +177,7 @@ spec:
           {{- end }}
           env:
             - name: MINIO_ENDPOINT
-              value: {{ template `minio.svcFQDN` $ }}
+              value: {{ template `minio.clientFQDN` $ }}
             - name: MINIO_PORT
               value: {{ .Values.service.port | quote }}
           volumeMounts:
@@ -210,7 +210,7 @@ spec:
           {{- end }}
           env:
             - name: MINIO_ENDPOINT
-              value: {{ template `minio.svcFQDN` $ }}
+              value: {{ template `minio.clientFQDN` $ }}
             - name: MINIO_PORT
               value: {{ .Values.service.port | quote }}
           volumeMounts:
@@ -246,7 +246,7 @@ spec:
           {{- end }}
           env:
             - name: MINIO_ENDPOINT
-              value: {{ template `minio.svcFQDN` $ }}
+              value: {{ template `minio.clientFQDN` $ }}
             - name: MINIO_PORT
               value: {{ .Values.service.port | quote }}
           volumeMounts:
