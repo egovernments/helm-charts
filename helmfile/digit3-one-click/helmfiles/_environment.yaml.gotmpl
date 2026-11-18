@@ -1,6 +1,6 @@
 # Shared base of every layer helmfile. The ONLY inputs are the two environment files:
-#   DIGIT_ENV_FILE      deploy-as-code/helm/environments/<env>.yaml          (plain YAML)
-#   DIGIT_SECRETS_FILE  deploy-as-code/helm/environments/<env>-secrets.yaml  (SOPS, helm-secrets)
+#   DIGIT_ENV_FILE      one-click/<env>.yaml          (plain YAML)
+#   DIGIT_SECRETS_FILE  one-click/<env>-secrets.yaml  (SOPS, helm-secrets)
 # Both are merged into .Values; each release gets its own block (block name = release name).
 environments:
   default:

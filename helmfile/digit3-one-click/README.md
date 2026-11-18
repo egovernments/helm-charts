@@ -9,8 +9,8 @@ They are **not** used on their own. The one-click workflow in
 
 | Variable | File (in the team's DIGIT-DevOps fork) |
 |---|---|
-| `DIGIT_ENV_FILE` | `deploy-as-code/helm/environments/<env>.yaml` (egov-demo layout: `infra`, `global`, one block per release) |
-| `DIGIT_SECRETS_FILE` | `deploy-as-code/helm/environments/<env>-secrets.yaml` (SOPS; `cluster-configs.secrets.*`) |
+| `DIGIT_ENV_FILE` | `one-click/<env>.yaml` (egov-demo layout: `infra`, `global`, one block per release) |
+| `DIGIT_SECRETS_FILE` | `one-click/<env>-secrets.yaml` (SOPS; `cluster-configs.secrets.*`) |
 
 Each release gets its own block as Helm values. Releases built on the DIGIT common chart also get `global`, with their namespace.
 

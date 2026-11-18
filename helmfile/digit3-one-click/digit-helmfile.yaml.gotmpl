@@ -1,6 +1,6 @@
 # DIGIT one-click: deploys the layers in order (used by the DIGIT-DevOps one-click workflow,
 # see README.md). Inputs: DIGIT_ENV_FILE and DIGIT_SECRETS_FILE (the team's
-# deploy-as-code/helm/environments/<env>.yaml and <env>-secrets.yaml in its DIGIT-DevOps fork).
+# one-click/<env>.yaml and <env>-secrets.yaml in its DIGIT-DevOps fork).
 # Each layer can also run alone, e.g. helmfile -f helmfiles/core.yaml.gotmpl apply.
 helmfiles:
   - path: helmfiles/backbone.yaml.gotmpl

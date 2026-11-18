@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Argo CD config-management plugin "digit-helmfile" (Argo CD mode of the one-click install).
 # Runs in the argocd-repo-server sidecar (helmfile image). The current directory is the
-# Application path in the team's fork, deploy-as-code/helm/environments (the env files).
+# Application path in the team's fork, one-click (the env files).
 # The plugin command (helmfiles/argocd.yaml.gotmpl) first fetches this helmfile directory
 # from helm-charts at HELMFILES_REF and then runs this script from there.
 # Prints Kubernetes manifests on stdout only.
