@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-18"
+    ref: "PR-133"
+    title: "feat(digit3/backbone): add argo-cd chart, enable gzip in ingress-nginx"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "argo-cd"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "ingress-nginx"
+        from: "3.0.0"
+        to: "3.1.0"
   - date: "2026-11-17"
     ref: "PR-132"
     title: "chore(backbone): drop 8 unneeded charts, fixed (release-independent) object names"
