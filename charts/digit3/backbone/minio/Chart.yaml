@@ -1,15 +1,14 @@
 apiVersion: v2
 name: minio
 description: >-
-  MinIO object storage (S3-compatible) for DIGIT: standalone (replicas 1) or distributed
-  (replicas > 1) StatefulSet. Based on the DIGIT-DevOps digit-lts chart.
+  MinIO object storage (S3-compatible) for DIGIT: standalone (replicas 1) or distributed (replicas > 1) StatefulSet. Based on the DIGIT-DevOps digit-lts chart.
 keywords:
   - minio
   - storage
   - object-storage
   - s3
 # Chart version follows this repo's digit3 convention; set by the release workflow.
-version: 4.0.0
+version: 3.4.0
 # appVersion tracks the MinIO server image release.
 appVersion: "RELEASE.2024-12-18T13-15-44Z"
 sources:
