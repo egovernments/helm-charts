@@ -1,0 +1,36 @@
+annotations:
+  # Upstream provenance: vendored unmodified from argoproj/argo-helm. `version` below
+  # follows this repo's digit3 3.x convention (seed 3.0.0), not the upstream chart
+  # version. Only values.yaml differs: fullnameOverride "argocd", so every object is
+  # named argocd-* whatever the release name. Configure everything else through values.
+  # The redis-ha subchart is vendored under upstream/ (file:// dependency).
+  digit.org/upstream-chart: argoproj/argo-helm argo-cd
+  digit.org/upstream-chart-version: "9.4.10"
+  digit.org/upstream-app-version: "v3.3.3"
+  artifacthub.io/changes: |
+    - kind: changed
+      description: Bump argo-cd to v3.3.3
+apiVersion: v2
+appVersion: v3.3.3
+dependencies:
+- condition: redis-ha.enabled
+  name: redis-ha
+  repository: file://upstream/redis-ha
+  version: 4.34.11
+description: A Helm chart for Argo CD, a declarative, GitOps continuous delivery tool
+  for Kubernetes.
+home: https://github.com/argoproj/argo-helm
+icon: https://argo-cd.readthedocs.io/en/stable/assets/logo.png
+keywords:
+- argoproj
+- argocd
+- gitops
+kubeVersion: '>=1.25.0-0'
+maintainers:
+- name: argoproj
+  url: https://argoproj.github.io/
+name: argo-cd
+sources:
+- https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+- https://github.com/argoproj/argo-cd
+version: 3.0.0
