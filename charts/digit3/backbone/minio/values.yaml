@@ -106,6 +106,13 @@ rootPassword: "root@123"
 ## others depend on enabled status of corresponding sections.
 existingSecret: "minio"
 
+## Key names of the root login inside the Secret (existingSecret, or the one this chart
+## creates). Change them to share ONE Secret with an app that uses other key names, e.g.
+## DIGIT filestore's `minio` Secret: {rootUser: accesskey, rootPassword: secretkey}.
+existingSecretKeys:
+  rootUser: rootUser
+  rootPassword: rootPassword
+
 ## Directory on the MinIO pof
 certsPath: "/etc/minio/certs/"
 configPathmc: "/etc/minio/mc/"

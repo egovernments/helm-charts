@@ -100,6 +100,16 @@ Return the appropriate apiVersion for console ingress.
 {{/*
 Determine secret name.
 */}}
+{{/*
+Key names of the root login inside the Secret (values: existingSecretKeys).
+*/}}
+{{- define "minio.rootUserKey" -}}
+{{- (.Values.existingSecretKeys | default dict).rootUser | default "rootUser" -}}
+{{- end -}}
+{{- define "minio.rootPasswordKey" -}}
+{{- (.Values.existingSecretKeys | default dict).rootPassword | default "rootPassword" -}}
+{{- end -}}
+
 {{- define "minio.secretName" -}}
   {{- if .Values.existingSecret -}}
     {{- .Values.existingSecret }}
