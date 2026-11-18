@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-18"
+    ref: "PR-134"
+    title: "feat(digit3/backbone/minio): configurable key names for the root login secret"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "minio"
+        from: "3.1.0"
+        to: "3.2.0"
+  - date: "2026-11-18"
     ref: "PR-133"
     title: "feat(digit3/backbone): add argo-cd chart, enable gzip in ingress-nginx"
     author: "SriPadma8997-egov"
