@@ -3,7 +3,7 @@
 The helmfiles of the DIGIT one-click install on Azure. They deploy DIGIT core 3.0 with its backbone and monitoring from the charts in this repository (https://helm.digit.org) and community charts.
 
 They are **not** used on their own. The one-click workflow in
-[egovernments/DIGIT-DevOps](https://github.com/egovernments/DIGIT-DevOps) (`.github/workflows/digit_install.yml`, guide `ONE-CLICK-AZURE.md`) checks out this folder at a pinned ref. That ref is `infra.helmfiles.ref` in the team's environment file.
+[egovernments/DIGIT-DevOps](https://github.com/egovernments/DIGIT-DevOps) (`.github/workflows/digit_install.yml`, guide `one-click/README.md`) checks out this folder at a pinned ref. That ref is `infra.helmfiles.ref` in the team's environment file.
 
 ## Inputs: only the two environment files
 
