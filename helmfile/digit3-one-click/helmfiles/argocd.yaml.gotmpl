@@ -1,7 +1,7 @@
 # Argo CD mode only (infra.argocd.enabled: true). The workflow installs Argo CD with this
 # helmfile; Argo CD then deploys every DIGIT release through the plugin "digit-helmfile"
 # (scripts/argocd-plugin.sh): env files from the team's fork, these helmfiles from
-# helm-charts at the pinned ref (infra.helmfiles) - the same as helmfile mode.
+# helm-charts at the ref pinned in input.yaml - the same as helmfile mode.
 # UI: https://<domain>/argocd, user admin, password cluster-configs.secrets.argocd-admin
 # (secrets file).
 # sops in the plugin decrypts <env>-secrets.yaml with the AKS kubelet managed identity.
@@ -65,16 +65,18 @@ releases:
             plugins:
               digit-helmfile:
                 generate:
-                  # Fetch this helmfile directory from helm-charts at the pinned ref (sparse,
-                  # shallow, per render), then run its plugin script. The env files come from
-                  # the Application source (the team's fork).
+                  # Fetch this helmfile directory from helm-charts at the ref pinned in the
+                  # fork's input.yaml (sparse, shallow, per render), then run its plugin script.
+                  # input.yaml and the env files come from the Application source (the fork).
                   command: [bash, -c]
                   args:
                     - |
                       set -euo pipefail
                       export HOME=/tmp
-                      repo=${ARGOCD_ENV_HELMFILES_REPO:?}; ref=${ARGOCD_ENV_HELMFILES_REF:?}
-                      [[ $repo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && $ref =~ ^[A-Za-z0-9_./-]+$ ]] || { echo "bad HELMFILES_REPO/REF" >&2; exit 1; }
+                      # cwd = one-click/ of the team's fork: the pin is in its input.yaml
+                      repo=$(yq -r '.helmfiles_repo // "egovernments/helm-charts"' input.yaml)
+                      ref=$(yq -r '.helmfiles_ref // "master"' input.yaml)
+                      [[ $repo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && $ref =~ ^[A-Za-z0-9_./-]+$ ]] || { echo "input.yaml: bad helmfiles_repo/helmfiles_ref" >&2; exit 1; }
                       d=$(mktemp -d /tmp/helmfiles.XXXXXX); trap 'rm -rf "$d"' EXIT
                       git -C "$d" init -q
                       git -C "$d" remote add origin "https://github.com/$repo.git"
