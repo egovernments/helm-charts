@@ -135,12 +135,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ template "minio.secretName" . }}
-                  key: rootUser
+                  key: {{ include "minio.rootUserKey" . }}
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ template "minio.secretName" . }}
-                  key: rootPassword
+                  key: {{ include "minio.rootPasswordKey" . }}
             {{- if .Values.extraSecret }}
             - name: MINIO_CONFIG_ENV_FILE
               value: "/tmp/minio-config-env/config.env"
@@ -219,6 +219,9 @@ spec:
         - name: minio-user
           secret:
             secretName: {{ template "minio.secretName" . }}
+            items:
+              - {key: {{ include "minio.rootUserKey" . }}, path: rootUser}
+              - {key: {{ include "minio.rootPasswordKey" . }}, path: rootPassword}
         {{- if .Values.extraSecret }}
         - name: extra-secret
           secret:

@@ -54,6 +54,12 @@ spec:
                   name: {{ template "minio.fullname" . }}
               - secret:
                   name: {{ template "minio.secretName" . }}
+                  # the helper scripts read /config/rootUser and /config/rootPassword
+                  items:
+                    - key: {{ include "minio.rootUserKey" . }}
+                      path: rootUser
+                    - key: {{ include "minio.rootPasswordKey" . }}
+                      path: rootPassword
               {{- range (concat .Values.users (default (list) .Values.svcaccts)) }}
               {{- if .existingSecret }}
               - secret:
