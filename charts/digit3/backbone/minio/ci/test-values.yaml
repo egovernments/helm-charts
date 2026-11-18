@@ -1,3 +1,4 @@
-# Values CI needs to render this chart standalone (normally from the environment file).
-global:
-  domain: digit.example.org
+# Values CI renders this chart with (normally from the environment file).
+provisioning:
+  buckets:
+    - name: digit-filestore
