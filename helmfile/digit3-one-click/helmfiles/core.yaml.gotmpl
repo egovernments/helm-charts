@@ -47,8 +47,12 @@ releases:
     chart: digit3-core/{{ $svc }}
     version: {{ include "chart-version" (dict "v" $v "r" $svc) | quote }}
     installed: {{ $v | get (printf "%s.enabled" $svc) true }}
-    labels: {layer: core, wave: "6"}
-    needs: [egov/kong]
+    {{- /* registry's migrations create the idgen tables in their final shape (its embedded idgen);
+           idgen's own migrations create them and then rename columns, which fails if registry was
+           first ("column lastmodifiedby does not exist"). So idgen always migrates before registry:
+           an earlier Argo CD wave, and a helmfile need. */}}
+    labels: {layer: core, wave: "{{ if eq $svc "idgen" }}5{{ else }}6{{ end }}"}
+    needs: [egov/kong{{ if and (eq $svc "registry") (hasKey $v "idgen") }}, egov/idgen{{ end }}]
     values:
       - {{ include "release-values" (dict "v" $v "r" $svc "ns" "egov" "common" true) | nindent 8 }}
 {{- end }}
