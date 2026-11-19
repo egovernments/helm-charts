@@ -20,7 +20,7 @@ Each release gets its own block as Helm values. Releases built on the DIGIT comm
 |---|---|
 | `digit-helmfile.yaml.gotmpl` | main helmfile: the three layers in order |
 | `helmfiles/_environment.yaml.gotmpl` | shared base: the two env files + Helm defaults |
-| `helmfiles/backbone.yaml.gotmpl` | cluster-configs, cert-manager, ingress-nginx, redis, kafka-kraft, minio, vault, elasticsearch, kibana |
+| `helmfiles/backbone.yaml.gotmpl` | cluster-configs, cert-manager, ingress-nginx, redis, kafka-kraft, minio, vault, elasticsearch, kibana, pgadmin (when the env file has a `pgadmin` block) |
 | `helmfiles/core.yaml.gotmpl` | keycloak, kong, and every env-file block with a `chart-version` that is not a platform release (the DIGIT services) |
 | `helmfiles/monitoring.yaml.gotmpl` | kube-prometheus-stack, loki, grafana, opentelemetry-collector, jaeger, blackbox exporter |
 | `helmfiles/argocd.yaml.gotmpl` | Argo CD itself (Argo CD mode) with the `digit-helmfile` plugin |
