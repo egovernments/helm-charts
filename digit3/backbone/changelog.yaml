@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-19"
+    ref: "PR-150"
+    title: "kibana: helm-scripts ConfigMap only pre-install/pre-upgrade (Argo CD never created it)"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "kibana"
+        from: "3.1.0"
+        to: "3.1.1"
+  - date: "2026-11-19"
     ref: "PR-145"
     title: "elasticsearch-master: more memory (OOMKilled at 896Mi)"
     author: "SriPadma8997-egov"
