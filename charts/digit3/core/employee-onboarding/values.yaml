@@ -30,6 +30,9 @@ initContainers:
     schemaTable: "employee_onboarding_schema"
     image:
       repository: "employee-onboarding-db"
+      # = appVersion. Used in global.mode dev, where the common default would be "latest"
+      # (not published for this image). Keep it equal to appVersion.
+      tag: "master-7859366"
     env: |
         - name: "DB_URL"
           valueFrom:

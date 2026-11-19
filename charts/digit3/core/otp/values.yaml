@@ -62,6 +62,9 @@ appType: "java"
 
 # MANAGEMENT_TRACING_EXPORT_ENABLED; override per env
 tracing-export-enabled: "false"
+# VAULT_ENABLED; "true" needs Vault and the egov/vault-approle secret. Must not be empty
+# (otp fails to start: otp.vault.enabled cannot bind).
+vault-enabled: "false"
 tracing-enabled: true
 
 # ── App config (overridable per env) ──────────────────────────────────────────
