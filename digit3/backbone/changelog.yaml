@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-19"
+    ref: "PR-145"
+    title: "elasticsearch-master: more memory (OOMKilled at 896Mi)"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "elasticsearch-master"
+        from: "3.0.0"
+        to: "3.0.1"
+  - date: "2026-11-19"
     ref: "PR-143"
     title: "kibana, minio: defaults that work behind the DIGIT ingress"
     author: "SriPadma8997-egov"
