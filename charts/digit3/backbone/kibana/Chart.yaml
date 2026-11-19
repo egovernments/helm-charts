@@ -5,7 +5,7 @@ maintainers:
   - email: helm-charts@elastic.co
     name: Elastic
 name: kibana
-version: 3.0.0
+version: 3.1.0
 appVersion: 8.5.1
 sources:
   - https://github.com/elastic/kibana

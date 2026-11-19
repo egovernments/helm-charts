@@ -8,7 +8,7 @@ keywords:
   - object-storage
   - s3
 # Chart version follows this repo's digit3 convention; set by the release workflow.
-version: 3.4.0
+version: 3.5.0
 # appVersion tracks the MinIO server image release.
 appVersion: "RELEASE.2024-12-18T13-15-44Z"
 sources:
