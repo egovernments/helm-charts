@@ -49,6 +49,10 @@ releases:
             # Argo CD clones submodules by default and fails without an SSH key ("Permission denied
             # (publickey)"), so no Application is ever generated. The plugin only reads one-click/.
             reposerver.enable.git.submodule: false
+            # Compare with a server-side dry-run apply instead of a client-side diff: fields the API
+            # server fills in (StatefulSet defaults, empty maps dropped) and AKS's admissions
+            # enforcer (extra namespaceSelector rules on webhooks) otherwise leave apps OutOfSync forever.
+            controller.diff.server.side: true
           cm:
             url: https://{{ $v.global.domain }}/argocd
             timeout.reconciliation: 180s
