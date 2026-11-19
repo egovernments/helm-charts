@@ -45,6 +45,10 @@ releases:
             # Each render loads the chart-repo indexes (~150-300 MiB). 39 Applications rendering at
             # once OOM-kill the sidecar, so cap concurrent renders.
             reposerver.parallelism.limit: 3
+            # DIGIT-DevOps has a git submodule (ci-as-code -> git@github.com:egovernments/CIOps.git).
+            # Argo CD clones submodules by default and fails without an SSH key ("Permission denied
+            # (publickey)"), so no Application is ever generated. The plugin only reads one-click/.
+            reposerver.enable.git.submodule: false
           cm:
             url: https://{{ $v.global.domain }}/argocd
             timeout.reconciliation: 180s
