@@ -293,5 +293,11 @@ initContainers:
             WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'kc_db') \gexec
           SELECT format('ALTER DATABASE %I OWNER TO %I', :'kc_db', :'kc_user') \gexec
           SQL
+          # Azure PostgreSQL (and any server where "public" is not owned by pg_database_owner)
+          # gives other roles only USAGE on public: let the Keycloak role create its tables.
+          psql -X -q -v ON_ERROR_STOP=1 -d "$KC_DB_NAME" <<'SQL'
+          \getenv kc_user KC_DB_USERNAME
+          SELECT format('GRANT ALL ON SCHEMA public TO %I', :'kc_user') \gexec
+          SQL
           echo "db-init: ready"
     {{- end }}
