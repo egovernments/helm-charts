@@ -80,13 +80,15 @@ podAnnotations: {}
 # additionals labels
 labels: {}
 
-esJavaOpts: "-Xmx448m -Xms448m"
+# Heap = half the memory limit (the JVM also needs off-heap memory). At 448m heap / 896Mi the
+# masters ran at ~97% of their limit and were OOMKilled.
+esJavaOpts: "-Xmx768m -Xms768m"
 
 resources:
   requests:
-    memory: "896Mi"
+    memory: "1536Mi"
   limits:
-    memory: "896Mi"  
+    memory: "1536Mi"
 
 initResources: {}
   # limits:
