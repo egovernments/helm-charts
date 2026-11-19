@@ -27,13 +27,15 @@ repositories:
   - name: open-telemetry
     url: https://open-telemetry.github.io/opentelemetry-helm-charts
 releases:
+{{- /* kube-prometheus-stack installs the monitoring.coreos.com CRDs (ServiceMonitor, ...) that
+       the other charts' ServiceMonitors need, so they wait for it (helmfile needs, Argo CD wave). */}}
 {{- range $r := list
       (dict "name" "kube-prometheus-stack" "chart" "prometheus-community/kube-prometheus-stack" "wave" "7")
-      (dict "name" "loki"                  "chart" "grafana/loki"                              "wave" "7")
+      (dict "name" "loki"                  "chart" "grafana/loki"                              "wave" "8" "needs" "monitoring/kube-prometheus-stack")
       (dict "name" "grafana"               "chart" "grafana/grafana"                           "wave" "8" "needs" "monitoring/kube-prometheus-stack")
-      (dict "name" "open-telemetry"        "chart" "open-telemetry/opentelemetry-collector"    "wave" "7")
-      (dict "name" "jaeger"                "chart" "jaegertracing/jaeger"                      "wave" "7")
-      (dict "name" "blackbox"              "chart" "digit3-backbone/prometheus-blackbox-exporter" "wave" "7") }}
+      (dict "name" "open-telemetry"        "chart" "open-telemetry/opentelemetry-collector"    "wave" "8" "needs" "monitoring/kube-prometheus-stack")
+      (dict "name" "jaeger"                "chart" "jaegertracing/jaeger"                      "wave" "8" "needs" "monitoring/kube-prometheus-stack")
+      (dict "name" "blackbox"              "chart" "digit3-backbone/prometheus-blackbox-exporter" "wave" "8" "needs" "monitoring/kube-prometheus-stack") }}
   - name: {{ $r.name }}
     namespace: monitoring
     chart: {{ $r.chart }}
