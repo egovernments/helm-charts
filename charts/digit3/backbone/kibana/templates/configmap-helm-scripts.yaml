@@ -1,4 +1,7 @@
 ---
+# Hook for the pre-install Job only. No post-delete: this chart has no post-delete Job, and
+# Argo CD turns a post-delete Helm hook into a PostDelete hook, so the ConfigMap was never
+# created before the sync and pre-install-kibana waited for it forever.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +9,7 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade,post-delete
+    "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
