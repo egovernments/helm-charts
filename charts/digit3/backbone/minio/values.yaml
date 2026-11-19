@@ -57,7 +57,7 @@ auth:
 
 extraEnv:
   MINIO_PROMETHEUS_AUTH_TYPE: "public"
-  # MINIO_BROWSER_REDIRECT_URL: "https://<domain>/minio"
+  # MINIO_BROWSER_REDIRECT_URL: set to https://<ingress host>/minio when ingress.enabled
 
 # Buckets created once MinIO is up, by a small sidecar (mc) in each MinIO pod that talks
 # to MinIO on 127.0.0.1, retries until it answers, then idles. Not a Helm hook: an install
@@ -81,7 +81,7 @@ provisioning:
 ingress:
   enabled: false
   className: nginx
-  host: ""
+  host: ""                  # default: global.domain
   proxyBodySize: "8m"
   tls:
     enabled: true

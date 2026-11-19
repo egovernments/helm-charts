@@ -61,6 +61,11 @@ spec:
             - name: {{ $k }}
               value: {{ $v | quote }}
             {{- end }}
+            {{- if and .Values.ingress.enabled (not (hasKey .Values.extraEnv "MINIO_BROWSER_REDIRECT_URL")) (include "minio.consoleHost" .) }}
+            # console served under /minio by the ingress
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: {{ printf "https://%s/minio" (include "minio.consoleHost" .) | quote }}
+            {{- end }}
           {{- if .Values.probes.enabled }}
           readinessProbe:
             httpGet:

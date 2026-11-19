@@ -13,6 +13,12 @@ namespace: backbone
 extraEnvs:
   - name: "NODE_OPTIONS"
     value: "--max-old-space-size=1800"
+  # The DIGIT ingress-nginx adds its own Content-Security-Policy header in place of Kibana's
+  # strict one, so Kibana's CSP self-check fails ("Please upgrade your browser").
+  - name: "CSP_STRICT"
+    value: "false"
+  - name: "CSP_WARNLEGACYBROWSERS"
+    value: "false"
 #  - name: MY_ENVIRONMENT_VAR
 #    value: the_value_goes_here
 
