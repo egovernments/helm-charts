@@ -34,18 +34,20 @@ releases:
       (dict "name" "redis"                "wave" "1" "needs" "egov/cluster-configs" "common" true)
       (dict "name" "kafka-kraft"          "wave" "1" "needs" "egov/cluster-configs")
       (dict "name" "minio"                "wave" "1" "needs" "egov/cluster-configs" "common" true)
-      (dict "name" "elasticsearch-master" "wave" "1" "needs" "egov/cluster-configs")
+      (dict "name" "elasticsearch-master" "wave" "1" "needs" "egov/cluster-configs" "createonly" "elasticsearch-master-certs")
       (dict "name" "elasticsearch-data"   "wave" "2" "needs" "backbone/elasticsearch-master")
       (dict "name" "kibana"               "wave" "3" "needs" "backbone/elasticsearch-data" "common" true)
       (dict "name" "pgadmin"              "wave" "3" "needs" "egov/cluster-configs" "common" true "optional" true) }}
-{{- /* optional releases are only deployed when the env file has their block (older env files don't) */}}
+{{- /* optional releases are only deployed when the env file has their block (older env files don't).
+       createonly: Secrets the chart generates once (lookup + genCA). helm template (Argo CD) has no
+       lookup, so every render makes new ones; Argo CD creates them and then leaves their data alone. */}}
 {{- if or (not (hasKey $r "optional")) (hasKey $v $r.name) }}
   - name: {{ $r.name }}
     namespace: backbone
     chart: digit3-backbone/{{ $r.name }}
     version: {{ include "chart-version" (dict "v" $v "r" $r.name) }}
     installed: {{ $v | get (printf "%s.enabled" $r.name) true }}
-    labels: {layer: backbone, wave: "{{ $r.wave }}"}
+    labels: {layer: backbone, wave: "{{ $r.wave }}"{{ with $r | get "createonly" "" }}, createonly: {{ . }}{{ end }}}
     needs: [{{ $r.needs }}]
     values:
       - {{ include "release-values" (merge (dict "v" $v "r" $r.name "ns" "backbone") (pick $r "common")) | nindent 8 }}

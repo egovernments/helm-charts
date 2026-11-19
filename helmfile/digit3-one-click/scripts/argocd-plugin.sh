@@ -7,7 +7,10 @@
 # Prints Kubernetes manifests on stdout only.
 #
 #   MODE=apps     root Application "digit": one Argo CD Application per installed helmfile
-#                 release, ordered by the release label "wave" (argocd.argoproj.io/sync-wave)
+#                 release, ordered by the release label "wave" (argocd.argoproj.io/sync-wave).
+#                 Release label "createonly" (Secret names, joined with +): Secrets the chart
+#                 generates once via lookup, which helm template cannot do. Argo CD creates them,
+#                 then ignores their data (ignoreDifferences + RespectIgnoreDifferences).
 #   MODE=release  one release (RELEASE + NAMESPACE + HELMFILE = its layer helmfile):
 #                 `helmfile template` of just that release
 #
@@ -42,6 +45,7 @@ case "${ARGOCD_ENV_MODE:?MODE missing}" in
           --arg dbhost "$ARGOCD_ENV_DB_HOST" --arg dbname "$ARGOCD_ENV_DB_NAME" '
       .[] | select(.installed)
       | (.labels | split(",") | map(split(":") | {(.[0]): (.[1:] | join(":"))}) | add) as $l
+      | (($l.createonly // "") | split("+") | map(select(. != ""))) as $createonly
       | {
           apiVersion: "argoproj.io/v1alpha1", kind: "Application",
           metadata: {
@@ -50,7 +54,7 @@ case "${ARGOCD_ENV_MODE:?MODE missing}" in
             annotations: {"argocd.argoproj.io/sync-wave": ($l.wave // "10")},
             finalizers: ["resources-finalizer.argocd.argoproj.io"]
           },
-          spec: {
+          spec: ({
             project: "default",
             source: {repoURL: $repo, targetRevision: $rev, path: $path,
               plugin: {name: "digit-helmfile", env: [
@@ -62,10 +66,13 @@ case "${ARGOCD_ENV_MODE:?MODE missing}" in
             destination: {server: "https://kubernetes.default.svc", namespace: .namespace},
             syncPolicy: {
               automated: {prune: true, selfHeal: true},
-              syncOptions: ["CreateNamespace=true", "ServerSideApply=true", "SkipDryRunOnMissingResource=true"],
+              syncOptions: (["CreateNamespace=true", "ServerSideApply=true", "SkipDryRunOnMissingResource=true"]
+                + (if ($createonly | length) > 0 then ["RespectIgnoreDifferences=true"] else [] end)),
               retry: {limit: 20, backoff: {duration: "30s", factor: 2, maxDuration: "10m"}}
             }
-          }
+          } + (if ($createonly | length) > 0 then
+              {ignoreDifferences: [$createonly[] | {group: "", kind: "Secret", name: ., jsonPointers: ["/data"]}]}
+            else {} end))
         }
       | "---", (. | tojson)' "$work/releases.json"
     ;;
