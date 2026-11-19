@@ -41,3 +41,8 @@ endpoints whatever release name the chart is installed under.
 {{- define "minio.selectorLabels" -}}
 app: {{ include "minio.fullname" . }}
 {{- end -}}
+
+{{/* Console host: ingress.host, else global.domain (DIGIT env files). */}}
+{{- define "minio.consoleHost" -}}
+{{- .Values.ingress.host | default ((.Values.global | default dict).domain | default "") -}}
+{{- end -}}
