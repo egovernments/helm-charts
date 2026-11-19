@@ -3,7 +3,7 @@ entries:
   account:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.492063283Z"
+      created: "2026-11-19T08:50:56.973382208Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -17,7 +17,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.49106104Z"
+      created: "2026-11-19T08:50:56.972377717Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -31,7 +31,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.489925449Z"
+      created: "2026-11-19T08:50:56.971399815Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -45,7 +45,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.488209926Z"
+      created: "2026-11-19T08:50:56.970390446Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -59,7 +59,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.487194554Z"
+      created: "2026-11-19T08:50:56.969488648Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -74,7 +74,7 @@ entries:
   apportion:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.497363115Z"
+      created: "2026-11-19T08:50:56.978652417Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -87,7 +87,7 @@ entries:
       version: 3.1.4
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.496577102Z"
+      created: "2026-11-19T08:50:56.977811249Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -100,7 +100,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.495811539Z"
+      created: "2026-11-19T08:50:56.977012112Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -113,7 +113,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.494669729Z"
+      created: "2026-11-19T08:50:56.976221919Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -126,7 +126,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.493566196Z"
+      created: "2026-11-19T08:50:56.9748858Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -139,7 +139,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.492837809Z"
+      created: "2026-11-19T08:50:56.974162236Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -153,7 +153,7 @@ entries:
   billing:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.502161554Z"
+      created: "2026-11-19T08:50:56.98373297Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -167,7 +167,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.501025894Z"
+      created: "2026-11-19T08:50:56.982810681Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -181,7 +181,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.499699091Z"
+      created: "2026-11-19T08:50:56.981901201Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -195,7 +195,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.498865898Z"
+      created: "2026-11-19T08:50:56.980335696Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -209,7 +209,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.498128527Z"
+      created: "2026-11-19T08:50:56.979594646Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -224,7 +224,7 @@ entries:
   boundary:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.506483779Z"
+      created: "2026-11-19T08:50:56.988691967Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -238,7 +238,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.505444091Z"
+      created: "2026-11-19T08:50:56.98769694Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -252,7 +252,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.504539973Z"
+      created: "2026-11-19T08:50:56.986189868Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -266,7 +266,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.503647192Z"
+      created: "2026-11-19T08:50:56.985316731Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -280,7 +280,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.502911063Z"
+      created: "2026-11-19T08:50:56.984538937Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -295,7 +295,7 @@ entries:
   boundary-management:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.510846328Z"
+      created: "2026-11-19T08:50:56.992777333Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -309,7 +309,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.510048528Z"
+      created: "2026-11-19T08:50:56.991796537Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -323,7 +323,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.509254654Z"
+      created: "2026-11-19T08:50:56.990987415Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -337,7 +337,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.508441941Z"
+      created: "2026-11-19T08:50:56.99016205Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -351,7 +351,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.507695967Z"
+      created: "2026-11-19T08:50:56.989448871Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -366,7 +366,7 @@ entries:
   employee:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.515425539Z"
+      created: "2026-11-19T08:50:56.997081007Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -379,7 +379,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.514558266Z"
+      created: "2026-11-19T08:50:56.996257204Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -392,7 +392,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.513676932Z"
+      created: "2026-11-19T08:50:56.995431729Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -405,7 +405,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.51227362Z"
+      created: "2026-11-19T08:50:56.99459721Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -418,7 +418,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.511552824Z"
+      created: "2026-11-19T08:50:56.993831583Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -432,7 +432,21 @@ entries:
   employee-onboarding:
     - apiVersion: v2
       appVersion: master-7859366
-      created: "2026-11-19T04:29:03.518346951Z"
+      created: "2026-11-19T08:50:57.00154192Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Bulk employee onboarding service for DIGIT 3.0 (validates and provisions employees from an uploaded file)
+      digest: 061b4900b776c0d683ae1ef214bb4f28ef97c2a459e4bcf52a71a2444fdc96c8
+      name: employee-onboarding
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/employee-onboarding/employee-onboarding-3.1.0.tgz
+      version: 3.1.0
+    - apiVersion: v2
+      appVersion: master-7859366
+      created: "2026-11-19T08:50:57.000566883Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -446,7 +460,7 @@ entries:
       version: 3.0.2
     - apiVersion: v2
       appVersion: master-7859366
-      created: "2026-11-19T04:29:03.517369195Z"
+      created: "2026-11-19T08:50:56.999592907Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -460,7 +474,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: master-7859366
-      created: "2026-11-19T04:29:03.51637231Z"
+      created: "2026-11-19T08:50:56.998028714Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -475,7 +489,7 @@ entries:
   filestore:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.523202476Z"
+      created: "2026-11-19T08:50:57.006484989Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -489,7 +503,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.522289966Z"
+      created: "2026-11-19T08:50:57.004920226Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -503,7 +517,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.521376815Z"
+      created: "2026-11-19T08:50:57.00400033Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -517,7 +531,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.520448882Z"
+      created: "2026-11-19T08:50:57.003092953Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -531,7 +545,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.519640486Z"
+      created: "2026-11-19T08:50:57.002314407Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -546,7 +560,7 @@ entries:
   idgen:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.527698518Z"
+      created: "2026-11-19T08:50:57.010468803Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -559,7 +573,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.526907918Z"
+      created: "2026-11-19T08:50:57.009645511Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -572,7 +586,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.526101225Z"
+      created: "2026-11-19T08:50:57.008768799Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -585,7 +599,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.525267742Z"
+      created: "2026-11-19T08:50:57.0079881Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -598,7 +612,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.523954318Z"
+      created: "2026-11-19T08:50:57.007272798Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -612,7 +626,7 @@ entries:
   individual:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.532345168Z"
+      created: "2026-11-19T08:50:57.01501305Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -626,7 +640,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.5314679Z"
+      created: "2026-11-19T08:50:57.014185331Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -640,7 +654,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.529965522Z"
+      created: "2026-11-19T08:50:57.013357031Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -654,7 +668,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.529141613Z"
+      created: "2026-11-19T08:50:57.012333802Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -668,7 +682,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.528413987Z"
+      created: "2026-11-19T08:50:57.01118052Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -683,7 +697,7 @@ entries:
   keycloak:
     - apiVersion: v2
       appVersion: keycloak-spi-custom-build-aardhya-78019f9
-      created: "2026-11-19T04:29:03.537689069Z"
+      created: "2026-11-19T08:50:57.02057648Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -697,7 +711,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: keycloak-spi-custom-build-aardhya-78019f9
-      created: "2026-11-19T04:29:03.536125471Z"
+      created: "2026-11-19T08:50:57.019154769Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -711,7 +725,7 @@ entries:
       version: 3.0.3
     - apiVersion: v2
       appVersion: keycloak-spi-custom-build-aardhya-78019f9
-      created: "2026-11-19T04:29:03.535155646Z"
+      created: "2026-11-19T08:50:57.017997431Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -725,7 +739,7 @@ entries:
       version: 3.0.2
     - apiVersion: v2
       appVersion: keycloak-spi-custom-build-aardhya-78019f9
-      created: "2026-11-19T04:29:03.534179712Z"
+      created: "2026-11-19T08:50:57.017031116Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -739,7 +753,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: keycloak-spi-custom-build-aardhya-78019f9
-      created: "2026-11-19T04:29:03.533215385Z"
+      created: "2026-11-19T08:50:57.016018062Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -754,7 +768,7 @@ entries:
   kong:
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-11-19T04:29:03.547105753Z"
+      created: "2026-11-19T08:50:57.030790774Z"
       description: The Cloud-Native Ingress and API-management
       digest: 8782f59338d4604570b612effe7a997bc60e114a80e60a4ca9aeb44af2baab6c
       home: https://konghq.com/
@@ -770,7 +784,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-11-19T04:29:03.544680234Z"
+      created: "2026-11-19T08:50:57.028174409Z"
       description: The Cloud-Native Ingress and API-management
       digest: cbb0ea953056979415f9d556c35fbec9fb0ac95b2f985834928035d95132b8e5
       home: https://konghq.com/
@@ -786,7 +800,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-11-19T04:29:03.542007479Z"
+      created: "2026-11-19T08:50:57.024816044Z"
       description: The Cloud-Native Ingress and API-management
       digest: 1438ffe13ba7864e2c4bdfdfd738bc11af19f7b07524d4da2fa69b58d35db201
       home: https://konghq.com/
@@ -802,7 +816,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: "3.5"
-      created: "2026-11-19T04:29:03.539844979Z"
+      created: "2026-11-19T08:50:57.022695065Z"
       description: The Cloud-Native Ingress and API-management
       digest: 7fe7c6f44e8961bb4155d20d9350cecd6ac1ef5ff25631cc52d0d7e115eca316
       home: https://konghq.com/
@@ -819,7 +833,7 @@ entries:
   localization:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.551758707Z"
+      created: "2026-11-19T08:50:57.034878753Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -833,7 +847,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.550519063Z"
+      created: "2026-11-19T08:50:57.034010374Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -847,7 +861,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.549419957Z"
+      created: "2026-11-19T08:50:57.033128284Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -861,7 +875,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.548578351Z"
+      created: "2026-11-19T08:50:57.032291482Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -875,7 +889,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.547853158Z"
+      created: "2026-11-19T08:50:57.031548068Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -890,7 +904,21 @@ entries:
   localization-management:
     - apiVersion: v2
       appVersion: develop-modulith-c1f10f6
-      created: "2026-11-19T04:29:03.554144076Z"
+      created: "2026-11-19T08:50:57.038611074Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Localization management service for DIGIT 3.0 (bulk upload/download of localization messages)
+      digest: 1d137f665e537ff90ea7f380d24edb334b02f7e7e3d548ad6027cb0e882c08bd
+      name: localization-management
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/core/localization-management/localization-management-3.1.0.tgz
+      version: 3.1.0
+    - apiVersion: v2
+      appVersion: develop-modulith-c1f10f6
+      created: "2026-11-19T08:50:57.037844446Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -904,7 +932,7 @@ entries:
       version: 3.0.2
     - apiVersion: v2
       appVersion: develop-modulith-c1f10f6
-      created: "2026-11-19T04:29:03.553336541Z"
+      created: "2026-11-19T08:50:57.037060132Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -918,7 +946,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: develop-modulith-c1f10f6
-      created: "2026-11-19T04:29:03.552531941Z"
+      created: "2026-11-19T08:50:57.036273644Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -933,7 +961,7 @@ entries:
   mdms-v2:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.558278874Z"
+      created: "2026-11-19T08:50:57.042711962Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -947,7 +975,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.55698516Z"
+      created: "2026-11-19T08:50:57.041372785Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -961,7 +989,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.556256552Z"
+      created: "2026-11-19T08:50:57.040641489Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -975,7 +1003,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.555523026Z"
+      created: "2026-11-19T08:50:57.039919046Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -989,7 +1017,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.554856741Z"
+      created: "2026-11-19T08:50:57.039271204Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1004,7 +1032,7 @@ entries:
   notification:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.562569732Z"
+      created: "2026-11-19T08:50:57.047030544Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1018,7 +1046,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.561667347Z"
+      created: "2026-11-19T08:50:57.046096287Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1032,7 +1060,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.560748277Z"
+      created: "2026-11-19T08:50:57.045168089Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1046,7 +1074,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.559835998Z"
+      created: "2026-11-19T08:50:57.044269935Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1060,7 +1088,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.559058888Z"
+      created: "2026-11-19T08:50:57.043495295Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1075,7 +1103,7 @@ entries:
   notify:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.56717415Z"
+      created: "2026-11-19T08:50:57.051620864Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1089,7 +1117,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.566339034Z"
+      created: "2026-11-19T08:50:57.050797401Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1103,7 +1131,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.565490078Z"
+      created: "2026-11-19T08:50:57.049954019Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1117,7 +1145,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.564630156Z"
+      created: "2026-11-19T08:50:57.049104859Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1131,7 +1159,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.56329817Z"
+      created: "2026-11-19T08:50:57.047931151Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1146,7 +1174,20 @@ entries:
   otp:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.573904278Z"
+      created: "2026-11-19T08:50:57.057546266Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: OTP generation, verification and invalidation for DIGIT 3.0
+      digest: 35b503e76221fa265ec5af910697dd79fa3bad12aaee6e6a909f55585aa95167
+      name: otp
+      urls:
+        - https://helm.digit.org/digit3/core/otp/otp-3.2.0.tgz
+      version: 3.2.0
+    - apiVersion: v2
+      appVersion: dev-flyway-7068862
+      created: "2026-11-19T08:50:57.056601483Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1159,7 +1200,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.572299613Z"
+      created: "2026-11-19T08:50:57.055653326Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1172,7 +1213,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.57031711Z"
+      created: "2026-11-19T08:50:57.054669325Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1185,7 +1226,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.568673458Z"
+      created: "2026-11-19T08:50:57.053110395Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1198,7 +1239,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.567920905Z"
+      created: "2026-11-19T08:50:57.052369896Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1212,7 +1253,7 @@ entries:
   pg-service:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.582404805Z"
+      created: "2026-11-19T08:50:57.062995406Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1226,7 +1267,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.580575939Z"
+      created: "2026-11-19T08:50:57.061971997Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1240,7 +1281,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.578810497Z"
+      created: "2026-11-19T08:50:57.060911923Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1254,7 +1295,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.57705558Z"
+      created: "2026-11-19T08:50:57.059328011Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1268,7 +1309,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.575483364Z"
+      created: "2026-11-19T08:50:57.058455656Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1283,7 +1324,7 @@ entries:
   registry:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.587812541Z"
+      created: "2026-11-19T08:50:57.067645114Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1297,7 +1338,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.586929535Z"
+      created: "2026-11-19T08:50:57.066182257Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1311,7 +1352,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.586049142Z"
+      created: "2026-11-19T08:50:57.065310854Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1325,7 +1366,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.585074751Z"
+      created: "2026-11-19T08:50:57.064422354Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1339,7 +1380,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.584201499Z"
+      created: "2026-11-19T08:50:57.063711719Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1354,7 +1395,7 @@ entries:
   template-config:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.593386103Z"
+      created: "2026-11-19T08:50:57.071413599Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1367,7 +1408,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.591835298Z"
+      created: "2026-11-19T08:50:57.070628463Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1380,7 +1421,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.590027348Z"
+      created: "2026-11-19T08:50:57.069849537Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1393,7 +1434,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.589240234Z"
+      created: "2026-11-19T08:50:57.069074256Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1406,7 +1447,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.588527629Z"
+      created: "2026-11-19T08:50:57.068393024Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1420,7 +1461,7 @@ entries:
   url-shortener:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.600363546Z"
+      created: "2026-11-19T08:50:57.075912283Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1433,7 +1474,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.598928873Z"
+      created: "2026-11-19T08:50:57.075058476Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1446,7 +1487,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.597414473Z"
+      created: "2026-11-19T08:50:57.074227792Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1459,7 +1500,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.595968574Z"
+      created: "2026-11-19T08:50:57.073061175Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1472,7 +1513,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.594717713Z"
+      created: "2026-11-19T08:50:57.072137784Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1486,7 +1527,7 @@ entries:
   workflow:
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.606385492Z"
+      created: "2026-11-19T08:50:57.080704858Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1500,7 +1541,7 @@ entries:
       version: 3.1.3
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.605449206Z"
+      created: "2026-11-19T08:50:57.079270809Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1514,7 +1555,7 @@ entries:
       version: 3.1.2
     - apiVersion: v2
       appVersion: dev-flyway-7068862
-      created: "2026-11-19T04:29:03.60441758Z"
+      created: "2026-11-19T08:50:57.078374979Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1528,7 +1569,7 @@ entries:
       version: 3.1.1
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.603452442Z"
+      created: "2026-11-19T08:50:57.077487962Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1542,7 +1583,7 @@ entries:
       version: 3.1.0
     - apiVersion: v2
       appVersion: flyway-branch-18c74fe
-      created: "2026-11-19T04:29:03.601648507Z"
+      created: "2026-11-19T08:50:57.076663879Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -1554,4 +1595,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/core/workflow/workflow-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-19T04:29:03.486053556Z"
+generated: "2026-11-19T08:50:56.967672461Z"
