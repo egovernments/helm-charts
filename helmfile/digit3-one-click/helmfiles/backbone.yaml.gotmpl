@@ -36,7 +36,10 @@ releases:
       (dict "name" "minio"                "wave" "1" "needs" "egov/cluster-configs" "common" true)
       (dict "name" "elasticsearch-master" "wave" "1" "needs" "egov/cluster-configs")
       (dict "name" "elasticsearch-data"   "wave" "2" "needs" "backbone/elasticsearch-master")
-      (dict "name" "kibana"               "wave" "3" "needs" "backbone/elasticsearch-data" "common" true) }}
+      (dict "name" "kibana"               "wave" "3" "needs" "backbone/elasticsearch-data" "common" true)
+      (dict "name" "pgadmin"              "wave" "3" "needs" "egov/cluster-configs" "common" true "optional" true) }}
+{{- /* optional releases are only deployed when the env file has their block (older env files don't) */}}
+{{- if or (not (hasKey $r "optional")) (hasKey $v $r.name) }}
   - name: {{ $r.name }}
     namespace: backbone
     chart: digit3-backbone/{{ $r.name }}
@@ -46,6 +49,7 @@ releases:
     needs: [{{ $r.needs }}]
     values:
       - {{ include "release-values" (merge (dict "v" $v "r" $r.name "ns" "backbone") (pick $r "common")) | nindent 8 }}
+{{- end }}
 {{- end }}
   # Vault starts sealed and empty: the postsync hook initialises/unseals it and writes the
   # AppRole the core services (otp, individual) log in with. Idempotent.

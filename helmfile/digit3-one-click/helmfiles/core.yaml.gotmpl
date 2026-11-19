@@ -16,7 +16,7 @@ bases:
 {{- required (printf "%s.chart-version is missing in the environment file" .r) (.v | get (printf "%s.chart-version" .r) "") -}}
 {{- end -}}
 {{- $v := .Values }}
-{{- $platform := list "infra" "global" "argo-cd" "keycloak" "kong" "cluster-configs" "cert-manager" "ingress-nginx" "redis" "kafka-kraft" "minio" "vault" "elasticsearch-master" "elasticsearch-data" "kibana" "kube-prometheus-stack" "loki" "grafana" "open-telemetry" "jaeger" "blackbox" "argocd" }}
+{{- $platform := list "infra" "global" "argo-cd" "keycloak" "kong" "cluster-configs" "cert-manager" "ingress-nginx" "redis" "kafka-kraft" "minio" "vault" "elasticsearch-master" "elasticsearch-data" "kibana" "pgadmin" "kube-prometheus-stack" "loki" "grafana" "open-telemetry" "jaeger" "blackbox" "argocd" }}
 repositories:
   - name: digit3-core
     url: https://helm.digit.org/digit3/core
