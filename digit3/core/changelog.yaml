@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-19"
+    ref: "PR-140"
+    title: "keycloak: db-init grants CREATE on schema public (Azure PostgreSQL)"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "keycloak"
+        from: "3.0.3"
+        to: "3.1.0"
   - date: "2026-11-17"
     ref: "PR-126"
     title: "chore(core): bump common dependency 3.1.1 -> 3.1.2"
