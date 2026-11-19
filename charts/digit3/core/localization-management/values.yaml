@@ -30,6 +30,9 @@ initContainers:
     schemaTable: "localization_management_schema"
     image:
       repository: "localization-management-db"
+      # = appVersion. Used in global.mode dev, where the common default would be "latest"
+      # (not published for this image). Keep it equal to appVersion.
+      tag: "develop-modulith-c1f10f6"
     env: |
         - name: "DB_URL"
           valueFrom:
