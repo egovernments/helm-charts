@@ -28,14 +28,18 @@ releases:
     labels: {layer: backbone, wave: "0"}
     values:
       - {{ include "release-values" (dict "v" $v "r" "cluster-configs" "ns" "egov" "wrap" true) | nindent 8 }}
-{{- /* wave = Argo CD sync wave (helmfile mode orders by needs). elasticsearch-data shares the
-       masters' wave: the masters only turn Ready (cluster green) once data nodes have joined. */}}
+{{- /* wave = Argo CD sync wave (helmfile mode orders by needs). Argo CD starts a wave only when
+       the previous one is healthy, so:
+       - elasticsearch-data shares the masters' wave: the masters only turn Ready (cluster green)
+         once data nodes have joined.
+       - a release with an Ingress is never in an earlier wave than ingress-nginx: an Ingress stays
+         Progressing until ingress-nginx gives it an address (minio has the console Ingress). */}}
 {{- range $r := list
       (dict "name" "cert-manager"         "wave" "1" "needs" "egov/cluster-configs")
       (dict "name" "ingress-nginx"        "wave" "2" "needs" "backbone/cert-manager")
       (dict "name" "redis"                "wave" "1" "needs" "egov/cluster-configs" "common" true)
       (dict "name" "kafka-kraft"          "wave" "1" "needs" "egov/cluster-configs")
-      (dict "name" "minio"                "wave" "1" "needs" "egov/cluster-configs" "common" true)
+      (dict "name" "minio"                "wave" "2" "needs" "egov/cluster-configs" "common" true)
       (dict "name" "elasticsearch-master" "wave" "1" "needs" "egov/cluster-configs" "createonly" "elasticsearch-master-certs")
       (dict "name" "elasticsearch-data"   "wave" "1" "needs" "backbone/elasticsearch-master")
       (dict "name" "kibana"               "wave" "3" "needs" "backbone/elasticsearch-data" "common" true)
@@ -52,6 +56,17 @@ releases:
     labels: {layer: backbone, wave: "{{ $r.wave }}"{{ with $r | get "createonly" "" }}, createonly: {{ . }}{{ end }}}
     needs: [{{ $r.needs }}]
     values:
+{{- if eq $r.name "cert-manager" }}
+      # AKS's admissions enforcer appends the last two rules to every webhook after it is created.
+      # Render them too, or Argo CD shows cert-manager OutOfSync forever (harmless elsewhere).
+      - webhook:
+          validatingWebhookConfiguration:
+            namespaceSelector:
+              matchExpressions:
+                - {key: cert-manager.io/disable-validation, operator: NotIn, values: ["true"]}
+                - {key: control-plane, operator: NotIn, values: ["true"]}
+                - {key: kubernetes.azure.com/managedby, operator: NotIn, values: [aks]}
+{{- end }}
       - {{ include "release-values" (merge (dict "v" $v "r" $r.name "ns" "backbone") (pick $r "common")) | nindent 8 }}
 {{- end }}
 {{- end }}
