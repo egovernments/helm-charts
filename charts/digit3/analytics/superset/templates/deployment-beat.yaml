@@ -1,0 +1,60 @@
+{{- include "superset.init" . -}}
+{{- if .Values.beat.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}-beat
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.name }}
+    component: beat
+spec:
+  replicas: 1  # Beat should always be 1 replica
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+      component: beat
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+        component: beat
+      annotations:
+        # See deployment-web.yaml: a mounted ConfigMap changing does not restart
+        # the container, so the pod would keep the previous superset_config.py
+        # while Argo CD reported Synced.
+        checksum/superset-config: {{ include (print $.Template.BasePath "/configmap-superset.yaml") . | sha256sum }}
+{{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      {{- include "superset.podSpec" . | nindent 6 }}
+      containers:
+        - name: beat
+          image: {{ include "superset.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            {{- include "superset.envFrom" . | nindent 12 }}
+          env:
+            - name: SUPERSET_ENV
+              value: "production"
+            {{- include "superset.extraEnv" . | nindent 12 }}
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/pythonpath
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export PYTHONPATH="/python-packages:/app/pythonpath:$PYTHONPATH"
+              exec celery --app=superset.tasks.celery_app:app beat \
+                --loglevel={{ .Values.beat.logLevel }} \
+                --schedule /tmp/celerybeat-schedule
+          resources:
+            {{- toYaml .Values.beat.resources | nindent 12 }}
+      volumes:
+        - name: superset-config
+          configMap:
+            name: {{ .Values.name }}-config
+{{- end }}

@@ -1,0 +1,353 @@
+# Apache Superset Helm Chart Values
+#
+# Environment overrides: every key below can be overridden from an environment
+# file under a top-level `superset:` key (the chart name), e.g. in env.yaml:
+#
+#   superset:
+#     namespace: analytics
+#     ingress:
+#       enabled: true
+#       hostName: analytics.example.org
+#
+# Each template merges that block over these defaults (superset.init in
+# _helpers.tpl), so empty strings, false and 0 override too. Maps merge key by
+# key; lists are replaced whole. Plain top-level values (-f / --set) work as well.
+
+# General configuration
+name: superset
+namespace: analytics
+# Empty = served at the root of its own host (ingress.hostName). Set e.g.
+# /analytics to serve under a path of a shared domain instead, together with
+# ingress.context.
+contextPath: ""
+
+# Read by the ingress template: global.domain is the host when
+# ingress.hostName is empty; global.setup "quickstart" drops TLS.
+global:
+  domain: ""
+  setup: ""
+
+# Docker image configuration
+# egovio/superset is ghcr.io/care-ecosystem/superset (Superset master, ahead of
+# 6.1.0) with the six Python packages below already installed into
+# /python-packages (which PYTHONPATH puts first). They used to be pip-installed
+# by an init container on EVERY pod start, so web/worker/beat could not start
+# unless pypi.org was reachable at that moment -- on 2026-11-20 PyPI blocked
+# unified-dev's egress IP and all three pods hung in Init:1/2, silently, with no
+# crash-loop and no alert.
+# Rebuild: see image/ (Dockerfile + README). It is pinned to a base digest, so a
+# rebuild reproduces this image.
+# Use a dated tag, never :latest -- the whole point is a reproducible pod start.
+image:
+  repository: egovio/superset
+  tag: care-20261120
+  pullPolicy: IfNotPresent
+
+# Pull secrets for every pod, e.g. [{name: docker-registry-secret}]. The image
+# above is public, so none are needed by default.
+imagePullSecrets: []
+
+# Database configuration -- host is environment-specific. Real creds/URI come
+# from the secret (secrets.name): SQLALCHEMY_DATABASE_URI, DB_HOST, DB_PORT.
+database:
+  host: postgres   # placeholder; set per environment
+  port: 5432
+  name: superset
+  user: superset
+  # Password should be provided in secrets
+
+# Redis configuration. Optional REDIS_PASSWORD in the secret is used for the
+# Celery broker, results backend and caches when set.
+redis:
+  host: redis.backbone.svc.cluster.local
+  port: 6379
+  # Use DB numbers no other app on a shared Redis uses: Celery's broker keys
+  # would otherwise mix with that app's.
+  celeryDb: "0"
+  resultsDb: "1"
+
+# Cache configuration
+cache:
+  timeout: 300
+  keyPrefix: "superset_"
+
+# Query configuration
+query:
+  maxRows: 100000
+  asyncTimeLimit: 300
+  webserverTimeout: 60
+
+# Session configuration
+session:
+  lifetime: 43200  # 12 hours in seconds
+
+# Feature flags
+features:
+  alertReports: true
+  dashboardRbac: true
+  crossFilters: true
+  templateProcessing: true
+  drillToDetail: true
+  drillBy: true
+
+# Any other Superset feature flags, added to FEATURE_FLAGS as-is, e.g.
+#   EMBEDDED_SUPERSET: true
+extraFeatureFlags: {}
+
+# Branding
+branding:
+  appName: "Analytics"
+  appIcon: "/static/assets/images/superset-logo.png"
+  iconWidth: 126
+  favicon: "/static/assets/images/favicon.png"
+  primaryColor: "#006064"
+
+# Extra superset_config.py, appended after everything above so it can
+# override any of it. Keys only order the snippets (sorted); values are Python.
+#   configOverrides:
+#     csv_upload: |
+#       CSV_EXTENSIONS = {"csv", "tsv"}
+configOverrides: {}
+
+# Secrets configuration
+secrets:
+  create: false  # Set to true to create secret from chart, or use existing secret
+  name: superset-secret  # Name of secret (existing or to be created)
+  data: {}
+    # If create: true, provide plain values (the template base64-encodes them):
+    # SECRET_KEY: "your-secret-key"
+    # ADMIN_PASSWORD: "your-admin-password"
+    # SQLALCHEMY_DATABASE_URI: "postgresql://user:pass@host:5432/dbname"
+    # DB_HOST: "postgres.example.svc.cluster.local"
+    # DB_PORT: "5432"
+    # REDIS_HOST: "redis.backbone.svc.cluster.local"
+    # REDIS_PORT: "6379"
+    # REDIS_PASSWORD: ""            # optional
+    # OAUTH_CLIENT_ID: ""           # with auth.oauth.enabled
+    # OAUTH_CLIENT_SECRET: ""       # with auth.oauth.enabled
+
+# Extra environment for web, worker, beat and the init job.
+#   extraEnv: {MAPBOX_API_KEY: "..."}           -> name: value
+#   extraEnvFrom: [{secretRef: {name: other}}]  -> appended to envFrom
+extraEnv: {}
+extraEnvFrom: []
+
+# Scheduling for every pod (web, worker, beat, init job).
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+podAnnotations: {}
+
+# Web deployment configuration
+web:
+  enabled: true
+  replicas: 1
+
+  # Gunicorn configuration
+  gunicorn:
+    workers: 4
+    workerClass: gthread
+    threads: 20
+    timeout: 60
+    keepAlive: 2
+    maxRequests: 1000
+    maxRequestsJitter: 100
+    logLevel: info
+
+  # Health probes
+  probes:
+    startup:
+      initialDelay: 15
+      timeout: 3
+      failureThreshold: 60
+      period: 5
+    liveness:
+      initialDelay: 15
+      timeout: 3
+      failureThreshold: 3
+      period: 30
+    readiness:
+      initialDelay: 15
+      timeout: 3
+      failureThreshold: 3
+      period: 15
+
+  # Resources
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+
+  # HorizontalPodAutoscaler; replaces web.replicas when enabled.
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+  # PodDisruptionBudget; only useful with 2+ replicas.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+  # Nginx sidecar configuration
+  nginx:
+    image: nginx:1.27-alpine
+    port: 8080
+    clientMaxBodySize: "100M"
+    proxyTimeout: 300
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+
+# Worker deployment configuration
+worker:
+  enabled: true
+  replicas: 1
+  poolType: prefork
+  concurrency: 4
+  logLevel: info
+
+  # Health probes
+  probes:
+    initialDelay: 120
+    timeout: 60
+    failureThreshold: 3
+    period: 60
+
+  # Resources
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+  # HorizontalPodAutoscaler; replaces worker.replicas when enabled.
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+# Beat deployment configuration
+beat:
+  enabled: true
+  logLevel: info
+
+  # Resources
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# Authentication. Default is FAB's AUTH_DB (username/password held by Superset).
+auth:
+  oauth:
+    # Requires OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET in the superset secret;
+    # with it on and those absent, login fails for everyone, so enable it per
+    # environment rather than here.
+    enabled: false
+    # The org that scopes everything below. Empty disables self-registration
+    # entirely -- see the ConfigMap template for why.
+    githubOrg: ""
+    # GitHub team slug -> Superset roles. When set, membership of one of these
+    # teams IS the access grant: an account in none of them is refused even if
+    # it belongs to the org. Leave empty to fall back to org membership alone.
+    # Slugs, not display names: "CARE Analytics" has the slug "care-analytics".
+    teamRoles: {}
+    # Baseline role every accepted user gets, on top of their team roles.
+    # Gamma reads the dashboards and datasets it is granted; Alpha can also add
+    # datasources; sql_lab is additive and grants SQL Lab.
+    defaultRole: Gamma
+    selfRegistration: true
+    # Re-derive roles from GitHub on each login. Leaving this on means a team
+    # change takes effect at next login -- and that roles assigned by hand in
+    # the UI do not survive one.
+    syncRolesAtLogin: true
+
+# Init containers configuration
+# Only the wait-for-postgres-redis container remains. The former
+# install-python-packages container is gone: psycopg2-binary==2.9.13,
+# clickhouse-connect==1.13.0, lz4==4.4.5, backports.zstd==1.8.0,
+# authlib==1.9.8 and joserfc==1.8.0 are baked into the image (see image
+# above) instead of being downloaded at every pod start.
+#
+# Why they are pinned and installed --no-deps, in case they are ever changed:
+# clickhouse-connect[sqlalchemy] would drag SQLAlchemy 2.x over the 1.4.54
+# Superset is built against; lz4 and backports.zstd are clickhouse-connect's
+# compression codecs, which the base image does not ship; authlib and joserfc
+# are required by AUTH_TYPE = AUTH_OAUTH, because FAB's BaseSecurityManager
+# imports authlib.integrations.flask_client at init. Changing the list means
+# rebuilding and repushing the image, then bumping image.tag above.
+initContainers:
+  waitImage: busybox:1.36.1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# Database initialization job: superset db upgrade + superset init, then
+# fab create-admin when ADMIN_PASSWORD is set in the secret (skipped otherwise,
+# e.g. with GitHub OAuth). Rerunning it is safe, so it runs on every sync and
+# applies the migrations of a new image.
+initJob:
+  enabled: true
+  ttl: 86400  # 24 hours - time to keep completed job pods
+  adminUsername: admin
+  adminEmail: ""  # required when ADMIN_PASSWORD is set
+  loadExamples: false  # Set to true to load example dashboards
+  # A Job's pod template is immutable, so a plain Job would fail every sync
+  # after its first. As an Argo CD Sync hook it is recreated each sync instead;
+  # wave 1 runs it after the ConfigMap and Secret it mounts are applied. For
+  # plain Helm, use helm.sh/hook: post-install,post-upgrade instead.
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# Ingress. host = ingress.hostName (else global.domain), path =
+# /{{ ingress.context }}, tls secret = ingress.tlsSecretName (else
+# <host>-tls-certs). Self-contained rather than the shared common.ingress: that
+# helper merges common's defaults (extraEnv, affinity, image, ...) into these
+# values while rendering, which leaked DIGIT Java/OTel env into Superset.
+ingress:
+  enabled: false
+  hostName: ""
+  context: ""                 # -> /; set to match contextPath when using one
+  tlsSecretName: ""
+  className: ""               # spec.ingressClassName; the annotation below also selects nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"

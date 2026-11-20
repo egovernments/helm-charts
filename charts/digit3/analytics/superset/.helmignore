@@ -1,0 +1,7 @@
+# Image build context and CI values are for the repo, not the packaged chart.
+image/
+ci/
+.DS_Store
+.git/
+*.tmp
+*.bak
