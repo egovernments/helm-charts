@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-20"
+    ref: "PR-152"
+    title: "kong: gateway-sync ExternalName bridge + dry-run (Phase 1)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "kong"
+        from: "3.1.2"
+        to: "3.1.3"
   - date: "2026-11-19"
     ref: "PR-144"
     title: "employee-onboarding, localization-management, otp: fix defaults"
