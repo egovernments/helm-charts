@@ -37,6 +37,8 @@ spec:
               env:
                 - name: CONFIG_PATH
                   value: /etc/gateway-sync/config.json
+                - name: DRY_RUN
+                  value: {{ $gs.dryRun | quote }}
               volumeMounts:
                 - name: config
                   mountPath: /etc/gateway-sync

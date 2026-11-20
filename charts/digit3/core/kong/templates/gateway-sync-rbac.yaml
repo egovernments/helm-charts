@@ -8,8 +8,8 @@ metadata:
     {{- include "kong.metaLabels" . | nindent 4 }}
     app.kubernetes.io/component: gateway-sync
 ---
-# Reconciler only reads Services to derive upstream host/port; cluster-scoped so it
-# can see services across the target namespaces.
+# Reads Services to derive upstream host/port, and (when ensureGatewayProxy) creates the
+# per-namespace kong-proxy ExternalName; cluster-scoped to cover the target namespaces.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -20,7 +20,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["services"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch", "create", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

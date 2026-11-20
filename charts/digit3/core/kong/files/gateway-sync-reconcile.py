@@ -20,6 +20,12 @@ PROTECTED_PLUGINS = CFG.get("protectedPlugins", [])
 MIXED_PLUGINS = CFG.get("mixedPlugins", [])
 PREFIX = CFG.get("annotationPrefix", "gateway")
 REGEX_PRIORITY = int(CFG.get("regexPriority", 1000))
+# Local kong-proxy ExternalName bridge, so a module can keep its Ingress in its own namespace.
+ENSURE_PROXY = bool(CFG.get("ensureGatewayProxy", False))
+PROXY_NAME = CFG.get("gatewayProxyName", "kong-proxy")
+PROXY_UPSTREAM = CFG.get("gatewayProxyUpstream", "kong-kong-proxy.egov.svc.cluster.local")
+PROXY_PORT = int(CFG.get("gatewayProxyPort", 80))
+KONG_NS = CFG.get("kongNamespace", "egov")
 A_ROUTE = "%s/route-path" % PREFIX
 A_ROUTEAUTH = "%s/route-auth" % PREFIX
 A_OPEN = "%s/open-paths" % PREFIX
@@ -50,6 +56,33 @@ def _req(url, method="GET", body=None, headers=None, ctx=None):
 
 def k8s_get(path):
     return _req(K8S + path, headers={"Authorization": "Bearer " + TOKEN}, ctx=_K8S_CTX)
+
+
+def k8s_post(path, body):
+    return _req(K8S + path, method="POST", body=body,
+                headers={"Authorization": "Bearer " + TOKEN}, ctx=_K8S_CTX)
+
+
+def ensure_gateway_proxy(namespaces):
+    # Ensure a kong-proxy ExternalName Service exists in each module namespace (not kong's own),
+    # so an Ingress there can back onto Kong without leaving the module namespace.
+    for ns in sorted(n for n in namespaces if n and n != KONG_NS):
+        try:
+            k8s_get("/api/v1/namespaces/%s/services/%s" % (ns, PROXY_NAME))
+            continue
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+        print("externalname ensure %s/%s -> %s:%s" % (ns, PROXY_NAME, PROXY_UPSTREAM, PROXY_PORT))
+        if DRY:
+            continue
+        body = {
+            "apiVersion": "v1", "kind": "Service",
+            "metadata": {"name": PROXY_NAME, "labels": {"app.kubernetes.io/managed-by": "gateway-sync"}},
+            "spec": {"type": "ExternalName", "externalName": PROXY_UPSTREAM,
+                     "ports": [{"name": "proxy", "port": PROXY_PORT}]},
+        }
+        k8s_post("/api/v1/namespaces/%s/services" % ns, body)
 
 
 def list_services():
@@ -213,6 +246,9 @@ def reconcile_plugins(route_name, want_names, mixed):
 
 def main():
     svcs, routes, rplugins, rmixed = desired()
+
+    if ENSURE_PROXY:
+        ensure_gateway_proxy({b["host"].split(".")[1] for b in svcs.values()})
 
     for name, body in svcs.items():
         print("service upsert %s -> %s:%s" % (name, body["host"], body["port"]))
