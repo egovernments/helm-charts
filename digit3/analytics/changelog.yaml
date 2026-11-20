@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-11-20"
+    ref: "PR-153"
+    title: "analytics: add superset chart (digit3/analytics/superset)"
+    author: "SriPadma8997-egov"
+    release_type: "major"
+    charts:
+      - name: "superset"
+        from: "0.0.0"
+        to: "3.0.0"
