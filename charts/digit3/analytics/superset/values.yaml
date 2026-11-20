@@ -91,7 +91,7 @@ features:
   drillBy: true
 
 # Any other Superset feature flags, added to FEATURE_FLAGS as-is, e.g.
-#   EMBEDDED_SUPERSET: true
+#   TAGGING_SYSTEM: true
 extraFeatureFlags: {}
 
 # Branding
@@ -254,7 +254,17 @@ beat:
       memory: "512Mi"
 
 # Authentication. Default is FAB's AUTH_DB (username/password held by Superset).
+# With auth.oauth.enabled, users sign in with GitHub -- and, with
+# auth.passwordLogin.enabled, also with a Superset username and password on the
+# same login page.
 auth:
+  passwordLogin:
+    # Only applies with auth.oauth.enabled (without OAuth, password login is the
+    # only login). Replaces the login page with files/login.html: a GitHub
+    # button plus a username/password form. Password accounts are the Superset
+    # users an admin creates with a password (Settings -> List Users) and the
+    # initJob admin; users who registered through GitHub have none.
+    enabled: true
   oauth:
     # Requires OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET in the superset secret;
     # with it on and those absent, login fails for everyone, so enable it per

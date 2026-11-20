@@ -7,6 +7,11 @@ metadata:
   labels:
     app: {{ .Values.name }}
 data:
+{{- if and .Values.auth.oauth.enabled .Values.auth.passwordLogin.enabled }}
+  # Jinja for Flask, not Helm: read with .Files.Get so its {{ "{{" }} }} pass through.
+  login.html: |
+    {{- .Files.Get "files/login.html" | nindent 4 }}
+{{- end }}
   superset_config.py: |
     import os
     from celery.schedules import crontab
@@ -237,6 +242,78 @@ data:
     # an admin creates the user in Superset first, and GitHub only authenticates
     # them. Set auth.oauth.githubOrg to allow members to register themselves.
     AUTH_USER_REGISTRATION = False
+{{- end }}
+{{- if .Values.auth.passwordLogin.enabled }}
+
+    # ---- Password login alongside GitHub ----------------------------------
+    # FAB takes one AUTH_TYPE, and Superset's React login page shows either
+    # provider buttons (AUTH_OAUTH) or the password form (AUTH_DB), never both.
+    # So AUTH_TYPE stays AUTH_OAUTH -- GitHub login, team mapping and
+    # registration work unchanged -- and /login/ is replaced by a server-rendered
+    # page (login.html, from this ConfigMap) offering both. A password sign-in
+    # is checked against Superset's own users (auth_user_db): accounts an admin
+    # creates in Settings -> List Users with a password, or the initJob admin.
+    # GitHub-registered users have no password and can only use GitHub.
+    import os as _os
+
+    from flask import current_app, flash, g, redirect, render_template_string, request
+    from flask_appbuilder import expose
+    from flask_appbuilder.security.decorators import no_cache
+    from flask_appbuilder.security.forms import LoginForm_db
+    from flask_appbuilder.security.views import AuthOAuthView
+    from flask_appbuilder.utils.base import get_safe_redirect
+    from flask_login import login_user
+    from superset.security import SupersetSecurityManager as _SupersetSecurityManager
+
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "login.html")) as _login_page:
+        LOGIN_PAGE_TEMPLATE = _login_page.read()
+
+    class OAuthOrPasswordAuthView(AuthOAuthView):
+        @expose("/login/", methods=["GET", "POST"])
+        @expose("/login/<provider>")
+        @no_cache
+        def login(self, provider=None):
+            # /login/github: FAB's OAuth redirect, state and next handling.
+            if provider is not None:
+                return super().login(provider)
+            if g.user is not None and g.user.is_authenticated:
+                return redirect(self.appbuilder.get_url_for_index)
+
+            next_url = request.args.get("next", "")
+            form = LoginForm_db()
+            if form.validate_on_submit():
+                user = self.appbuilder.sm.auth_user_db(form.username.data, form.password.data)
+                if user:
+                    login_user(user, remember=False)
+                    return redirect(get_safe_redirect(next_url))
+                flash(str(self.invalid_login_message), "warning")
+                return redirect(self.appbuilder.get_url_for_login_with(next_url))
+
+            conf = current_app.config
+            return render_template_string(
+                LOGIN_PAGE_TEMPLATE,
+                form=form,
+                providers=self.appbuilder.sm.oauth_providers,
+                password_login=True,
+                next_url=next_url,
+                app_name=conf["APP_NAME"],
+                app_icon=conf["APP_ICON"],
+                icon_width=conf["APP_ICON_WIDTH"],
+                favicon=conf["FAVICONS"][0]["href"],
+                primary_color="{{ .Values.branding.primaryColor | default "#006064" }}",
+            )
+
+    # Built on whichever security manager is configured above (the GitHub org
+    # one when githubOrg is set). register_superset_auth_view = False stops
+    # Superset registering its React /login/ route, so FAB registers this view
+    # as the auth view, with its rate limiting.
+    class OAuthOrPasswordSecurityManager(
+        globals().get("CUSTOM_SECURITY_MANAGER", _SupersetSecurityManager)
+    ):
+        authoauthview = OAuthOrPasswordAuthView
+        register_superset_auth_view = False
+
+    CUSTOM_SECURITY_MANAGER = OAuthOrPasswordSecurityManager
 {{- end }}
 {{- end }}
 

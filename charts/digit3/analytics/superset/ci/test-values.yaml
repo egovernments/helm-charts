@@ -13,7 +13,7 @@ extraEnvFrom:
   - secretRef:
       name: extra
 extraFeatureFlags:
-  EMBEDDED_SUPERSET: true
+  TAGGING_SYSTEM: true
 configOverrides:
   csv: |
     CSV_EXTENSIONS = {"csv"}

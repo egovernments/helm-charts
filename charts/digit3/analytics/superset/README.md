@@ -43,6 +43,29 @@ superset:
 expected. Maps merge key by key, and lists (`tolerations`, `extraEnvFrom`, …)
 replace the default whole.
 
+## Login
+
+| `auth.oauth.enabled` | `auth.passwordLogin.enabled` | Login page |
+|---|---|---|
+| `false` | (ignored) | Username and password only (Superset's own page) |
+| `true` | `true` (default) | A **Sign in with GitHub** button and a username/password form on one page |
+| `true` | `false` | GitHub only |
+
+GitHub sign-in is scoped by `auth.oauth.githubOrg`, and `auth.oauth.teamRoles`
+maps teams to roles. A user in none of the mapped teams is refused.
+
+A password sign-in checks the password against Superset's own users. Those are
+the accounts an admin creates under *Settings → List Users*, where the form
+requires a password, and the `initJob` admin. Users who registered through
+GitHub have no password and must use GitHub.
+
+Both can be offered on one page because `AUTH_TYPE` stays `AUTH_OAUTH`, so the
+GitHub flow, team mapping and self-registration are unchanged. `/login/` is
+replaced by `files/login.html`, which the ConfigMap ships next to
+`superset_config.py`, and the password form posts to that same route. Superset's
+React login page can't do this: it shows either the provider buttons or the
+password form, depending on `AUTH_TYPE`.
+
 ## Prerequisites
 
 1. **Metadata database.** Create an empty Postgres database and role, for example `superset`.
@@ -80,7 +103,7 @@ This chart now covers these upstream features:
 
 These are additions not in upstream:
 
-- GitHub OAuth with org and team→role mapping (`auth.oauth`).
+- GitHub OAuth with org and team→role mapping (`auth.oauth`), optionally next to username/password login on the same page (`auth.passwordLogin`).
 - An nginx sidecar that serves static assets and preserves the `X-Forwarded-*` headers from the ingress.
 - Config checksums that roll the pods when the rendered config changes.
 
