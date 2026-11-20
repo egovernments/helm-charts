@@ -1,0 +1,17 @@
+apiVersion: v2
+name: superset
+description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
+type: application
+version: 3.0.0
+# Image tag, not a Superset release: egovio/superset:care-20261120 is built from
+# Superset master (mid-2026, ahead of 6.1.0) -- see image/README.md.
+appVersion: "care-20261120"
+keywords:
+  - analytics
+  - superset
+  - business-intelligence
+  - data-visualization
+home: https://superset.apache.org
+sources:
+  - https://github.com/apache/superset
+  - https://github.com/egovernments/helm-charts

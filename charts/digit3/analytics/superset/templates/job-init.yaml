@@ -1,0 +1,89 @@
+{{- include "superset.init" . -}}
+{{- if .Values.initJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.name }}-init-db
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.name }}
+    component: init
+{{- with .Values.initJob.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.initJob.ttl }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+        component: init
+{{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      {{- include "superset.podSpec" . | nindent 6 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: init-db
+          image: {{ include "superset.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            {{- include "superset.envFrom" . | nindent 12 }}
+          env:
+            - name: ADMIN_EMAIL
+              value: {{ .Values.initJob.adminEmail | quote }}
+            {{- include "superset.extraEnv" . | nindent 12 }}
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/pythonpath
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              export PYTHONPATH="/python-packages:/app/pythonpath:$PYTHONPATH"
+
+              echo "Running database migrations..."
+              superset db upgrade
+
+              echo "Initializing Superset..."
+              superset init
+
+              # No ADMIN_PASSWORD (e.g. GitHub OAuth, where users come from
+              # GitHub) means no local admin. When set, the admin is created
+              # only if missing: the job reruns on every sync.
+              if [ -n "${ADMIN_PASSWORD:-}" ]; then
+                if [ -z "${ADMIN_EMAIL}" ]; then
+                  echo "ADMIN_PASSWORD is set but initJob.adminEmail is empty" >&2
+                  exit 1
+                fi
+                if superset fab list-users 2>/dev/null | grep -q "username:{{ .Values.initJob.adminUsername }} "; then
+                  echo "Admin user {{ .Values.initJob.adminUsername }} already exists."
+                else
+                  echo "Creating admin user..."
+                  superset fab create-admin \
+                    --username {{ .Values.initJob.adminUsername }} \
+                    --firstname Admin \
+                    --lastname User \
+                    --email "${ADMIN_EMAIL}" \
+                    --password "${ADMIN_PASSWORD}"
+                fi
+              fi
+              {{- if .Values.initJob.loadExamples }}
+
+              echo "Loading example data..."
+              superset load-examples
+              {{- end }}
+
+              echo "Database initialization complete!"
+          resources:
+            {{- toYaml .Values.initJob.resources | nindent 12 }}
+      volumes:
+        - name: superset-config
+          configMap:
+            name: {{ .Values.name }}-config
+{{- end }}

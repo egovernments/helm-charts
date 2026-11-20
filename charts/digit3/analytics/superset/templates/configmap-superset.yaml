@@ -1,0 +1,346 @@
+{{- include "superset.init" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.name }}
+data:
+{{- if and .Values.auth.oauth.enabled .Values.auth.passwordLogin.enabled }}
+  # Jinja for Flask, not Helm: read with .Files.Get so its {{ "{{" }} }} pass through.
+  login.html: |
+    {{- .Files.Get "files/login.html" | nindent 4 }}
+{{- end }}
+  superset_config.py: |
+    import os
+    from celery.schedules import crontab
+
+    # Critical for context path deployment
+    # contextPath empty = served at the root of its own host. APPLICATION_ROOT
+    # must still be "/" (Flask's default; "" breaks the session cookie path),
+    # while STATIC_ASSETS_PREFIX stays empty so asset URLs are /static/... and
+    # not //static/...
+    APPLICATION_ROOT = "{{ .Values.contextPath | default "/" }}"
+    STATIC_ASSETS_PREFIX = "{{ .Values.contextPath }}"
+
+    # Enable proxy fix for Traefik/nginx X-Forwarded-* headers
+    ENABLE_PROXY_FIX = True
+    # Two proxies sit in front: the ingress controller, then the nginx sidecar.
+    # Only X-Forwarded-For accumulates a value per hop, so x_for must be 2 to
+    # reach the real client -- at 1, ProxyFix reads the ingress pod's address
+    # and every audit log records that instead. The other headers are set once
+    # and passed through, so they stay at 1.
+    PROXY_FIX_CONFIG = {
+        "x_for": 2,
+        "x_proto": 1,
+        "x_host": 1,
+        "x_port": 1,
+        "x_prefix": 1
+    }
+
+    # Database configuration
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_DATABASE_URI",
+        "postgresql://{{ .Values.database.user }}:PASSWORD@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}"
+    )
+
+    # Redis configuration
+    REDIS_HOST = "{{ .Values.redis.host }}"
+    REDIS_PORT = "{{ .Values.redis.port }}"
+    REDIS_CELERY_DB = "{{ .Values.redis.celeryDb }}"
+    REDIS_RESULTS_DB = "{{ .Values.redis.resultsDb }}"
+    # Optional; from the secret. Empty means an unauthenticated Redis.
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+    REDIS_AUTH = f":{REDIS_PASSWORD}@" if REDIS_PASSWORD else ""
+
+    # Cache configuration
+    CACHE_CONFIG = {
+        'CACHE_TYPE': 'RedisCache',
+        'CACHE_DEFAULT_TIMEOUT': {{ .Values.cache.timeout }},
+        'CACHE_KEY_PREFIX': '{{ .Values.cache.keyPrefix }}',
+        'CACHE_REDIS_HOST': REDIS_HOST,
+        'CACHE_REDIS_PORT': REDIS_PORT,
+        'CACHE_REDIS_DB': REDIS_RESULTS_DB,
+        'CACHE_REDIS_PASSWORD': REDIS_PASSWORD or None,
+    }
+    DATA_CACHE_CONFIG = CACHE_CONFIG
+    THUMBNAIL_CACHE_CONFIG = CACHE_CONFIG
+
+    # Celery configuration
+    class CeleryConfig:
+        broker_url = f"redis://{REDIS_AUTH}{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
+        imports = (
+            "superset.sql_lab",
+            "superset.tasks.scheduler",
+            "superset.tasks.thumbnails",
+            "superset.tasks.cache",
+        )
+        result_backend = f"redis://{REDIS_AUTH}{REDIS_HOST}:{REDIS_PORT}/{REDIS_RESULTS_DB}"
+        worker_prefetch_multiplier = 1
+        task_acks_late = False
+        beat_schedule = {
+            "reports.scheduler": {
+                "task": "reports.scheduler",
+                "schedule": crontab(minute="*", hour="*"),
+            },
+            "reports.prune_log": {
+                "task": "reports.prune_log",
+                "schedule": crontab(minute=10, hour=0),
+            },
+        }
+
+    CELERY_CONFIG = CeleryConfig
+
+    # Feature flags
+    FEATURE_FLAGS = {
+        "ALERT_REPORTS": {{ if .Values.features.alertReports }}True{{ else }}False{{ end }},
+        "DASHBOARD_RBAC": {{ if .Values.features.dashboardRbac }}True{{ else }}False{{ end }},
+        "DASHBOARD_CROSS_FILTERS": {{ if .Values.features.crossFilters }}True{{ else }}False{{ end }},
+        "ENABLE_TEMPLATE_PROCESSING": {{ if .Values.features.templateProcessing }}True{{ else }}False{{ end }},
+        "DRILL_TO_DETAIL": {{ if .Values.features.drillToDetail }}True{{ else }}False{{ end }},
+        "DRILL_BY": {{ if .Values.features.drillBy }}True{{ else }}False{{ end }},
+{{- range $flag, $on := .Values.extraFeatureFlags }}
+        "{{ $flag }}": {{ if $on }}True{{ else }}False{{ end }},
+{{- end }}
+    }
+
+    # Security settings
+    SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = None
+
+{{- if .Values.auth.oauth.enabled }}
+
+    # ---- Authentication: GitHub OAuth -------------------------------------
+    # Individual logins without per-user passwords: Superset never sees a
+    # credential, and access follows the GitHub account. Credentials come from
+    # the superset secret (cluster-configs.secrets.superset in the SOPS-encrypted
+    # environments/<env>-secrets.yaml), never from values.
+    #
+    # The GitHub OAuth app's callback URL must be exactly:
+    #   https://<domain>{{ .Values.contextPath }}/oauth-authorized/github
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+
+    AUTH_TYPE = AUTH_OAUTH
+
+    OAUTH_PROVIDERS = [
+        {
+            "name": "github",
+            "icon": "fa-github",
+            "token_key": "access_token",
+            "remote_app": {
+                "client_id": os.getenv("OAUTH_CLIENT_ID"),
+                "client_secret": os.getenv("OAUTH_CLIENT_SECRET"),
+                "api_base_url": "https://api.github.com/",
+                "access_token_url": "https://github.com/login/oauth/access_token",
+                "authorize_url": "https://github.com/login/oauth/authorize",
+                "client_kwargs": {"scope": "read:user read:org user:email"},
+            },
+        }
+    ]
+{{- if .Values.auth.oauth.githubOrg }}
+
+    AUTH_USER_REGISTRATION = {{ if .Values.auth.oauth.selfRegistration }}True{{ else }}False{{ end }}
+
+    # Baseline role for anyone who passes the checks below. Team mappings add
+    # to it rather than replace it.
+    AUTH_USER_REGISTRATION_ROLE = "{{ .Values.auth.oauth.defaultRole }}"
+
+    # Recalculate roles from GitHub on every login, so removing someone from a
+    # team downgrades them without anyone touching Superset. The cost is that
+    # roles granted by hand in the UI are wiped at next login -- with this on,
+    # GitHub teams are the source of truth, not Settings -> List Users.
+    AUTH_ROLES_SYNC_AT_LOGIN = {{ if .Values.auth.oauth.syncRolesAtLogin }}True{{ else }}False{{ end }}
+
+    GITHUB_ORG = "{{ .Values.auth.oauth.githubOrg }}"
+{{- if .Values.auth.oauth.teamRoles }}
+
+    # GitHub team slug -> Superset roles. FAB reads this against the role_keys
+    # the security manager returns below.
+    AUTH_ROLES_MAPPING = {
+{{- range $slug, $roles := .Values.auth.oauth.teamRoles }}
+        "{{ $slug }}": [{{ range $i, $r := $roles }}{{ if $i }}, {{ end }}"{{ $r }}"{{ end }}],
+{{- end }}
+    }
+{{- else }}
+
+    AUTH_ROLES_MAPPING = {}
+{{- end }}
+
+    from superset.security import SupersetSecurityManager
+
+    class GithubOrgSecurityManager(SupersetSecurityManager):
+        # get_oauth_user_info, NOT oauth_user_info: the latter is a None class
+        # attribute that the oauth_user_info_getter decorator assigns to, so
+        # calling it through super() raises "NoneType is not callable". The
+        # built-in GitHub handling lives in get_oauth_user_info.
+        def get_oauth_user_info(self, provider, resp):
+            info = super().get_oauth_user_info(provider, resp)
+            if provider != "github":
+                return info
+
+            remote = self.appbuilder.sm.oauth_remotes[provider]
+            org = GITHUB_ORG.lower()
+
+            # user/teams spans every org the account belongs to, so the slugs
+            # are filtered by org first. Without that, a team of the same name
+            # in an unrelated org would grant access here.
+            teams = {
+                (t.get("slug") or "").lower()
+                for t in remote.get("user/teams").json()
+                if ((t.get("organization") or {}).get("login") or "").lower() == org
+            }
+
+            if AUTH_ROLES_MAPPING:
+                # Match case-insensitively, but hand FAB the mapping's own keys:
+                # get_roles_from_keys looks them up verbatim.
+                by_lower = {k.lower(): k for k in AUTH_ROLES_MAPPING}
+                matched = sorted(
+                    by_lower[slug] for slug in teams if slug in by_lower
+                )
+                if not matched:
+                    raise Exception(
+                        "GitHub account %s is in no %s team mapped to a Superset "
+                        "role (teams seen: %s)"
+                        % (info.get("username"), GITHUB_ORG, ", ".join(sorted(teams)) or "none")
+                    )
+                info["role_keys"] = matched
+            else:
+                # No team mapping configured, so org membership is the gate.
+                orgs = {
+                    (o.get("login") or "").lower()
+                    for o in remote.get("user/orgs").json()
+                }
+                if org not in orgs:
+                    raise Exception(
+                        "GitHub account %s is not a member of %s"
+                        % (info.get("username"), GITHUB_ORG)
+                    )
+
+            # The built-in returns only {"username": "github_<login>"}, which
+            # would create users with no email -- alerts and reports have
+            # nowhere to send to. Fill in what the API exposes.
+            me = remote.get("user").json()
+            email = me.get("email")
+            if not email:
+                for entry in remote.get("user/emails").json():
+                    if entry.get("primary") and entry.get("email"):
+                        email = entry["email"]
+                        break
+            parts = (me.get("name") or "").split(" ", 1)
+            info.setdefault("email", email or "")
+            info.setdefault("first_name", parts[0] if parts[0] else info.get("username", ""))
+            info.setdefault("last_name", parts[1] if len(parts) > 1 else "")
+            return info
+
+    CUSTOM_SECURITY_MANAGER = GithubOrgSecurityManager
+{{- else }}
+
+    # No org configured, so nothing distinguishes a colleague from any other
+    # GitHub account that reaches the login page. Registration is therefore off:
+    # an admin creates the user in Superset first, and GitHub only authenticates
+    # them. Set auth.oauth.githubOrg to allow members to register themselves.
+    AUTH_USER_REGISTRATION = False
+{{- end }}
+{{- if .Values.auth.passwordLogin.enabled }}
+
+    # ---- Password login alongside GitHub ----------------------------------
+    # FAB takes one AUTH_TYPE, and Superset's React login page shows either
+    # provider buttons (AUTH_OAUTH) or the password form (AUTH_DB), never both.
+    # So AUTH_TYPE stays AUTH_OAUTH -- GitHub login, team mapping and
+    # registration work unchanged -- and /login/ is replaced by a server-rendered
+    # page (login.html, from this ConfigMap) offering both. A password sign-in
+    # is checked against Superset's own users (auth_user_db): accounts an admin
+    # creates in Settings -> List Users with a password, or the initJob admin.
+    # GitHub-registered users have no password and can only use GitHub.
+    import os as _os
+
+    from flask import current_app, flash, g, redirect, render_template_string, request
+    from flask_appbuilder import expose
+    from flask_appbuilder.security.decorators import no_cache
+    from flask_appbuilder.security.forms import LoginForm_db
+    from flask_appbuilder.security.views import AuthOAuthView
+    from flask_appbuilder.utils.base import get_safe_redirect
+    from flask_login import login_user
+    from superset.security import SupersetSecurityManager as _SupersetSecurityManager
+
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "login.html")) as _login_page:
+        LOGIN_PAGE_TEMPLATE = _login_page.read()
+
+    class OAuthOrPasswordAuthView(AuthOAuthView):
+        @expose("/login/", methods=["GET", "POST"])
+        @expose("/login/<provider>")
+        @no_cache
+        def login(self, provider=None):
+            # /login/github: FAB's OAuth redirect, state and next handling.
+            if provider is not None:
+                return super().login(provider)
+            if g.user is not None and g.user.is_authenticated:
+                return redirect(self.appbuilder.get_url_for_index)
+
+            next_url = request.args.get("next", "")
+            form = LoginForm_db()
+            if form.validate_on_submit():
+                user = self.appbuilder.sm.auth_user_db(form.username.data, form.password.data)
+                if user:
+                    login_user(user, remember=False)
+                    return redirect(get_safe_redirect(next_url))
+                flash(str(self.invalid_login_message), "warning")
+                return redirect(self.appbuilder.get_url_for_login_with(next_url))
+
+            conf = current_app.config
+            return render_template_string(
+                LOGIN_PAGE_TEMPLATE,
+                form=form,
+                providers=self.appbuilder.sm.oauth_providers,
+                password_login=True,
+                next_url=next_url,
+                app_name=conf["APP_NAME"],
+                app_icon=conf["APP_ICON"],
+                icon_width=conf["APP_ICON_WIDTH"],
+                favicon=conf["FAVICONS"][0]["href"],
+                primary_color="{{ .Values.branding.primaryColor | default "#006064" }}",
+            )
+
+    # Built on whichever security manager is configured above (the GitHub org
+    # one when githubOrg is set). register_superset_auth_view = False stops
+    # Superset registering its React /login/ route, so FAB registers this view
+    # as the auth view, with its rate limiting.
+    class OAuthOrPasswordSecurityManager(
+        globals().get("CUSTOM_SECURITY_MANAGER", _SupersetSecurityManager)
+    ):
+        authoauthview = OAuthOrPasswordAuthView
+        register_superset_auth_view = False
+
+    CUSTOM_SECURITY_MANAGER = OAuthOrPasswordSecurityManager
+{{- end }}
+{{- end }}
+
+    # Branding
+    APP_NAME = "{{ .Values.branding.appName | default "Analytics" }}"
+    APP_ICON = "{{ .Values.branding.appIcon | default "/static/assets/images/superset-logo.png" }}"
+    APP_ICON_WIDTH = {{ .Values.branding.iconWidth | default 126 }}
+    FAVICONS = [{"href": "{{ .Values.branding.favicon | default "/static/assets/images/favicon.png" }}"}]
+
+    # Theme
+    THEME_OVERRIDES = {
+        "colors": {
+            "primary": {
+                "base": "{{ .Values.branding.primaryColor | default "#006064" }}",
+            },
+        },
+    }
+
+    # Session configuration
+    PERMANENT_SESSION_LIFETIME = {{ .Values.session.lifetime | default 43200 }}
+
+    # Query limits
+    SQL_MAX_ROW = {{ .Values.query.maxRows | default 100000 }}
+    SQLLAB_ASYNC_TIME_LIMIT_SEC = {{ .Values.query.asyncTimeLimit | default 300 }}
+    SUPERSET_WEBSERVER_TIMEOUT = {{ .Values.query.webserverTimeout | default 60 }}
+{{- range $name, $snippet := .Values.configOverrides }}
+
+    # ---- configOverrides.{{ $name }} ----
+{{ $snippet | indent 4 }}
+{{- end }}

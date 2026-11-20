@@ -1,0 +1,75 @@
+{{- include "superset.init" . -}}
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}-worker
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.name }}
+    component: worker
+spec:
+{{- if not .Values.worker.autoscaling.enabled }}
+  replicas: {{ .Values.worker.replicas }}
+{{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+        component: worker
+      annotations:
+        # See deployment-web.yaml: a mounted ConfigMap changing does not restart
+        # the container, so the pod would keep the previous superset_config.py
+        # while Argo CD reported Synced.
+        checksum/superset-config: {{ include (print $.Template.BasePath "/configmap-superset.yaml") . | sha256sum }}
+{{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      {{- include "superset.podSpec" . | nindent 6 }}
+      containers:
+        - name: worker
+          image: {{ include "superset.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            {{- include "superset.envFrom" . | nindent 12 }}
+          env:
+            - name: SUPERSET_ENV
+              value: "production"
+            {{- include "superset.extraEnv" . | nindent 12 }}
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/pythonpath
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export PYTHONPATH="/python-packages:/app/pythonpath:$PYTHONPATH"
+              exec celery --app=superset.tasks.celery_app:app worker \
+                --pool={{ .Values.worker.poolType }} \
+                --concurrency={{ .Values.worker.concurrency }} \
+                --loglevel={{ .Values.worker.logLevel }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  export PYTHONPATH="/python-packages:/app/pythonpath:$PYTHONPATH"
+                  celery -A superset.tasks.celery_app:app inspect ping -d celery@$HOSTNAME
+            initialDelaySeconds: {{ .Values.worker.probes.initialDelay }}
+            timeoutSeconds: {{ .Values.worker.probes.timeout }}
+            failureThreshold: {{ .Values.worker.probes.failureThreshold }}
+            periodSeconds: {{ .Values.worker.probes.period }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+      volumes:
+        - name: superset-config
+          configMap:
+            name: {{ .Values.name }}-config
+{{- end }}

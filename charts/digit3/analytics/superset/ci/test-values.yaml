@@ -1,0 +1,36 @@
+# Values chart-ci renders the chart with: every optional feature on, so the
+# check covers the templates that are off by default.
+ingress:
+  enabled: true
+  hostName: analytics.example.org
+imagePullSecrets:
+  - name: docker-registry-secret
+nodeSelector:
+  kubernetes.io/os: linux
+extraEnv:
+  MAPBOX_API_KEY: test
+extraEnvFrom:
+  - secretRef:
+      name: extra
+extraFeatureFlags:
+  TAGGING_SYSTEM: true
+configOverrides:
+  csv: |
+    CSV_EXTENSIONS = {"csv"}
+initJob:
+  adminEmail: admin@example.org
+web:
+  replicas: 2
+  autoscaling:
+    enabled: true
+  podDisruptionBudget:
+    enabled: true
+worker:
+  autoscaling:
+    enabled: true
+auth:
+  oauth:
+    enabled: true
+    githubOrg: example
+    teamRoles:
+      analytics-admins: [Admin]
