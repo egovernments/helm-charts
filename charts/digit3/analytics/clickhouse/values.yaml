@@ -1,0 +1,122 @@
+# ClickHouse cluster (ClickHouseCluster + KeeperCluster), reconciled by the
+# ClickHouse operator -- install digit3/analytics/clickhouse-operator first.
+#
+# Environment overrides: every key below can be overridden from an environment
+# file under a top-level `clickhouse:` key (the chart name); each template
+# merges that block over these defaults, so empty strings, false and 0
+# override too. Maps merge key by key; lists are replaced whole.
+
+# ClickHouseCluster name. The operator names the pods
+# <name>-clickhouse-<shard>-<replica>-0 and the client Service
+# <name>-clickhouse-headless (ports 8123 HTTP, 9000 native, 9363 metrics).
+name: clickhouse
+# KeeperCluster name; empty = <name>-keeper.
+keeperName: ""
+# Empty = the release namespace.
+namespace: ""
+# Extra labels on both resources.
+labels: {}
+
+# Passwords. Nothing secret lives in values: every password is read from this
+# Secret in the cluster's namespace.
+auth:
+  secretName: clickhouse-users
+  # Key holding the `default` user's password (operator settings.defaultUserPassword).
+  defaultUserPasswordKey: default-password
+  # true = render the Secret from `passwords` below (key -> plain value).
+  # Leave false and create it elsewhere (e.g. cluster-configs from SOPS).
+  createSecret: false
+  passwords: {}
+    # default-password: ""
+    # app-password: ""
+    # otelcollector-password: ""
+
+# Users besides `default` (and the operator's own). Each password comes from
+# auth.secretName[passwordKey] through an env var on the ClickHouse container
+# and ClickHouse's `from_env`, so it is never written into the generated
+# config. `settings` is merged into the user's entry as-is (networks, quotas,
+# settings profile overrides, ...).
+users:
+  app:
+    passwordKey: app-password
+    profile: default
+    grants:
+      - GRANT SHOW ON *.*, SELECT ON system.*, SELECT ON default.*
+    settings: {}
+  otelcollector:
+    passwordKey: otelcollector-password
+    profile: default
+    grants:
+      - GRANT SELECT,INSERT,CREATE,SHOW ON default.*
+    settings: {}
+
+# KeeperCluster spec, passed through to the operator (run through tpl).
+# See: kubectl explain keepercluster.spec
+keeper:
+  spec:
+    replicas: 1
+    containerTemplate:
+      image:
+        repository: clickhouse/clickhouse-keeper
+        # Same release as the server; never "latest".
+        tag: "25.7.8.71-alpine"
+      imagePullPolicy: IfNotPresent
+      # What unified-dev's Keeper runs with (the operator's built-in default).
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+    settings:
+      logger:
+        level: information
+    dataVolumeClaimSpec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+
+# ClickHouseCluster spec, passed through to the operator (run through tpl).
+# keeperClusterRef, settings.defaultUserPassword and the users above are
+# added by the template. See: kubectl explain clickhousecluster.spec
+cluster:
+  spec:
+    replicas: 1
+    shards: 1
+    containerTemplate:
+      image:
+        repository: clickhouse/clickhouse-server
+        tag: "25.7.8.71-alpine"
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests:
+          cpu: "1000m"
+          memory: "2Gi"
+        limits:
+          cpu: "4000m"
+          memory: "8Gi"
+    dataVolumeClaimSpec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+    settings:
+      extraConfig:
+        max_connections: 4096
+        keep_alive_timeout: 64
+        max_concurrent_queries: 100
+      # Server log verbosity. At trace, every line also lands in
+      # system.text_log, which on unified-dev grew to 24 GiB and filled the
+      # 50 Gi volume. information is the operator's default.
+      logger:
+        level: information
+      # TTL for query_log, part_log, text_log, metric_log and
+      # asynchronous_metric_log (applied on the next server restart). 0 = keep forever.
+      systemLogsTTLDays: 30
+
+# Extra manifests rendered as-is (run through tpl), e.g. a NetworkPolicy.
+additionalManifests: []

@@ -1,0 +1,46 @@
+# Values for the upstream chart go under `clickhouse-operator:` (the
+# dependency alias). An environment file overrides them the same way, with a
+# top-level `clickhouse-operator:` block -- Helm hands that block to the
+# dependency directly.
+#
+# All upstream values: helm show values oci://ghcr.io/clickhouse/clickhouse-operator-helm --version 0.0.8
+
+clickhouse-operator:
+  # Resource names start with "clickhouse-" (clickhouse-controller-manager, ...)
+  # regardless of the release name, as on unified-dev.
+  fullnameOverride: clickhouse
+
+  controller:
+    # Empty = watch ClickHouseCluster/KeeperCluster in every namespace.
+    watchNamespaces: []
+    pdbManagement:
+      enabled: true
+    # Lets clusters opt in to an operator-managed NetworkPolicy
+    # (spec.networkPolicy); a cluster without that field gets none.
+    networkPolicyManagement:
+      enabled: true
+
+  manager:
+    replicas: 1
+    image:
+      repository: ghcr.io/clickhouse/clickhouse-operator
+      # Empty = Chart.appVersion of the dependency (v0.0.8). Never "latest":
+      # on unified-dev an unpinned operator re-pulled on reschedule picked up a
+      # build needing RBAC the chart lacked, and the ClickHouse pod went
+      # NotReady (2026-08-18). 0.0.8 grants that RBAC (pods/status).
+      tag: ""
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+
+  # Webhook and metrics certificates come from cert-manager (a self-signed
+  # Issuer in the release namespace), so cert-manager must be installed.
+  certManager:
+    enabled: true
+  webhook:
+    enabled: true

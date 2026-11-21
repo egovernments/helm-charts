@@ -1,0 +1,24 @@
+# Values chart-ci renders with: the optional paths on.
+auth:
+  createSecret: true
+  passwords:
+    default-password: test
+    app-password: test
+    otelcollector-password: test
+labels:
+  team: analytics
+users:
+  reader:
+    passwordKey: reader-password
+    grants:
+      - GRANT SELECT ON analytics.*
+    settings:
+      networks:
+        ip: ["::/0"]
+additionalManifests:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: '{{ .Values.name }}-extra'
+    data:
+      k: v
