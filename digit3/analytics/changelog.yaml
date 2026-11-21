@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-21"
+    ref: "PR-154"
+    title: "analytics/superset: run the init job before the Deployments (Argo CD waves)"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "superset"
+        from: "3.0.0"
+        to: "3.0.1"
   - date: "2026-11-20"
     ref: "PR-153"
     title: "analytics: add superset chart (digit3/analytics/superset)"
