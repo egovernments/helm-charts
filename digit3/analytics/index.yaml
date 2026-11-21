@@ -3,7 +3,26 @@ entries:
   superset:
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-20T13:01:19.512660592Z"
+      created: "2026-11-21T12:47:52.464282446Z"
+      description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
+      digest: 69c001c659e7417e64e90660c2d0fcdb29c350d417258f9689d2fb06b5e9dada
+      home: https://superset.apache.org
+      keywords:
+        - analytics
+        - superset
+        - business-intelligence
+        - data-visualization
+      name: superset
+      sources:
+        - https://github.com/apache/superset
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/analytics/superset/superset-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: care-20261120
+      created: "2026-11-21T12:47:52.463367654Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 89fc419cd504e94b7a0eb62053ad0d0250e1cd9bf219e8157aabf172e6ff85e7
       home: https://superset.apache.org
@@ -20,4 +39,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/analytics/superset/superset-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-20T13:01:19.511616011Z"
+generated: "2026-11-21T12:47:52.461748112Z"
