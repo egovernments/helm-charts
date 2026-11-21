@@ -102,6 +102,11 @@ branding:
   favicon: "/static/assets/images/favicon.png"
   primaryColor: "#006064"
 
+# Annotations on the two ConfigMaps. Wave -2 applies them before the init job
+# (wave -1) that mounts superset-config; ignored outside Argo CD.
+configMapAnnotations:
+  argocd.argoproj.io/sync-wave: "-2"
+
 # Extra superset_config.py, appended after everything above so it can
 # override any of it. Keys only order the snippets (sorted); values are Python.
 #   configOverrides:
@@ -323,13 +328,16 @@ initJob:
   adminEmail: ""  # required when ADMIN_PASSWORD is set
   loadExamples: false  # Set to true to load example dashboards
   # A Job's pod template is immutable, so a plain Job would fail every sync
-  # after its first. As an Argo CD Sync hook it is recreated each sync instead;
-  # wave 1 runs it after the ConfigMap and Secret it mounts are applied. For
-  # plain Helm, use helm.sh/hook: post-install,post-upgrade instead.
+  # after its first. As an Argo CD Sync hook it is recreated each sync instead.
+  # Wave -1 runs it after the ConfigMaps it mounts (wave -2, configMapAnnotations)
+  # and BEFORE the Deployments (wave 0): Argo CD only starts a wave once the
+  # previous one is healthy, so with the job after them, web waited on tables
+  # the job had not created yet, and the job waited on web -- a deadlock.
+  # For plain Helm, use helm.sh/hook: pre-install,pre-upgrade instead.
   annotations:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "-1"
   resources:
     requests:
       cpu: "500m"
