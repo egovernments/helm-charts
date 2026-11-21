@@ -6,6 +6,10 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     app: {{ .Values.name }}
+{{- with .Values.configMapAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
 data:
 {{- if and .Values.auth.oauth.enabled .Values.auth.passwordLogin.enabled }}
   # Jinja for Flask, not Helm: read with .Files.Get so its {{ "{{" }} }} pass through.
