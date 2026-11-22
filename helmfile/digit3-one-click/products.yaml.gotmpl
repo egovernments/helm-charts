@@ -3,7 +3,8 @@
 # the root Application "digit-products". A failing product never blocks the platform.
 #
 # A product = a team's own helmfile that deploys packaged charts (helm.digit.org or any Helm
-# repo). The environment file lists the products to install:
+# repo), or unpackaged charts from the same repo as a git:: helmfile (helmfile fetches the whole
+# repo at the pinned ref). The environment file lists the products to install:
 #
 #   products:
 #     studio:                                   # product name
