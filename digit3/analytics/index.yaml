@@ -1,9 +1,52 @@
 apiVersion: v1
 entries:
+  clickhouse:
+    - apiVersion: v2
+      appVersion: 25.7.8.71
+      created: "2026-11-22T08:18:56.878608722Z"
+      description: A ClickHouse cluster and its Keeper, run by the ClickHouse operator (digit3/analytics/clickhouse-operator)
+      digest: 9c855ba8ca72110b1f6ec22ab20438fbc7bc310dae85b7000b5af758e3ecb693
+      home: https://clickhouse.com
+      keywords:
+        - clickhouse
+        - analytics
+        - olap
+      name: clickhouse
+      sources:
+        - https://github.com/ClickHouse/clickhouse-operator
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/analytics/clickhouse/clickhouse-3.0.0.tgz
+      version: 3.0.0
+  clickhouse-operator:
+    - apiVersion: v2
+      appVersion: v0.0.8
+      created: "2026-11-22T08:18:56.881748676Z"
+      dependencies:
+        - alias: clickhouse-operator
+          name: clickhouse-operator-helm
+          repository: oci://ghcr.io/clickhouse
+          version: 0.0.8
+      description: ClickHouse Inc.'s official Kubernetes operator (ClickHouseCluster and KeeperCluster CRDs), pinned for DIGIT analytics
+      digest: 868406c7fa3f69e1da0707e32816c30e66f15da1b32c736df8bb11c000400612
+      home: https://github.com/ClickHouse/clickhouse-operator
+      keywords:
+        - clickhouse
+        - operator
+        - analytics
+      name: clickhouse-operator
+      sources:
+        - https://github.com/ClickHouse/clickhouse-operator
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/analytics/clickhouse-operator/clickhouse-operator-3.0.0.tgz
+      version: 3.0.0
   superset:
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-21T12:47:52.464282446Z"
+      created: "2026-11-22T08:18:56.883057735Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 69c001c659e7417e64e90660c2d0fcdb29c350d417258f9689d2fb06b5e9dada
       home: https://superset.apache.org
@@ -22,7 +65,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-21T12:47:52.463367654Z"
+      created: "2026-11-22T08:18:56.882405705Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 89fc419cd504e94b7a0eb62053ad0d0250e1cd9bf219e8157aabf172e6ff85e7
       home: https://superset.apache.org
@@ -39,4 +82,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/analytics/superset/superset-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-21T12:47:52.461748112Z"
+generated: "2026-11-22T08:18:56.878147295Z"
