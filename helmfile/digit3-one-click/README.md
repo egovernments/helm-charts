@@ -18,14 +18,16 @@ Each release gets its own block as Helm values. Releases built on the DIGIT comm
 
 | Path | What it is |
 |---|---|
-| `digit-helmfile.yaml.gotmpl` | main helmfile: the three layers in order |
+| `digit-helmfile.yaml.gotmpl` | main helmfile: the three platform layers in order |
+| `products.yaml.gotmpl` | team **products** (layer 4, deployed separately): one helmfile per entry under `products` in the env file, from `products/<name>/` or the team's own repo. See [products/README.md](products/README.md) |
+| `products/` | product helmfiles kept here, the product contract, `_example/` |
 | `helmfiles/_environment.yaml.gotmpl` | shared base: the two env files + Helm defaults |
 | `helmfiles/backbone.yaml.gotmpl` | cluster-configs, cert-manager, ingress-nginx, redis, kafka-kraft, minio, vault, elasticsearch, kibana, pgadmin (when the env file has a `pgadmin` block) |
 | `helmfiles/core.yaml.gotmpl` | keycloak, kong, and every env-file block with a `chart-version` that is not a platform release (the DIGIT services) |
 | `helmfiles/monitoring.yaml.gotmpl` | kube-prometheus-stack, loki, grafana, opentelemetry-collector, jaeger, blackbox exporter |
 | `helmfiles/argocd.yaml.gotmpl` | Argo CD itself (Argo CD mode) with the `digit-helmfile` plugin |
 | `scripts/vault-bootstrap.sh` | initialises and unseals Vault, enables transit + AppRole, writes `egov/vault-approle` (postsync hook + workflow) |
-| `scripts/argocd-plugin.sh` | Argo CD plugin: the root app gives one Application per release; each release is rendered with `helmfile template` |
+| `scripts/argocd-plugin.sh` | Argo CD plugin: the root apps (`digit` = platform, `digit-products` = products) give one Application per release; each release is rendered with `helmfile template` |
 | `scripts/render-env.sh` | fills `<domain> <email> <env> <db_host> <db_name>` in the env file at deploy time (workflow and Argo CD plugin) |
 
 ## Run by hand

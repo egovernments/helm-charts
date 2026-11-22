@@ -1,0 +1,44 @@
+# DIGIT one-click: PRODUCTS (layer 4). Deployed on its own, after the platform
+# (digit-helmfile.yaml.gotmpl), by the one-click workflow's Products job, or in Argo CD mode by
+# the root Application "digit-products". A failing product never blocks the platform.
+#
+# A product = a team's own helmfile that deploys packaged charts (helm.digit.org or any Helm
+# repo). The environment file lists the products to install:
+#
+#   products:
+#     studio:                                   # product name
+#       helmfile: products/studio/helmfile.yaml.gotmpl     # optional, this is the default
+#       #   or the team's own repo, pinned:
+#       #   git::https://github.com/<org>/<repo>.git@<path>/helmfile.yaml.gotmpl?ref=v1.2.0
+#       namespace: egov                         # optional, default egov (shares egov-config + db)
+#       shared-secrets: [redis]                 # optional, more platform Secrets for its namespace
+#       enabled: true                           # optional
+#       values:                                 # handed to the product helmfile as .Values
+#         studio-api: {chart-version: 1.2.0, replicas: 2}
+#
+# The product helmfile gets as .Values: its `values` block, plus
+#   global   the environment file's global (domain, ...) with namespace = the product namespace
+#            and product = the product name
+# Contract and an example: products/README.md, products/_example/.
+bases:
+  - helmfiles/_environment.yaml.gotmpl
+---
+{{- $v := .Values }}
+{{- $products := $v | get "products" dict }}
+{{- $enabled := list }}
+{{- range $name := keys $products | sortAlpha }}
+{{- if (index $products $name) | get "enabled" true }}{{ $enabled = append $enabled $name }}{{ end }}
+{{- end }}
+{{- if $enabled }}
+helmfiles:
+{{- range $name := $enabled }}
+{{- $p := index $products $name }}
+{{- $ns := $p | get "namespace" "egov" }}
+  - path: {{ $p | get "helmfile" (printf "products/%s/helmfile.yaml.gotmpl" $name) | quote }}
+    values:
+      - global: {{ merge (dict "namespace" $ns "product" $name) ($v | get "global" dict) | toJson }}
+      - {{ $p | get "values" dict | toJson }}
+{{- end }}
+{{- else }}
+releases: []
+{{- end }}
