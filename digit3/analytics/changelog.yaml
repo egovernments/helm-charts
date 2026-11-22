@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-22"
+    ref: "PR-155"
+    title: "analytics: add clickhouse-operator and clickhouse charts"
+    author: "SriPadma8997-egov"
+    release_type: "major"
+    charts:
+      - name: "clickhouse"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "clickhouse-operator"
+        from: "0.0.0"
+        to: "3.0.0"
   - date: "2026-11-21"
     ref: "PR-154"
     title: "analytics/superset: run the init job before the Deployments (Argo CD waves)"
