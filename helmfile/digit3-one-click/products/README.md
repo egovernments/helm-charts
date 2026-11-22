@@ -20,7 +20,7 @@ products:
     # helmfile: git::https://github.com/<org>/<repo>.git@deploy/helmfile.yaml.gotmpl?ref=v1.4.0   # the team's own repo
     namespace: health                       # optional, default egov
     shared-secrets: [redis]                 # optional, more platform Secrets copied to that namespace
-    enabled: true                           # optional
+    enabled: true                           # optional; false = uninstall the product
     values:                                 # what the product helmfile gets as .Values
       health-service-request: {chart-version: 3.0.1, replicas: 2}
 ```
@@ -44,7 +44,7 @@ Private repositories are not supported: the workflow and Argo CD fetch the helmf
 
 | Key | Content |
 |---|---|
-| `global` | the environment file's `global` (`domain`, `mode`, ...), plus `namespace` = the product namespace and `product` = the product name |
+| `global` | the environment file's `global` (`domain`, `mode`, ...), plus `namespace` = the product namespace, `product` = the product name, and `enabled` (`false` when the product is switched off) |
 | everything else | the product's `values` block, unchanged (typically one block per release with `chart-version`) |
 
 Already there in the product namespace:
@@ -70,6 +70,7 @@ A product helmfile **must**:
 4. Not depend on its own environment files. Everything it needs comes in through `.Values`.
 5. Give each release the label `product: <name>`. In Argo CD mode, the label `wave` orders releases inside the product (the default is 10). Argo CD waits for every release in a wave to be healthy before it starts the next wave.
 6. Use `helmDefaults` with `wait: true`, so helmfile mode reports failures.
+7. Set every release's `installed:` to false when `.Values.global.enabled` is false. That is how a product is removed: helmfile uninstalls the releases and Argo CD prunes them. (Deleting the product's block instead leaves its releases running in helmfile mode.)
 
 A product helmfile **should**:
 - Use releases built on the DIGIT common chart (they read `global` and `namespace`), where possible.

@@ -34,11 +34,12 @@ releases:
     namespace: {{ $ns }}
     chart: digit3-health/{{ $name }}
     version: {{ required (printf "%s.chart-version is missing" $name) ($b | get "chart-version" "") | quote }}
-    installed: {{ $b | get "enabled" true }}
+    # off when the release or the whole product is switched off (global.enabled: false)
+    installed: {{ and ($b | get "enabled" true) ($v.global | get "enabled" true) }}
     labels: {product: {{ $v.global.product }}, wave: "10"}
     values:
       # DIGIT common-based charts read global (domain, namespace, mode) + namespace
-      - global: {{ $v.global | toJson }}
+      - global: {{ omit $v.global "enabled" "product" | toJson }}
         namespace: {{ $ns }}
       - {{ omit $b "chart-version" "enabled" | toJson }}
 {{- end }}
