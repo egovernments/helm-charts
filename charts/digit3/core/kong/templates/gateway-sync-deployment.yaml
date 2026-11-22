@@ -36,7 +36,7 @@ spec:
         - name: reconciler
           image: {{ $gs.image.repository }}:{{ $gs.image.tag }}
           imagePullPolicy: {{ $gs.image.pullPolicy }}
-          command: ["python3", "/etc/gateway-sync/gateway-sync-reconcile.py"]
+          command: ["python3", "-u", "/etc/gateway-sync/gateway-sync-reconcile.py"]  # -u: unbuffered stdout, so logs stream from the long-running controller
           env:
             - name: CONFIG_PATH
               value: /etc/gateway-sync/config.json
