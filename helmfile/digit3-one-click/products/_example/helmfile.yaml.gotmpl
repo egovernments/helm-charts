@@ -1,0 +1,46 @@
+# Example product helmfile (copy to products/<product>/ or to your own repo).
+# Enable it in the environment file:
+#
+#   products:
+#     health:
+#       helmfile: products/_example/helmfile.yaml.gotmpl
+#       values:
+#         health-service-request: {chart-version: 3.0.1}
+#
+# .Values = the product's `values` block + `global` (domain, ..., namespace, product).
+# Rules (products/README.md):
+#   - packaged charts only (a Helm repo such as helm.digit.org, pinned with chart-version)
+#   - every release in .Values.global.namespace
+#   - no Secrets/ConfigMaps of the platform: use egov-config, db, and Secrets added through
+#     DIGIT_SECRETS (cluster-configs creates them)
+#   - labels: wave orders the releases in Argo CD mode (default 10); product = the product name
+repositories:
+  - name: digit3-health
+    url: https://helm.digit.org/digit3/health
+
+helmDefaults:
+  createNamespace: true
+  wait: true
+  waitForJobs: true
+  timeout: 900
+
+{{- $v := .Values }}
+{{- $ns := $v.global.namespace }}
+releases:
+{{- range $name := list "health-service-request" "beneficiary-idgen" }}
+{{- if hasKey $v $name }}
+{{- $b := index $v $name }}
+  - name: {{ $name }}
+    namespace: {{ $ns }}
+    chart: digit3-health/{{ $name }}
+    version: {{ required (printf "%s.chart-version is missing" $name) ($b | get "chart-version" "") | quote }}
+    # off when the release or the whole product is switched off (global.enabled: false)
+    installed: {{ and ($b | get "enabled" true) ($v.global | get "enabled" true) }}
+    labels: {product: {{ $v.global.product }}, wave: "10"}
+    values:
+      # DIGIT common-based charts read global (domain, namespace, mode) + namespace
+      - global: {{ omit $v.global "enabled" "product" | toJson }}
+        namespace: {{ $ns }}
+      - {{ omit $b "chart-version" "enabled" | toJson }}
+{{- end }}
+{{- end }}

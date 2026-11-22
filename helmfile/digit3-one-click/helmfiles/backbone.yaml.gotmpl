@@ -28,6 +28,35 @@ releases:
     labels: {layer: backbone, wave: "0"}
     values:
       - {{ include "release-values" (dict "v" $v "r" "cluster-configs" "ns" "egov" "wrap" true) | nindent 8 }}
+{{- /* Products (products.yaml.gotmpl) in their own namespace: create it and give it the shared
+       egov-config ConfigMap and db Secret (plus any Secrets the product lists in shared-secrets). */}}
+{{- $cc := $v | get "cluster-configs" dict }}
+{{- $nsList := $cc | get "namespaces.values" list }}
+{{- $cmNs := $cc | get "configmaps.egov-config.namespace" list }}
+{{- $shared := dict }}
+{{- range $name, $p := $v | get "products" dict }}
+{{- $pns := $p | get "namespace" "egov" }}
+{{- if and ($p | get "enabled" true) (ne $pns "egov") }}
+{{- $nsList = append $nsList $pns }}
+{{- $cmNs = append $cmNs $pns }}
+{{- range $s := concat (list "db") ($p | get "shared-secrets" list) }}
+{{- $_ := set $shared $s (append ($shared | get $s list) $pns) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $shared }}
+      - cluster-configs:
+          namespaces:
+            values: {{ $nsList | uniq | toJson }}
+          configmaps:
+            egov-config:
+              namespace: {{ $cmNs | uniq | toJson }}
+          secrets:
+{{- range $s, $extra := $shared }}
+            {{ $s }}:
+              namespace: {{ concat ($cc | get (printf "secrets.%s.namespace" $s) list) $extra | uniq | toJson }}
+{{- end }}
+{{- end }}
 {{- /* wave = Argo CD sync wave (helmfile mode orders by needs). Argo CD starts a wave only when
        the previous one is healthy, so:
        - elasticsearch-data shares the masters' wave: the masters only turn Ready (cluster green)

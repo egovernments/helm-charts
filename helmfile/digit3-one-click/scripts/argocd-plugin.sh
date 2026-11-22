@@ -11,6 +11,9 @@
 #                 Release label "createonly" (Secret names, joined with +): Secrets the chart
 #                 generates once via lookup, which helm template cannot do. Argo CD creates them,
 #                 then ignores their data (ignoreDifferences + RespectIgnoreDifferences).
+#                 ROOT_HELMFILE: digit-helmfile.yaml.gotmpl (platform, root app "digit", default)
+#                 or products.yaml.gotmpl (team products, root app "digit-products"). A product
+#                 release is rendered through products.yaml.gotmpl and labelled layer=products.
 #   MODE=release  one release (RELEASE + NAMESPACE + HELMFILE = its layer helmfile):
 #                 `helmfile template` of just that release
 #
@@ -39,18 +42,22 @@ run() { "$@" 2>"$log" || { cat "$log" >&2; exit 1; }; }
 
 case "${ARGOCD_ENV_MODE:?MODE missing}" in
   apps)
-    run helmfile -f digit-helmfile.yaml.gotmpl list --output json > "$work/releases.json"
-    jq -r --arg repo "$ARGOCD_APP_SOURCE_REPO_URL" --arg rev "$ARGOCD_APP_SOURCE_TARGET_REVISION" \
+    root=${ARGOCD_ENV_ROOT_HELMFILE:-digit-helmfile.yaml.gotmpl}
+    case "$root" in digit-helmfile.yaml.gotmpl|products.yaml.gotmpl) ;; *) echo "bad ROOT_HELMFILE '$root'" >&2; exit 1 ;; esac
+    run helmfile -f "$root" list --output json > "$work/releases.json"
+    jq -r --arg repo "$ARGOCD_APP_SOURCE_REPO_URL" --arg rev "$ARGOCD_APP_SOURCE_TARGET_REVISION" --arg root "$root" \
           --arg path "$ARGOCD_APP_SOURCE_PATH" --arg argons "${ARGOCD_APP_NAMESPACE:-argocd}" \
           --arg dbhost "$ARGOCD_ENV_DB_HOST" --arg dbname "$ARGOCD_ENV_DB_NAME" '
       .[] | select(.installed)
-      | (.labels | split(",") | map(split(":") | {(.[0]): (.[1:] | join(":"))}) | add) as $l
+      | (.labels | split(",") | map(split(":") | {(.[0]): (.[1:] | join(":"))}) | add // {}) as $l
+      | ($root == "products.yaml.gotmpl") as $product
       | (($l.createonly // "") | split("+") | map(select(. != ""))) as $createonly
       | {
           apiVersion: "argoproj.io/v1alpha1", kind: "Application",
           metadata: {
             name: .name, namespace: $argons,
-            labels: {"digit.org/layer": ($l.layer // "none")},
+            labels: ({"digit.org/layer": (if $product then "products" else ($l.layer // "none") end)}
+              + (if $l.product then {"digit.org/product": $l.product} else {} end)),
             annotations: {"argocd.argoproj.io/sync-wave": ($l.wave // "10")},
             finalizers: ["resources-finalizer.argocd.argoproj.io"]
           },
@@ -62,7 +69,7 @@ case "${ARGOCD_ENV_MODE:?MODE missing}" in
                 {name: "DB_HOST", value: $dbhost}, {name: "DB_NAME", value: $dbname},
                 {name: "RELEASE", value: .name},
                 {name: "NAMESPACE", value: .namespace},
-                {name: "HELMFILE", value: ("helmfiles/" + $l.layer + ".yaml.gotmpl")}]}},
+                {name: "HELMFILE", value: (if $product then $root else ("helmfiles/" + $l.layer + ".yaml.gotmpl") end)}]}},
             destination: {server: "https://kubernetes.default.svc", namespace: .namespace},
             syncPolicy: {
               automated: {prune: true, selfHeal: true},
@@ -79,7 +86,7 @@ case "${ARGOCD_ENV_MODE:?MODE missing}" in
   release)
     : "${ARGOCD_ENV_RELEASE:?RELEASE missing}" "${ARGOCD_ENV_NAMESPACE:?NAMESPACE missing}"
     hf=${ARGOCD_ENV_HELMFILE:-digit-helmfile.yaml.gotmpl}
-    case "$hf" in helmfiles/*.yaml.gotmpl|digit-helmfile.yaml.gotmpl) ;; *) echo "bad HELMFILE '$hf'" >&2; exit 1 ;; esac
+    case "$hf" in helmfiles/*.yaml.gotmpl|digit-helmfile.yaml.gotmpl|products.yaml.gotmpl) ;; *) echo "bad HELMFILE '$hf'" >&2; exit 1 ;; esac
     out="$work/out.yaml"
     # --api-versions: CRD groups this install provides, so charts render the same objects
     # (ServiceMonitors, Certificates) as helmfile mode does against the live cluster.
