@@ -1,0 +1,15 @@
+apiVersion: v2
+name: clickhouse
+description: A ClickHouse cluster and its Keeper, run by the ClickHouse operator (digit3/analytics/clickhouse-operator)
+type: application
+version: 3.0.0
+# The ClickHouse server/Keeper release the default values pin.
+appVersion: "25.7.8.71"
+keywords:
+  - clickhouse
+  - analytics
+  - olap
+home: https://clickhouse.com
+sources:
+  - https://github.com/ClickHouse/clickhouse-operator
+  - https://github.com/egovernments/helm-charts

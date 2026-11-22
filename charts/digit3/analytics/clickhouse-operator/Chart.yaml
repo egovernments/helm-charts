@@ -1,0 +1,24 @@
+apiVersion: v2
+name: clickhouse-operator
+description: ClickHouse Inc.'s official Kubernetes operator (ClickHouseCluster and KeeperCluster CRDs), pinned for DIGIT analytics
+type: application
+version: 3.0.0
+# The operator release this chart installs (the dependency below); its image
+# tag defaults to the same version.
+appVersion: "v0.0.8"
+keywords:
+  - clickhouse
+  - operator
+  - analytics
+home: https://github.com/ClickHouse/clickhouse-operator
+sources:
+  - https://github.com/ClickHouse/clickhouse-operator
+  - https://github.com/egovernments/helm-charts
+dependencies:
+  # Pulled from ClickHouse's registry at package time and bundled into this
+  # chart's .tgz, rather than vendored into the repo: upgrading the operator is
+  # a version bump here, not a re-copy of its templates and CRDs.
+  - name: clickhouse-operator-helm
+    version: 0.0.8
+    repository: oci://ghcr.io/clickhouse
+    alias: clickhouse-operator

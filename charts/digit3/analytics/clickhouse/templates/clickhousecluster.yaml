@@ -1,0 +1,35 @@
+{{- include "clickhouse.init" . -}}
+{{- $spec := deepCopy .Values.cluster.spec -}}
+{{- $_ := set $spec "keeperClusterRef" (dict "name" (include "clickhouse.keeperName" .)) -}}
+{{- $settings := $spec.settings | default dict -}}
+{{- $_ := set $settings "defaultUserPassword" (dict "passwordType" "password" "secret" (dict "name" .Values.auth.secretName "key" .Values.auth.defaultUserPasswordKey)) -}}
+{{- $users := dict -}}
+{{- $env := list -}}
+{{- range $user, $u := .Values.users -}}
+{{-   $envName := include "clickhouse.userPasswordEnv" $user -}}
+{{-   $entry := dict "password" (dict "@from_env" $envName) "profile" ($u.profile | default "default") -}}
+{{-   if $u.grants -}}
+{{-     $grants := list -}}
+{{-     range $u.grants }}{{ $grants = append $grants (dict "query" .) }}{{ end -}}
+{{-     $_ := set $entry "grants" $grants -}}
+{{-   end -}}
+{{-   $entry = mustMergeOverwrite $entry ($u.settings | default dict) -}}
+{{-   $_ := set $users $user $entry -}}
+{{-   $env = append $env (dict "name" $envName "valueFrom" (dict "secretKeyRef" (dict "name" $.Values.auth.secretName "key" $u.passwordKey))) -}}
+{{- end -}}
+{{- $usersConfig := $settings.extraUsersConfig | default dict -}}
+{{- $_ := set $usersConfig "users" (mustMergeOverwrite ($usersConfig.users | default dict) $users) -}}
+{{- $_ := set $settings "extraUsersConfig" $usersConfig -}}
+{{- $_ := set $spec "settings" $settings -}}
+{{- $container := $spec.containerTemplate | default dict -}}
+{{- $_ := set $container "env" (concat ($container.env | default list) $env) -}}
+{{- $_ := set $spec "containerTemplate" $container -}}
+apiVersion: clickhouse.com/v1alpha1
+kind: ClickHouseCluster
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ include "clickhouse.namespace" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  {{- tpl (toYaml $spec) . | nindent 2 }}

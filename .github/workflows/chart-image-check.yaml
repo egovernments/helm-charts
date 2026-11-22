@@ -103,8 +103,10 @@ jobs:
             fi
             rm -rf "$dir/charts" "$dir/Chart.lock"
 
-            # unique image refs from the rendered manifests
-            grep -E '^[[:space:]]*image:[[:space:]]' /tmp/rendered.yaml \
+            # unique image refs from the rendered manifests. `|| true`: grep exits 1 when a
+            # chart has no `image:` lines (e.g. one that only renders operator CRs), which
+            # under pipefail would end the job before the "no images" branch below.
+            { grep -E '^[[:space:]]*image:[[:space:]]' /tmp/rendered.yaml || true; } \
               | sed -E 's/^[[:space:]]*image:[[:space:]]*"?//; s/"[[:space:]]*$//' \
               | awk 'NF{print $1}' | sort -u > /tmp/images.txt
 
