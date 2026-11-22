@@ -1365,16 +1365,16 @@ gatewaySync:
   rbac:
     create: true
   dryRun: false               # true = reconciler logs intended changes without writing (safe first pass)
-  runOnInstall: true          # post-install/upgrade Job runs one reconcile immediately
-  schedule: "* * * * *"       # CronJob cadence; also a safety-net resync (deploys trigger via runOnInstall)
+  resyncSeconds: 120          # safety-net full resync cadence (the watch drives the rest, event-driven)
+  debounceSeconds: 2          # coalesce a burst of Service changes into one reconcile pass
   ensureGatewayProxy: false   # create a local kong-proxy ExternalName in each module namespace
   gatewayProxyName: "kong-proxy"
-  gatewayProxyUpstream: "kong-kong-proxy.egov.svc.cluster.local"
+  gatewayProxyUpstream: "kong-proxy.egov.svc.cluster.local"
   gatewayProxyPort: 80
   # Public API host; every route matches on this host (REQUIRED - gotcha #1). Per-env.
   domain: "test-lts.digit.org"
   tag: "gateway-sync"          # ownership tag; the reconciler only touches tagged entities
-  kongAdminUrl: "http://kong-kong-admin.egov.svc.cluster.local:8001"
+  kongAdminUrl: "http://kong-admin.egov.svc.cluster.local:8001"
   keycloakBaseUrl: "http://keycloak.keycloak.svc.cluster.local:8080/keycloak"
   clientId: "auth-server"
   redis:

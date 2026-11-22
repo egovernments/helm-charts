@@ -3,7 +3,7 @@
 # per-Service gateway annotations (the single source of truth) and prunes them when
 # a Service or annotation is removed. Idempotent full pass; only ever touches Kong
 # entities carrying the managed tag. Pure stdlib (no pip install needed).
-import json, os, re, ssl, sys, urllib.error, urllib.request
+import json, os, re, ssl, sys, time, threading, urllib.error, urllib.request
 
 CFG = json.load(open(os.environ.get("CONFIG_PATH", "/etc/gateway-sync/config.json")))
 TAG = CFG["tag"]
@@ -35,6 +35,14 @@ A_METHODS = "%s/methods" % PREFIX
 # Main-route plugin stack by route-auth tier.
 AUTH_PLUGINS = {"open": [], "mixed": MIXED_PLUGINS, "protected": PROTECTED_PLUGINS}
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
+# Controller (watch) mode: react to Service changes via the k8s watch API, with a periodic
+# safety-net resync. Unset -> one-shot pass (keeps the script usable/testable as a single run).
+WATCH = os.environ.get("WATCH", "").lower() in ("1", "true", "yes")
+RESYNC = int(os.environ.get("RESYNC_SECONDS", "120"))      # safety-net full resync cadence
+DEBOUNCE = float(os.environ.get("DEBOUNCE_SECONDS", "2"))  # coalesce a burst of events into one pass
+WATCH_TIMEOUT = int(os.environ.get("WATCH_TIMEOUT_SECONDS", "300"))  # server-side watch lifetime
+WATCH_BACKOFF = 5
+HEARTBEAT = os.environ.get("HEARTBEAT_PATH", "/tmp/gateway-sync.heartbeat")
 
 K8S = "https://kubernetes.default.svc"
 _SA = "/var/run/secrets/kubernetes.io/serviceaccount"
@@ -244,7 +252,7 @@ def reconcile_plugins(route_name, want_names, mixed):
             kong("DELETE", "/plugins/%s" % p["id"])
 
 
-def main():
+def reconcile():
     svcs, routes, rplugins, rmixed = desired()
 
     if ENSURE_PROXY:
@@ -274,5 +282,54 @@ def main():
     print("reconcile done: %d services, %d routes%s" % (len(svcs), len(routes), " (dry-run)" if DRY else ""))
 
 
+def _heartbeat():
+    try:
+        with open(HEARTBEAT, "w") as f:
+            f.write(str(time.time()))
+    except OSError:
+        pass
+
+
+def _watch_services(target, dirty):
+    # Long-poll the k8s watch stream for one namespace (or cluster-wide when target is None),
+    # flagging the main loop on any Service add/update/delete. Relists on expiry/error.
+    base = "/api/v1/namespaces/%s/services" % target if target else "/api/v1/services"
+    while True:
+        try:
+            rv = (k8s_get(base).get("metadata") or {}).get("resourceVersion", "")
+            url = "%s%s?watch=1&timeoutSeconds=%d&resourceVersion=%s" % (K8S, base, WATCH_TIMEOUT, rv)
+            req = urllib.request.Request(url, headers={"Authorization": "Bearer " + TOKEN})
+            with urllib.request.urlopen(req, context=_K8S_CTX) as r:
+                for line in r:              # one JSON event per line; content is irrelevant, reconcile is a full pass
+                    if line.strip():
+                        dirty.set()
+        except Exception as e:              # 410 Gone, connection reset, admin blip - relist and continue
+            sys.stderr.write("watch %s: %s\n" % (target or "cluster", e))
+            time.sleep(WATCH_BACKOFF)
+
+
+def watch_main():
+    # Single-writer controller: watcher threads only signal; this thread owns every reconcile,
+    # so passes never overlap. The periodic resync guarantees convergence even if watches drop,
+    # and a failed pass is logged and retried rather than crashing the pod.
+    dirty = threading.Event()
+    for target in (NAMESPACES or [None]):
+        threading.Thread(target=_watch_services, args=(target, dirty), daemon=True).start()
+    print("gateway-sync controller: resync=%ds debounce=%ss namespaces=%s%s"
+          % (RESYNC, DEBOUNCE, NAMESPACES or "cluster-wide", " (dry-run)" if DRY else ""))
+    while True:
+        dirty.clear()                       # clear before the pass: events during it re-trigger immediately
+        try:
+            reconcile()
+        except Exception as e:
+            sys.stderr.write("reconcile error (will retry): %s\n" % e)
+        _heartbeat()
+        if dirty.wait(RESYNC):
+            time.sleep(DEBOUNCE)
+
+
 if __name__ == "__main__":
-    main()
+    if WATCH:
+        watch_main()
+    else:
+        reconcile()
