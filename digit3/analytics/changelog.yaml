@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-23"
+    ref: "PR-160"
+    title: "fix(superset): page through GitHub teams on OAuth login (3.0.2)"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "superset"
+        from: "3.0.1"
+        to: "3.0.2"
   - date: "2026-11-22"
     ref: "PR-155"
     title: "analytics: add clickhouse-operator and clickhouse charts"
