@@ -38,6 +38,7 @@ on:
           - frontend
           - backbone
           - analytics
+          - security
       service:
         description: "Service chart name (exact dir under charts/<project>/<module>/). Ignore for single-chart modules like common or cluster-configs."
         required: false

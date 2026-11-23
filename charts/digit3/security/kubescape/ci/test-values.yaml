@@ -1,0 +1,5 @@
+# Values chart-ci renders the chart with. clusterName is the one value that
+# must be set per environment, so the check supplies it rather than letting
+# the CHANGEME default render.
+kubescape-operator:
+  clusterName: ci-test
