@@ -174,6 +174,22 @@ data:
 
     from superset.security import SupersetSecurityManager
 
+    def _github_list(remote, path):
+        # GitHub list endpoints return 30 items per page unless asked for more,
+        # so a single call silently drops everything after the first page: an
+        # account in more than 30 teams (across all its orgs) lost its newest
+        # teams and was refused. Fetch 100 per page until a short page. An
+        # error response raises instead of being iterated as if it were a list.
+        items, page = [], 1
+        while True:
+            r = remote.get(path, params={"per_page": 100, "page": page})
+            r.raise_for_status()
+            batch = r.json()
+            items.extend(batch)
+            if len(batch) < 100 or page >= 20:
+                return items
+            page += 1
+
     class GithubOrgSecurityManager(SupersetSecurityManager):
         # get_oauth_user_info, NOT oauth_user_info: the latter is a None class
         # attribute that the oauth_user_info_getter decorator assigns to, so
@@ -192,7 +208,7 @@ data:
             # in an unrelated org would grant access here.
             teams = {
                 (t.get("slug") or "").lower()
-                for t in remote.get("user/teams").json()
+                for t in _github_list(remote, "user/teams")
                 if ((t.get("organization") or {}).get("login") or "").lower() == org
             }
 
@@ -214,7 +230,7 @@ data:
                 # No team mapping configured, so org membership is the gate.
                 orgs = {
                     (o.get("login") or "").lower()
-                    for o in remote.get("user/orgs").json()
+                    for o in _github_list(remote, "user/orgs")
                 }
                 if org not in orgs:
                     raise Exception(
@@ -228,7 +244,7 @@ data:
             me = remote.get("user").json()
             email = me.get("email")
             if not email:
-                for entry in remote.get("user/emails").json():
+                for entry in _github_list(remote, "user/emails"):
                     if entry.get("primary") and entry.get("email"):
                         email = entry["email"]
                         break
