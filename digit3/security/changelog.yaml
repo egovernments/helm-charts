@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-24"
+    ref: "PR-167"
+    title: "fix(kyverno): disable the legacy-policy-check hook that hangs Argo syncs"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "kyverno"
+        from: "1.0.0"
+        to: "1.0.1"
+  - date: "2026-11-24"
     ref: "PR-165"
     title: "feat(digit3/security/kyverno): package Kyverno with fail-open Audit defaults"
     author: "SriPadma8997-egov"

@@ -83,8 +83,37 @@ Not a one-line change. In order:
 | `podSecurityStandard` | `baseline` | `restricted` needs runAsNonRoot/seccomp that DIGIT images do not meet yet |
 | `cleanupController` | disabled | nothing uses CleanupPolicy; one less controller with cluster-wide delete rights |
 | `reportsController` | enabled | without it there are no reports and no dashboard |
+| `upgrade.legacyPolicyCheck` | disabled | its hook Job races its own TTL and hangs Argo syncs; see below |
 | `crds.migration` | disabled | see below |
 | replicas | 1 per controller | sufficient while fail-open |
+
+### `upgrade.legacyPolicyCheck.enabled: false`
+
+A pre-install Helm hook Job that blocks installation when legacy `kyverno.io`
+policy resources exist. It hangs Argo CD syncs.
+
+The Job finishes in seconds, then Kubernetes deletes it via its own
+`ttlSecondsAfterFinished: 300`. Argo records `hookPhase: Running` when it
+applies the hook and then polls the Job to see it finish -- so if the TTL
+fires first, Argo polls a Job that no longer exists and waits forever:
+
+```
+waiting for completion of hook batch/Job/kyverno-check-legacy-policies
+```
+
+It is a race, so it does not reproduce reliably: installing this chart on
+unified-dev, -qa and -uat minutes apart, dev won and the other two wedged.
+
+Recovery is awkward, which is the other reason to disable it. Terminating the
+operation is not enough -- the next one resumes the same recorded hookPhase.
+The cached result has to be cleared directly:
+
+```sh
+kubectl -n argocd patch application <app> --type=merge -p '{"status":{"operationState":null}}'
+```
+
+Nothing is lost here: it guards an upgrade path from legacy policy types, and
+these are fresh installs. The chart's render-time check stays on.
 
 ### `crds.migration.enabled: false`
 
