@@ -3,7 +3,7 @@ entries:
   kubescape:
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T17:40:15.603851707Z"
+      created: "2026-11-24T18:37:05.567381377Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -27,7 +27,7 @@ entries:
       version: 1.1.1
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T17:40:15.597222727Z"
+      created: "2026-11-24T18:37:05.56152269Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -51,7 +51,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T17:40:15.590828984Z"
+      created: "2026-11-24T18:37:05.554099294Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -76,7 +76,34 @@ entries:
   kyverno:
     - apiVersion: v2
       appVersion: v1.20.0
-      created: "2026-11-24T17:40:15.637326076Z"
+      created: "2026-11-24T18:37:05.638916275Z"
+      dependencies:
+        - name: kyverno
+          repository: https://kyverno.github.io/kyverno/
+          version: 3.10.0
+        - name: kyverno-policies
+          repository: https://kyverno.github.io/kyverno/
+          version: 3.10.0
+      description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, Audit only, fail-open webhooks)
+      digest: fba1a79b28da4716f4eb2234460acc513be9b6c3c4e276dc89b42c2869487591
+      home: https://kyverno.io
+      keywords:
+        - security
+        - policy
+        - admission-control
+        - pod-security
+        - governance
+      name: kyverno
+      sources:
+        - https://github.com/kyverno/kyverno
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/security/kyverno/kyverno-1.0.1.tgz
+      version: 1.0.1
+    - apiVersion: v2
+      appVersion: v1.20.0
+      created: "2026-11-24T18:37:05.602889499Z"
       dependencies:
         - name: kyverno
           repository: https://kyverno.github.io/kyverno/
@@ -101,4 +128,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/security/kyverno/kyverno-1.0.0.tgz
       version: 1.0.0
-generated: "2026-11-24T17:40:15.583660623Z"
+generated: "2026-11-24T18:37:05.547573243Z"
