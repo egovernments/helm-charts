@@ -42,7 +42,39 @@ enforcement one. Two upstream capability groups are off:
   reporting deployment. Preventive policy belongs in a dedicated policy engine.
 
 The operator also keeps read-only RBAC: `remediation` and `manageWorkloads`
-are disabled, so it cannot annotate workloads or write NetworkPolicies.
+are disabled, so it cannot annotate workloads or write NetworkPolicies. The one
+exception is the certificate init container described below, which may create
+Secrets in the release namespace and patch the storage APIService.
+
+## Certificates: why `strategy: initContainer`
+
+The `storage` component serves an aggregated API over mTLS and needs a CA and a
+leaf certificate. Upstream's default, `certificates.strategy: template`, mints
+them with Sprig at render time and reuses an existing CA only through a
+`lookup` of the `storage-tls-ca` Secret.
+
+Argo CD renders with `helm template` and no cluster access, so that lookup
+always returns empty. Every render mints a **new** CA, which means:
+
+- the Application is permanently `OutOfSync` — two renders a second apart
+  differ;
+- with `selfHeal: true` it re-syncs in a loop, rotating the aggregated API
+  server's certificate each time.
+
+This chart therefore sets `certificates.strategy: initContainer`. Certificates
+are generated in-cluster, the CA is reused from its Secret once created, and
+the init container patches the APIService `caBundle` itself. No Secret appears
+in the rendered output and the render is byte-identical run to run.
+
+The cost is the narrow write RBAC it needs:
+
+| Scope | Permission |
+|---|---|
+| Role `storage-certgen` | `create` on Secrets; `get` on the Secret `storage-tls-init` |
+| ClusterRole `storage-certgen-kubescape` | `get`, `patch` on `apiservices` |
+
+`template` remains the right choice for a plain `helm install`, where the
+lookup works. Override it per environment if you are not deploying via Argo CD.
 
 ## Reading the results
 
