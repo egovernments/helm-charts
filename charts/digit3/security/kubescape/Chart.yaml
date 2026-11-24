@@ -4,7 +4,7 @@ description: Kubescape cluster security posture and image vulnerability scanning
 type: application
 # Chart version. appVersion tracks the upstream kubescape-operator release that
 # this chart wraps -- keep the dependency version below in step with it.
-version: 1.1.0
+version: 1.1.1
 appVersion: "1.42.0"
 keywords:
   - security
