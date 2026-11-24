@@ -46,8 +46,14 @@ HEARTBEAT = os.environ.get("HEARTBEAT_PATH", "/tmp/gateway-sync.heartbeat")
 
 K8S = "https://kubernetes.default.svc"
 _SA = "/var/run/secrets/kubernetes.io/serviceaccount"
-TOKEN = open(_SA + "/token").read().strip()
 _K8S_CTX = ssl.create_default_context(cafile=_SA + "/ca.crt")
+
+
+def _token():
+    # Read fresh every call: projected SA tokens expire (~1h) and kubelet rotates the file,
+    # so a long-running controller that cached it at startup would 401 after expiry.
+    with open(_SA + "/token") as f:
+        return f.read().strip()
 
 
 def _req(url, method="GET", body=None, headers=None, ctx=None):
@@ -63,12 +69,12 @@ def _req(url, method="GET", body=None, headers=None, ctx=None):
 
 
 def k8s_get(path):
-    return _req(K8S + path, headers={"Authorization": "Bearer " + TOKEN}, ctx=_K8S_CTX)
+    return _req(K8S + path, headers={"Authorization": "Bearer " + _token()}, ctx=_K8S_CTX)
 
 
 def k8s_post(path, body):
     return _req(K8S + path, method="POST", body=body,
-                headers={"Authorization": "Bearer " + TOKEN}, ctx=_K8S_CTX)
+                headers={"Authorization": "Bearer " + _token()}, ctx=_K8S_CTX)
 
 
 def ensure_gateway_proxy(namespaces):
@@ -298,7 +304,7 @@ def _watch_services(target, dirty):
         try:
             rv = (k8s_get(base).get("metadata") or {}).get("resourceVersion", "")
             url = "%s%s?watch=1&timeoutSeconds=%d&resourceVersion=%s" % (K8S, base, WATCH_TIMEOUT, rv)
-            req = urllib.request.Request(url, headers={"Authorization": "Bearer " + TOKEN})
+            req = urllib.request.Request(url, headers={"Authorization": "Bearer " + _token()})
             with urllib.request.urlopen(req, context=_K8S_CTX) as r:
                 for line in r:              # one JSON event per line; content is irrelevant, reconcile is a full pass
                     if line.strip():
