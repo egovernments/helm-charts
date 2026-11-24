@@ -3,7 +3,7 @@ name: employee-onboarding
 description: Bulk employee onboarding service for DIGIT 3.0 (validates and provisions employees from an uploaded file)
 type: application
 version: 3.1.0
-appVersion: master-7859366
+appVersion: "v3.0.3-beta-1976d84"
 dependencies:
   - name: common
     version: 3.1.2
