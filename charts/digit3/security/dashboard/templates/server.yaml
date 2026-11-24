@@ -1,0 +1,130 @@
+# nginx serving the page ConfigMap the collector writes.
+#
+# The page ConfigMap is deliberately NOT templated by this chart. The collector
+# rewrites it on every run, so if Helm owned it Argo CD would see drift and
+# self-heal the page back to a placeholder on every sync. nginx mounts it
+# optionally and falls back to a placeholder until the first collection.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dashboard.name" . }}-nginx
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /dev/stderr warn;
+    pid /tmp/nginx.pid;
+    events { worker_connections 256; }
+    http {
+      access_log off;
+      include /etc/nginx/mime.types;
+      client_body_temp_path /tmp/client_temp;
+      proxy_temp_path /tmp/proxy_temp;
+      fastcgi_temp_path /tmp/fastcgi_temp;
+      uwsgi_temp_path /tmp/uwsgi_temp;
+      scgi_temp_path /tmp/scgi_temp;
+      server {
+        listen 8080;
+        root /usr/share/nginx/html;
+        # No caching: the page is rewritten in place and a stale security
+        # report is worse than a slow one.
+        add_header Cache-Control "no-store";
+        add_header X-Content-Type-Options "nosniff";
+        add_header X-Frame-Options "SAMEORIGIN";
+        location = /healthz { return 200 "ok\n"; }
+        location / {
+          try_files /page/index.html /placeholder.html =404;
+        }
+      }
+    }
+  placeholder.html: |
+    <!doctype html><html lang="en"><head><meta charset="utf-8">
+    <title>DIGIT Security Posture</title>
+    <style>body{font:15px system-ui,sans-serif;margin:0;padding:48px 24px;color:#15181d}
+    main{max-width:60ch;margin:0 auto}h1{font-size:1.4rem;margin:0 0 12px}
+    p{color:#58616f;line-height:1.55}code{font-family:ui-monospace,Menlo,monospace;font-size:.9em}</style>
+    </head><body><main>
+    <h1>No report collected yet</h1>
+    <p>The collector has not completed a run, so there is nothing to show.
+    This is not a clean result &mdash; it is an absent one.</p>
+    <p>To populate it now rather than waiting for the schedule:</p>
+    <p><code>kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "dashboard.name" . }}-collector dashboard-now</code></p>
+    </main></body></html>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dashboard.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "dashboard.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels: {{- include "dashboard.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+          resources: {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: conf
+              mountPath: /usr/share/nginx/html/placeholder.html
+              subPath: placeholder.html
+            - name: page
+              mountPath: /usr/share/nginx/html/page
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: conf
+          configMap:
+            name: {{ include "dashboard.name" . }}-nginx
+        - name: page
+          configMap:
+            name: {{ include "dashboard.pageConfigMap" . }}
+            optional: true
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dashboard.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "dashboard.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

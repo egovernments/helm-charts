@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dashboard.name" . }}-collector
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+data:
+  collect.py: |
+{{ .Files.Get "files/collect.py" | indent 4 }}
+  template.html: |
+{{ .Files.Get "files/template.html" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "dashboard.name" . }}-collector
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.collector.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: {{- include "dashboard.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "dashboard.name" . }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: collector
+              image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
+              imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+              command: ["python3", "-I", "/opt/dashboard/collect.py"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: PAGE_CONFIGMAP
+                  value: {{ include "dashboard.pageConfigMap" . | quote }}
+                - name: LOCAL_CLUSTER_NAME
+                  value: {{ .Values.collector.localClusterName | quote }}
+                - name: REMOTE_CLUSTERS
+                  value: {{ toJson (.Values.collector.remoteClusters | default list) | quote }}
+              resources: {{- toYaml .Values.collector.resources | nindent 16 }}
+              volumeMounts:
+                - name: code
+                  mountPath: /opt/dashboard
+                - name: tmp
+                  mountPath: /tmp
+                {{- range .Values.collector.remoteClusters }}
+                - name: remote-{{ .name }}
+                  mountPath: /remote/{{ .name }}
+                  readOnly: true
+                {{- end }}
+          volumes:
+            - name: code
+              configMap:
+                name: {{ include "dashboard.name" . }}-collector
+            - name: tmp
+              emptyDir: {}
+            {{- range .Values.collector.remoteClusters }}
+            - name: remote-{{ .name }}
+              secret:
+                secretName: {{ .tokenSecret }}
+            {{- end }}

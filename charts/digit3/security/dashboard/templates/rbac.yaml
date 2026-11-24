@@ -1,0 +1,71 @@
+# Read-only everywhere except its own page ConfigMap.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "dashboard.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "dashboard.name" . }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+rules:
+  # Kubescape results, from the aggregated API served by the storage pod.
+  - apiGroups: ["spdx.softwarecomposition.kubescape.io"]
+    resources:
+      - configurationscansummaries
+      - vulnerabilitysummaries
+      - workloadconfigurationscansummaries
+      - sbomsyfts
+    verbs: ["get", "list"]
+  # Kyverno findings.
+  - apiGroups: ["wgpolicyk8s.io"]
+    resources: ["policyreports", "clusterpolicyreports"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "dashboard.name" . }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "dashboard.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "dashboard.name" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# Write access to exactly one ConfigMap: the rendered page.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "dashboard.name" . }}-page
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: [{{ include "dashboard.pageConfigMap" . | quote }}]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "dashboard.name" . }}-page
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "dashboard.name" . }}-page
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "dashboard.name" . }}
+    namespace: {{ .Release.Namespace }}

@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  /* Baseline the artifact host normally supplies; nginx serves this file raw. */
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; font: 14px system-ui, sans-serif; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>DIGIT Security Posture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: a remediation worklist. Findings first, each with its fix and the
+     workloads it lands on; totals demoted to context at the top. */
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #edf0f4;
+    --fg: #15181d;
+    --fg-dim: #58616f;
+    --fg-faint: #8a93a1;
+    --rule: #dce1e8;
+    --accent: #1f6f78;
+    --crit: #a8323f;
+    --high: #b4622a;
+    --med: #8a7320;
+    --low: #4a6b8a;
+    --ok: #2f6b45;
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1115; --surface: #161a20; --surface-2: #1e232a;
+      --fg: #e5e9ef; --fg-dim: #99a3b1; --fg-faint: #6a7382; --rule: #29303a;
+      --accent: #4fb3bf; --crit: #e8737f; --high: #e09a5f; --med: #d4bc5a;
+      --low: #85a8c9; --ok: #6cc38d; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1115; --surface: #161a20; --surface-2: #1e232a;
+    --fg: #e5e9ef; --fg-dim: #99a3b1; --fg-faint: #6a7382; --rule: #29303a;
+    --accent: #4fb3bf; --crit: #e8737f; --high: #e09a5f; --med: #d4bc5a;
+    --low: #85a8c9; --ok: #6cc38d; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; }
+  .wrap {
+    max-width: 1100px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 26px 56px;
+  }
+
+  header.top { border-bottom: 2px solid var(--fg); padding-bottom: 13px; }
+  h1 { font-size: clamp(1.45rem, 4vw, 1.95rem); font-weight: 600; margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+  .sub { color: var(--fg-dim); font-size: 0.84rem; margin-top: 5px; }
+  .sub code { font-family: var(--font-mono); }
+
+  h2 {
+    font-size: 0.73rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--fg-dim); margin: 36px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule);
+  }
+  .note { color: var(--fg-dim); font-size: 0.85rem; margin: 0 0 14px; max-width: 70ch; }
+  .note strong { color: var(--fg); font-weight: 600; }
+
+  /* environment strip */
+  .envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 16px; }
+  .env { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 13px 14px; min-width: 0; }
+  .env-name { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pill { font-size: 0.63rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; padding: 2px 7px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+  .pill.ok { color: var(--ok); } .pill.warn { color: var(--high); } .pill.off { color: var(--fg-faint); }
+  .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 0.82rem; padding: 2px 0; }
+  .kv dt { color: var(--fg-dim); }
+  .kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  /* finding cards */
+  .findings { display: flex; flex-direction: column; gap: 10px; }
+  .f {
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--rule);
+    border-radius: 6px; padding: 13px 15px; min-width: 0;
+  }
+  .f.critical { border-left-color: var(--crit); } .f.high { border-left-color: var(--high); }
+  .f.medium { border-left-color: var(--med); } .f.low { border-left-color: var(--low); }
+  .f-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+  .f-id { font-family: var(--font-mono); font-size: 0.76rem; color: var(--fg-faint); font-weight: 500; }
+  .f-title { font-weight: 600; font-size: 0.97rem; min-width: 0; }
+  .f-sev { font-size: 0.63rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; padding: 1px 6px; border-radius: 3px; }
+  .f-sev.critical { color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, transparent); }
+  .f-sev.high { color: var(--high); background: color-mix(in srgb, var(--high) 12%, transparent); }
+  .f-sev.medium { color: var(--med); background: color-mix(in srgb, var(--med) 14%, transparent); }
+  .f-sev.low { color: var(--low); background: color-mix(in srgb, var(--low) 14%, transparent); }
+  .f-count { margin-left: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--fg-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .f-desc { font-size: 0.85rem; color: var(--fg-dim); margin: 0 0 9px; max-width: 78ch; }
+  .f-fix {
+    background: var(--surface-2); border-radius: 4px; padding: 8px 11px; font-size: 0.85rem; margin-bottom: 9px;
+  }
+  .f-fix b { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 0.71rem; color: var(--fg-dim);
+    background: var(--surface-2); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 2px 6px; max-width: 100%; overflow-wrap: anywhere;
+  }
+  .chip.more { border-style: dashed; }
+
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab {
+    font: inherit; font-size: 0.82rem; font-family: var(--font-mono); cursor: pointer;
+    background: var(--surface); color: var(--fg-dim); border: 1px solid var(--rule);
+    border-radius: 5px; padding: 5px 11px;
+  }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .gap { border: 1px solid var(--crit); border-left-width: 4px; border-radius: 6px; background: var(--surface); padding: 13px 15px; }
+  .gap.clean { border-color: var(--ok); }
+  .gap h3 { margin: 0 0 5px; font-size: 0.95rem; font-weight: 600; }
+  .gap p { margin: 0 0 9px; font-size: 0.85rem; color: var(--fg-dim); max-width: 72ch; }
+  .gap ul { margin: 0; padding-left: 17px; font-family: var(--font-mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+
+  footer { margin-top: 40px; padding-top: 13px; border-top: 1px solid var(--rule); font-size: 0.78rem; color: var(--fg-faint); max-width: 78ch; }
+  footer p { margin: 0 0 8px; } footer code { font-family: var(--font-mono); }
+  footer strong { color: var(--fg-dim); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>DIGIT Security Posture</h1>
+    <div class="sub" id="meta"></div>
+  </header>
+
+  <div class="envs" id="envs"></div>
+
+  <h2>Coverage gaps</h2>
+  <p class="note">
+    An image that fails to scan reports <strong>no vulnerabilities</strong>, which everywhere
+    else on this page is indistinguishable from an image with nothing wrong with it. These are
+    the places where a zero is not evidence.
+  </p>
+  <div id="gaps"></div>
+
+  <h2>What to fix &mdash; configuration</h2>
+  <p class="note">
+    Kubescape controls that are failing, most-affected first, each with the workloads it lands
+    on. Control names and remediation are upstream Kubescape's own text, not ours. A count is
+    failing workloads, so one Deployment can appear under several controls.
+  </p>
+  <div class="tabs" id="tabs-ks" role="tablist"></div>
+  <div class="findings" id="controls"></div>
+
+  <h2>What to fix &mdash; policy</h2>
+  <p class="note" id="kyvnote"></p>
+  <div class="tabs" id="tabs-ky" role="tablist"></div>
+  <div class="findings" id="policies"></div>
+
+  <footer>
+    <p><strong>Audit, not enforcement.</strong> Kyverno reports these and admits the resource
+    anyway. Its webhooks are also fail-open, so if Kyverno is unavailable the API server
+    proceeds rather than blocking deployments.</p>
+    <p><strong>CVE counts are deliberately not graded.</strong> They are dominated by inherited
+    base-image CVEs rather than anything written here, so they sit beside posture instead of
+    being folded into one score. A grade that is permanently red stops being read.</p>
+    <p><strong>Platform namespaces are counted separately.</strong> <code>kube-system</code>
+    components legitimately need hostPath, hostNetwork and privileged mode, so their policy
+    violations are not mixed in with work anyone is going to do.</p>
+    <p><strong>Collection.</strong> Kyverno PolicyReports are ordinary cluster resources and
+    list cleanly. Kubescape summaries come from an aggregated API whose <code>LIST</code>
+    returns every figure as zero &mdash; only a <code>GET</code> of each object carries real
+    numbers, so the collector fetches them one at a time through a local API proxy.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const SEV = ["critical", "high", "medium", "low"];
+const PLATFORM_NS = new Set(["kube-system", "kube-public", "kube-node-lease", "gatekeeper-system", "calico-system", "tigera-operator"]);
+const fmt = n => (n || 0).toLocaleString("en-US");
+const envNames = Object.keys(DATA.clusters);
+
+function el(t, c, x) { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
+function sum(o, k) { return Object.values(o || {}).reduce((a, v) => a + (v[k] || 0), 0); }
+
+document.getElementById("meta").innerHTML =
+  "Kubescape configuration &amp; vulnerability scanning, Kyverno Pod Security policy &mdash; collected <code>"
+  + DATA.generated.replace("T", " ") + "</code>";
+
+// ---------- environment strip ----------
+const envWrap = document.getElementById("envs");
+for (const name of envNames) {
+  const c = DATA.clusters[name] || {};
+  const ks = c.kubescape || {}, ky = c.kyverno || {};
+  const card = el("div", "env");
+  const head = el("div", "env-name");
+  head.appendChild(el("span", null, name));
+
+  const nUnscanned = (ks.unscanned || []).length;
+  const kyOn = (ky.policies || []).length > 0;
+  const pill = el("span", "pill " + (nUnscanned ? "warn" : kyOn ? "ok" : "off"),
+    nUnscanned ? nUnscanned + " unscanned" : kyOn ? "reporting" : "policy pending");
+  head.appendChild(pill);
+  card.appendChild(head);
+
+  let workload = 0, platform = 0;
+  for (const [ns, v] of Object.entries(ky.by_namespace || {})) {
+    if (PLATFORM_NS.has(ns)) platform += v.fail; else workload += v.fail;
+  }
+  const dl = document.createElement("dl");
+  dl.style.margin = "0";
+  const rows = [
+    ["Config findings (high)", fmt(sum(ks.posture, "high"))],
+    ["Image CVEs (critical)", fmt(sum(ks.cve, "critical"))],
+    ["Policy — workloads", kyOn ? fmt(workload) : "—"],
+    ["Policy — platform", kyOn ? fmt(platform) : "—"],
+  ];
+  for (const [k, v] of rows) {
+    const r = el("div", "kv"); r.appendChild(el("dt", null, k)); r.appendChild(el("dd", null, v)); dl.appendChild(r);
+  }
+  card.appendChild(dl);
+  envWrap.appendChild(card);
+}
+
+// ---------- coverage gaps ----------
+const gapsHost = document.getElementById("gaps");
+const allGaps = [];
+for (const n of envNames) for (const u of (DATA.clusters[n].kubescape || {}).unscanned || []) allGaps.push({ env: n, ...u });
+if (!allGaps.length) {
+  const g = el("div", "gap clean");
+  g.appendChild(el("h3", null, "Every image scanned"));
+  g.appendChild(el("p", null, "No image in any environment was skipped. Every zero on this page is a measured zero."));
+  gapsHost.appendChild(g);
+} else {
+  const g = el("div", "gap");
+  g.appendChild(el("h3", null, allGaps.length + (allGaps.length === 1 ? " image not scanned" : " images not scanned")));
+  g.appendChild(el("p", null, "These produced no vulnerability data at all. Their absence from the CVE counts is a gap in measurement, not a clean result."));
+  const ul = document.createElement("ul");
+  for (const u of allGaps) ul.appendChild(el("li", null, u.env + " — " + u.image + "  [" + u.reason + "]"));
+  g.appendChild(ul);
+  gapsHost.appendChild(g);
+}
+
+// ---------- finding renderer ----------
+function card(f, kind) {
+  const sev = (f.severity || "?").toLowerCase();
+  const d = el("div", "f " + sev);
+  const h = el("div", "f-head");
+  if (f.id && kind === "ks") h.appendChild(el("span", "f-id", f.id));
+  h.appendChild(el("span", "f-title", f.name || f.id));
+  h.appendChild(el("span", "f-sev " + sev, sev));
+  h.appendChild(el("span", "f-count", fmt(f.count) + (f.count === 1 ? " workload" : " workloads") + " · " + f.namespaces + " ns"));
+  d.appendChild(h);
+
+  const body = kind === "ks" ? f.description : f.message;
+  if (body) d.appendChild(el("p", "f-desc", body));
+
+  if (f.remediation) {
+    const fx = el("div", "f-fix");
+    fx.appendChild(el("b", null, "Remediation"));
+    fx.appendChild(document.createTextNode(f.remediation));
+    d.appendChild(fx);
+  }
+
+  if ((f.examples || []).length) {
+    const ch = el("div", "chips");
+    for (const e of f.examples) ch.appendChild(el("span", "chip", e));
+    if (f.count > f.examples.length) ch.appendChild(el("span", "chip more", "+" + fmt(f.count - f.examples.length) + " more"));
+    d.appendChild(ch);
+  }
+  return d;
+}
+
+function tabbed(tabHost, listHost, pick, kind, emptyMsg) {
+  const tabs = document.getElementById(tabHost), list = document.getElementById(listHost);
+  let active = envNames.find(n => (pick(n) || []).length) || envNames[0];
+  function draw() {
+    list.textContent = "";
+    const items = pick(active) || [];
+    if (!items.length) { const p = el("p", "note", emptyMsg(active)); list.appendChild(p); return; }
+    for (const f of items) list.appendChild(card(f, kind));
+    for (const b of tabs.children) b.setAttribute("aria-selected", String(b.dataset.env === active));
+  }
+  for (const n of envNames) {
+    const b = el("button", "tab", n + " (" + fmt((pick(n) || []).length) + ")");
+    b.dataset.env = n; b.type = "button"; b.setAttribute("role", "tab");
+    b.onclick = () => { active = n; draw(); };
+    tabs.appendChild(b);
+  }
+  draw();
+}
+
+tabbed("tabs-ks", "controls", n => (DATA.clusters[n].kubescape || {}).controls, "ks",
+  n => "No configuration findings collected for " + n + " yet.");
+
+tabbed("tabs-ky", "policies", n => (DATA.clusters[n].kyverno || {}).policies, "ky",
+  n => "Kyverno is deployed on " + n + " but has not produced reports yet — this is not a clean result.");
+
+const live = envNames.filter(n => ((DATA.clusters[n].kyverno || {}).policies || []).length);
+document.getElementById("kyvnote").textContent =
+  "Kyverno Pod Security Standards (baseline), running in Audit mode — every violation below was reported and the resource admitted anyway. Reporting in "
+  + live.length + " of " + envNames.length + " environments.";
+</script>
+
+</body>
+</html>
