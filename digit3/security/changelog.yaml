@@ -1,0 +1,10 @@
+releases:
+  - date: "2026-11-24"
+    ref: "PR-159"
+    title: "feat(security): add digit3/security/kubescape chart"
+    author: "SriPadma8997-egov"
+    release_type: "major"
+    charts:
+      - name: "kubescape"
+        from: "0.0.0"
+        to: "1.0.0"
