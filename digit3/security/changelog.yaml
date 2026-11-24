@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-24"
+    ref: "PR-168"
+    title: "feat(digit3/security/dashboard): internal security dashboard behind oauth2-proxy"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "dashboard"
+        from: "0.0.0"
+        to: "1.0.0"
+  - date: "2026-11-24"
     ref: "PR-167"
     title: "fix(kyverno): disable the legacy-policy-check hook that hangs Argo syncs"
     author: "SriPadma8997-egov"
