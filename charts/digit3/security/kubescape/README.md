@@ -97,6 +97,37 @@ matched resource paths for a failed control — are not persisted, only the
 summaries. To see *why* a control such as C-0012 failed on a given workload you
 need a `kubescape` CLI scan.
 
+## Images too large to scan
+
+Two independent limits can take an image out of CVE scanning, and **neither
+produces a failed workload or an alarming status**. The image is recorded with
+`kubescape.io/status: too-large` and simply has no vulnerability data, so on a
+report it reads the same as an image with nothing wrong with it.
+
+| limit | default | what it measures | raising it costs |
+|---|---|---|---|
+| `kubevuln.config.maxSBOMSize` | 64 MiB *(raised from upstream's 20 MiB)* | the generated SBOM | nothing; well under storage's 100 MB cap for `sbomsyfts` |
+| `kubevuln.config.maxImageSize` | 5 GiB | the zipped image | ephemeral-storage on every kubevuln pod, which must rise with it |
+
+List everything currently being skipped, and which limit it hit:
+
+```sh
+kubectl get sbomsyfts -A -o json | jq -r '.items[]
+  | select(.metadata.annotations["kubescape.io/status"]=="too-large")
+  | [.metadata.annotations["kubescape.io/status-reason"],
+     .metadata.annotations["kubescape.io/resource-size"],
+     .metadata.name] | @tsv'
+```
+
+`sbom-too-large` is cheap to fix -- raise `maxSBOMSize`. `image-too-large`
+is a real trade-off: `maxImageSize` should track the kubevuln
+ephemeral-storage request, so raising it commits that much scratch space on
+every node kubevuln schedules to. Worth it for a production image; usually
+not for one oversized development tool.
+
+Check this list after onboarding a new namespace. It is the only place a
+missing scan shows up.
+
 ## Values
 
 Everything sits under the `kubescape-operator` key; this chart has no templates

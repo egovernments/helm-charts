@@ -118,6 +118,37 @@ kubescape-operator:
         memory: 2Gi
 
   kubevuln:
+    config:
+      # Upstream default is 20971520 (20 MiB), and an SBOM over the limit is
+      # not truncated -- the image is marked `sbom-too-large` and its CVE scan
+      # is SKIPPED. The workload then reports no vulnerabilities, which on a
+      # report or dashboard is indistinguishable from a clean image. That is
+      # the reason to raise this: a silent zero is worse than a loud failure.
+      #
+      # Measured on unified-dev, every image that tripped the 20 MiB default:
+      #
+      #   airflow:3.0.2-custom3                      27.56 MiB
+      #   project-factory:master-product-2.2.1       20.88 MiB
+      #   boundary-management:master-154c0db         20.23 MiB
+      #   boundary-management:HCMPRE-2371-...        20.22 MiB
+      #
+      # Three were within 5% of the limit, so a small bump would buy months,
+      # not years. 64 MiB is 2.3x the largest and still well under the storage
+      # component's own cap for this kind (`sbomsyfts`, 100 MB), which is the
+      # next limit an SBOM would hit -- generating something storage would
+      # then refuse just moves the failure.
+      #
+      # This costs no extra ephemeral-storage. Upstream ties ephemeral-storage
+      # to `maxImageSize` (the unpacked image), not to the SBOM; 64 MiB is
+      # noise against the 10Gi limit kubevuln already has.
+      #
+      # To find images hitting this, read the annotations rather than the logs:
+      #   kubectl get sbomsyfts -A -o json | jq -r '.items[]
+      #     | select(.metadata.annotations["kubescape.io/status"]=="too-large")
+      #     | [.metadata.annotations["kubescape.io/status-reason"],
+      #        .metadata.annotations["kubescape.io/resource-size"],
+      #        .metadata.name] | @tsv'
+      maxSBOMSize: 67108864
     resources:
       requests:
         cpu: 100m
