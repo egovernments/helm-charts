@@ -1,0 +1,28 @@
+apiVersion: v1
+entries:
+  kubescape:
+    - apiVersion: v2
+      appVersion: 1.42.0
+      created: "2026-11-24T07:10:16.610551751Z"
+      dependencies:
+        - name: kubescape-operator
+          repository: https://kubescape.github.io/helm-charts/
+          version: 1.42.0
+      description: Kubescape cluster security posture and image vulnerability scanning, with DIGIT defaults (scan-only, no eBPF node agent, no admission webhook)
+      digest: d05e6d89029600c90587da5d9804b503d5ab7ae88a348b9499aeb57e52725280
+      home: https://kubescape.io
+      keywords:
+        - security
+        - posture
+        - compliance
+        - cis
+        - vulnerability-scanning
+      name: kubescape
+      sources:
+        - https://github.com/kubescape/helm-charts
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/security/kubescape/kubescape-1.0.0.tgz
+      version: 1.0.0
+generated: "2026-11-24T07:10:16.603754516Z"
