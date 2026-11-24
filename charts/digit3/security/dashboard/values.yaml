@@ -1,0 +1,67 @@
+# Internal security dashboard.
+#
+# Two pods: a CronJob that reads findings and renders a page, and an nginx that
+# serves it. The rendered page lives in a ConfigMap, so there is no PVC and
+# nginx picks up each refresh without restarting (kubelet syncs a mounted
+# ConfigMap within about a minute).
+
+ingress:
+  # REQUIRED. Deliberately empty: a dashboard that quietly publishes on the
+  # wrong hostname is worse than one that refuses to render. Set per
+  # environment in environments/unified-<env>.yaml under `dashboard:`.
+  host: ""
+  path: /security
+  className: nginx
+
+  # oauth2-proxy, the same pair of annotations Argo CD uses on these clusters.
+  # This is the ONLY thing standing between the page and anyone who can reach
+  # the ingress, and the page names every workload that fails a control -- so
+  # it is on by default and turning it off is a deliberate act.
+  auth:
+    enabled: true
+    url: http://oauth2-proxy.backbone.svc.cluster.local:4180/oauth2/auth
+    signin: https://$host/oauth2/start?rd=$escaped_request_uri
+
+collector:
+  # The cluster scans themselves run nightly, so refreshing more often than
+  # this mostly re-reads identical data.
+  schedule: "17 */6 * * *"
+  image:
+    repository: python
+    tag: "3.12-slim"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+  # Other clusters to include, beyond the one this runs in.
+  #
+  # Each needs `name`, `server`, and `tokenSecret` naming a Secret with a
+  # `token` key -- a token for the read-only dashboard-collector
+  # ServiceAccount on THAT cluster, never an admin credential.
+  #
+  # Left empty, the dashboard shows only the local cluster, and says so rather
+  # than rendering the others as clean.
+  remoteClusters: []
+  # - name: unified-qa
+  #   server: https://unified-qa-xxxx.hcp.centralindia.azmk8s.io:443
+  #   tokenSecret: dashboard-collector-unified-qa
+
+  # Name this cluster is filed under in the report.
+  localClusterName: ""
+
+server:
+  image:
+    repository: nginxinc/nginx-unprivileged
+    tag: "1.27-alpine"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi

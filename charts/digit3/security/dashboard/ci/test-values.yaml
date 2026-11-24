@@ -1,0 +1,5 @@
+# chart-ci renders with an explicit host, since the default is intentionally
+# empty -- a dashboard published on the wrong hostname is worse than one that
+# fails to render.
+ingress:
+  host: ci-test.digit.org

@@ -1,0 +1,31 @@
+{{- if not .Values.ingress.host }}
+{{- fail "dashboard: ingress.host is required. Set it per environment under `dashboard:` in environments/unified-<env>.yaml -- publishing this page on an unintended hostname is the failure worth preventing." }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "dashboard.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className | quote }}
+    {{- if .Values.ingress.auth.enabled }}
+    ## oauth2-proxy. The same pair Argo CD uses on these clusters. This page
+    ## names every workload failing a control, so the chart refuses to be
+    ## useful without it unless someone explicitly sets auth.enabled=false.
+    nginx.ingress.kubernetes.io/auth-url: {{ .Values.ingress.auth.url | quote }}
+    nginx.ingress.kubernetes.io/auth-signin: {{ .Values.ingress.auth.signin | quote }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ include "dashboard.name" . }}
+                port:
+                  name: http
