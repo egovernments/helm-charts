@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-24"
+    ref: "PR-166"
+    title: "feat(backbone/postgresql): support image-volume extensions (3.0.3)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "postgresql"
+        from: "3.0.2"
+        to: "3.0.3"
   - date: "2026-11-19"
     ref: "PR-150"
     title: "kibana: helm-scripts ConfigMap only pre-install/pre-upgrade (Argo CD never created it)"
