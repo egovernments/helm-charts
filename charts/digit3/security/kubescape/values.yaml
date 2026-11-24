@@ -1,0 +1,141 @@
+# DIGIT defaults for the upstream kubescape-operator chart.
+#
+# Everything below sits under the `kubescape-operator` key because this chart is
+# a thin wrapper: there are no templates of its own. To change something the
+# upstream chart exposes but this file does not mention, add it under the same
+# key in the environment's values file -- do not fork the subchart.
+#
+# Upstream reference: https://github.com/kubescape/helm-charts/tree/main/charts/kubescape-operator
+
+kubescape-operator:
+  # MUST be overridden per environment. It is the name the scan results are
+  # filed under, and every report and dashboard keys off it; left at the
+  # upstream default every cluster reports as "cluster".
+  clusterName: "CHANGEME"
+
+  # Posture frameworks. `allcontrols` is the superset used for the DIGIT
+  # security rating; `nsa` and the CIS benchmark are kept because auditors ask
+  # for them by name. The CIS framework is cloud-specific -- cis-aks-t1.2.0 for
+  # AKS, cis-eks-t1.2.0 for EKS -- so an EKS environment must override this.
+  defaultFrameworks:
+    - allcontrols
+    - nsa
+    - cis-aks-t1.2.0
+
+  # Scan every namespace except the scanner's own. The upstream default also
+  # excludes kube-system, kube-public and kube-node-lease, which hides the
+  # control-plane add-ons -- the CIS benchmark is largely about those, so
+  # excluding them makes the benchmark score meaningless.
+  excludeNamespaces: "kubescape"
+  includeNamespaces: ""
+
+  capabilities:
+    operator: enable
+    configurationScan: enable
+    nodeScan: enable
+    vulnerabilityScan: enable
+
+    # Re-scan on every cluster change rather than on the schedule alone. Off:
+    # on a cluster this size it keeps the scanner busy continuously for little
+    # benefit over a daily pass.
+    continuousScan: disable
+
+    # ---- eBPF node agent (DaemonSet on every node) -- all disabled ----------
+    # These are what make Kubescape a runtime security tool rather than a
+    # scanner. They are genuinely useful, but they are also a privileged
+    # DaemonSet on every node in the cluster, and they are not needed for the
+    # posture and CVE reporting this deployment exists to provide. Turning any
+    # of them on puts a privileged agent on every node -- review that
+    # deliberately, per environment, rather than flipping it globally.
+    relevancy: disable
+    runtimeObservability: disable
+    runtimeDetection: disable
+    malwareDetection: disable
+    networkPolicyService: disable
+    networkEventsStreaming: disable
+    nodeProfileService: disable
+    httpDetection: disable
+    seccompProfileService: disable
+    nodeSbomGeneration: disable
+
+    # ---- admission controller -- disabled -----------------------------------
+    # A validating/mutating webhook in the pod-admission path. If it goes
+    # unhealthy it can block pod creation cluster-wide, which is a bad trade
+    # for a reporting deployment. Preventive policy belongs in a dedicated
+    # policy engine, not here.
+    admissionController: disable
+
+    # ---- mutating RBAC -- disabled ------------------------------------------
+    # `remediation` lets the operator annotate workloads and write
+    # NetworkPolicies in response to findings. Keep the scanner read-only.
+    remediation: disable
+    manageWorkloads: disable
+
+  # Daily, staggered off the hour so the two scans do not start together and
+  # compete for the same node. UTC.
+  kubescapeScheduler:
+    scanSchedule: "18 1 * * *"
+  kubevulnScheduler:
+    scanSchedule: "18 3 * * *"
+
+  # The scanner streams the whole resource graph and spills to /tmp. The
+  # upstream read-only root filesystem makes that spill fail, and it silently
+  # falls back to holding everything in memory -- on a cluster with a few
+  # thousand objects that is the component most likely to be OOM-killed.
+  # An emptyDir restores the spill path.
+  kubescape:
+    volumes:
+      - name: ks-spill
+        emptyDir: {}
+    volumeMounts:
+      - name: ks-spill
+        mountPath: /tmp
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+
+  kubevuln:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 3Gi
+
+  operator:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+
+  storage:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+
+  # Scan results live here. 5Gi holds the summaries for a few thousand objects
+  # plus the SBOM cache; the SBOMs dominate, so raise this before adding
+  # namespaces rather than after the PVC fills. storageClass "-" means the
+  # cluster default, which is what all three unified environments use.
+  persistence:
+    storageClass: "-"
+    accessMode: ReadWriteOnce
+    size:
+      backingStorage: 5Gi
+      kubevuln: 5Gi
+
+  # No ARMO SaaS backend: results stay in the cluster and are read through the
+  # aggregated API. Supplying an account here would ship posture and CVE data
+  # for every workload to a third party, which is a decision for the platform
+  # owner, not a chart default.
+  account: ""
+  accessKey: ""
+  server: ""

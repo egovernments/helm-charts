@@ -1,0 +1,32 @@
+apiVersion: v2
+name: kubescape
+description: Kubescape cluster security posture and image vulnerability scanning, with DIGIT defaults (scan-only, no eBPF node agent, no admission webhook)
+type: application
+
+# Chart version. appVersion tracks the upstream kubescape-operator release that
+# this chart wraps -- keep the dependency version below in step with it.
+version: 1.0.0
+appVersion: "1.42.0"
+
+keywords:
+  - security
+  - posture
+  - compliance
+  - cis
+  - vulnerability-scanning
+home: https://kubescape.io
+sources:
+  - https://github.com/kubescape/helm-charts
+  - https://github.com/egovernments/helm-charts
+
+# Wrapper, not a fork. Everything is the upstream operator; this chart exists to
+# pin a version and carry the DIGIT defaults in values.yaml, so every
+# environment gets the same profile instead of a hand-written helm install.
+#
+# The release workflow runs `helm dependency build` before `helm package`, so
+# the chart published to helm.digit.org already contains the subchart. Argo CD
+# never has to reach kubescape.github.io at sync time.
+dependencies:
+  - name: kubescape-operator
+    version: 1.42.0
+    repository: https://kubescape.github.io/helm-charts/
