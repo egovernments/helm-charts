@@ -29,6 +29,26 @@ kubescape-operator:
   excludeNamespaces: "kubescape"
   includeNamespaces: ""
 
+  # The storage component serves an aggregated API over mTLS, so it needs a CA
+  # and a leaf certificate. Upstream's default strategy, `template`, mints them
+  # with Sprig at render time and reuses an existing CA only via a `lookup`.
+  #
+  # Argo CD renders with `helm template` and NO cluster access, so that lookup
+  # always comes back empty: every render produces a brand-new CA, the
+  # Application is permanently OutOfSync, and selfHeal rotates the aggregated
+  # API server's certificate in a loop.
+  #
+  # `initContainer` generates the certs in-cluster instead, reusing the CA from
+  # its Secret once created, and patches the APIService caBundle itself. The
+  # render then contains no Secret at all and is byte-identical run to run --
+  # which is what makes this chart safe to deploy from Argo CD.
+  #
+  # It is the one place this chart grants write RBAC: `create` on Secrets in
+  # the release namespace, `get` on the single Secret storage-tls-init, and
+  # `get`/`patch` on the storage APIService. Everything else stays read-only.
+  certificates:
+    strategy: initContainer
+
   capabilities:
     operator: enable
     configurationScan: enable
