@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-24"
+    ref: "PR-164"
+    title: "fix(kubescape): raise maxSBOMSize so large images are not silently skipped"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "kubescape"
+        from: "1.1.0"
+        to: "1.1.1"
+  - date: "2026-11-24"
     ref: "PR-163"
     title: "feat(digit3/security/kubescape): generate storage certs in-cluster"
     author: "SriPadma8997-egov"
