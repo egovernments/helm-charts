@@ -4,7 +4,7 @@ description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, A
 type: application
 # Chart version. appVersion tracks the upstream Kyverno release that this chart
 # wraps -- keep both dependency versions below in step with it.
-version: 1.0.0
+version: 1.0.1
 appVersion: "v1.20.0"
 keywords:
   - security
