@@ -1,0 +1,98 @@
+# Kyverno for the unified environments: Pod Security Standards reported, never
+# enforced, on webhooks that cannot wedge the cluster.
+#
+# Read the two settings under `kyverno-policies` before changing anything here.
+# Together they are what makes this install safe to run on a shared cluster,
+# and they are independent of each other -- relaxing either one alone is enough
+# to start rejecting workloads.
+
+kyverno-policies:
+  # Report violations; do not reject the resource. The whole point of the first
+  # rollout is to find out how much of the estate is already non-compliant
+  # without anyone's deployment failing. Switching this to Enforce is a real
+  # decision -- see the README before doing it.
+  validationFailureAction: Audit
+
+  # THE IMPORTANT ONE. Upstream defaults this to Fail, which is what people
+  # mean when they say an admission webhook took the cluster down.
+  #
+  # `validationFailureAction: Audit` only decides what happens when a policy
+  # FINDS something. `failurePolicy` decides what happens when the webhook
+  # itself cannot be reached -- Kyverno restarting, rescheduling, OOM, a node
+  # draining, or simply not ready yet. With `Fail`, every matching admission
+  # request in the cluster is rejected for as long as that lasts, including
+  # the deployments trying to fix it.
+  #
+  # `Ignore` means the API server proceeds when Kyverno does not answer. The
+  # cost is that a resource created during that window is not evaluated, which
+  # for an Audit-only install costs a report entry and nothing else. That is
+  # the right trade until policies are actually enforced.
+  failurePolicy: Ignore
+
+  # `baseline` blocks the genuinely dangerous things (privileged, hostPath,
+  # hostNetwork, hostPID). `restricted` additionally requires runAsNonRoot,
+  # seccomp and dropped capabilities, which most DIGIT images do not satisfy
+  # today -- turning it on now yields thousands of findings nobody will read.
+  # Move to restricted once baseline is clean.
+  podSecurityStandard: baseline
+
+kyverno:
+  crds:
+    migration:
+      # Upstream ships this as a post-upgrade Helm hook that rewrites legacy
+      # CRD data (globalcontextentries, updaterequests). There is nothing to
+      # migrate on a fresh install, and the hook is actively harmful under
+      # Argo CD: its `helm.sh/hook-delete-policy` is commented out upstream,
+      # so Argo maps it to a PostSync hook that is never cleaned up, and the
+      # NEXT sync fails trying to recreate an immutable Job.
+      #
+      # Re-enable it (or run the job by hand) only when upgrading across a
+      # Kyverno release that actually requires the migration.
+      enabled: false
+
+  # One replica per controller. Upstream defaults the admission controller to 3
+  # for HA, which matters when a webhook outage blocks admission -- with
+  # failurePolicy Ignore it does not, so the extra pods buy nothing here.
+  # Raise this with the same change that moves policies to Enforce.
+  admissionController:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+
+  # Generates the PolicyReport / ClusterPolicyReport resources. This is where
+  # every finding lives and what the security dashboard reads, so the install
+  # is pointless without it. It is also what scans resources that ALREADY
+  # exist -- without it a fresh install reports nothing until something new is
+  # deployed.
+  reportsController:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 1Gi
+
+  # Serves generate/mutate-existing rules. The Pod Security policies are
+  # validate-only and do not need it, but it is cheap and leaving it on avoids
+  # a surprise the first time someone adds a generate rule.
+  backgroundController:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+
+  # Serves the CleanupPolicy CRD -- scheduled deletion of matching resources.
+  # Nothing here uses it, and it is one less webhook and one less controller
+  # with delete permissions on the cluster.
+  cleanupController:
+    enabled: false

@@ -1,0 +1,6 @@
+# Values chart-ci renders the chart with. Nothing is required per environment
+# -- unlike kubescape there is no clusterName -- so this file exists only to
+# keep the chart-ci contract uniform across the module.
+kyverno:
+  admissionController:
+    replicas: 1

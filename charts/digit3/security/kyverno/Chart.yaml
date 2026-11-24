@@ -1,0 +1,37 @@
+apiVersion: v2
+name: kyverno
+description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, Audit only, fail-open webhooks)
+type: application
+# Chart version. appVersion tracks the upstream Kyverno release that this chart
+# wraps -- keep both dependency versions below in step with it.
+version: 1.0.0
+appVersion: "v1.20.0"
+keywords:
+  - security
+  - policy
+  - admission-control
+  - pod-security
+  - governance
+home: https://kyverno.io
+sources:
+  - https://github.com/kyverno/kyverno
+  - https://github.com/egovernments/helm-charts
+# Wrapper, not a fork. Both dependencies are upstream; this chart exists to pin
+# the versions and carry the DIGIT defaults in values.yaml, so every
+# environment gets the same profile instead of a hand-written helm install.
+#
+# Two charts rather than one: `kyverno` is the engine (controllers, webhooks,
+# CRDs) and ships no policies at all, while `kyverno-policies` is only the Pod
+# Security Standards policy set. Installing the engine alone is valid and does
+# nothing; the policies are what produce findings.
+#
+# The release workflow runs `helm dependency build` before `helm package`, so
+# the chart published to helm.digit.org already contains both subcharts. Argo
+# CD never has to reach kyverno.github.io at sync time.
+dependencies:
+  - name: kyverno
+    version: 3.10.0
+    repository: https://kyverno.github.io/kyverno/
+  - name: kyverno-policies
+    version: 3.10.0
+    repository: https://kyverno.github.io/kyverno/
