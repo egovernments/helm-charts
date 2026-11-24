@@ -37,6 +37,31 @@ kyverno-policies:
   podSecurityStandard: baseline
 
 kyverno:
+  upgrade:
+    legacyPolicyCheck:
+      # A pre-install/pre-upgrade Helm hook Job that refuses to install when
+      # legacy kyverno.io policy resources exist. It hangs Argo CD syncs.
+      #
+      # The Job finishes in seconds, then Kubernetes deletes it via its own
+      # `ttlSecondsAfterFinished: 300`. Argo records the hook as
+      # `hookPhase: Running` when it applies it and then polls the Job to see
+      # it finish -- so if the TTL fires before Argo observes completion, it
+      # polls a Job that no longer exists and the sync waits forever:
+      #
+      #   waiting for completion of hook batch/Job/kyverno-check-legacy-policies
+      #
+      # It is a race, so it does not reproduce reliably: of unified-dev, -qa
+      # and -uat installing the same chart minutes apart, dev won and the
+      # other two wedged. Recovering needs the cached syncResult cleared by
+      # hand -- terminating the operation is not enough, because the next one
+      # resumes the same recorded hookPhase.
+      #
+      # Nothing is lost by disabling it here. It guards an upgrade path from
+      # legacy kyverno.io policy types, and these are fresh installs with zero
+      # such resources on any of the three clusters. The chart's render-time
+      # check stays on as the backstop.
+      enabled: false
+
   crds:
     migration:
       # Upstream ships this as a post-upgrade Helm hook that rewrites legacy
