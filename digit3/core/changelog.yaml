@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-24"
+    ref: "PR-161"
+    title: "kong: re-read SA token per call in gateway-sync controller"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "kong"
+        from: "3.1.5"
+        to: "3.1.6"
   - date: "2026-11-22"
     ref: "PR-158"
     title: "kong: unbuffered stdout for gateway-sync controller"
