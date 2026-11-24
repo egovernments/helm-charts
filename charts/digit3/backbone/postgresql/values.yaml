@@ -427,6 +427,15 @@ cluster:
     shared_preload_libraries: []
       # - pgaudit
 
+    # -- Extensions supplied via image volumes (CNPG 1.29+), passed through to
+    # spec.postgresql.extensions. Mounts an extension image so its binaries are
+    # available without rebuilding the operand image (e.g. postgis on PG18).
+    extensions: []
+      # - name: postgis
+      #   image:
+      #     reference: ghcr.io/cloudnative-pg/postgis-extension:3.7.0-18-trixie
+      #   ld_library_path: [system]
+
     # -- PostgreSQL LDAP configuration (see https://cloudnative-pg.io/documentation/current/postgresql_conf/#ldap-configuration)
     ldap: {}
       # https://cloudnative-pg.io/documentation/current/postgresql_conf/#ldap-configuration
