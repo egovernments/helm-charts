@@ -1,0 +1,150 @@
+# ── Labels ────────────────────────────────────────────────────────────────────
+labels:
+  app: "cdc-audit"
+  group: "core"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+# Standalone utility: no public route. Auditors call the verify API in-cluster via
+# the Service (http://cdc-audit.<namespace>:8080/api/v1/verify/...).
+ingress:
+  enabled: false
+  gateway: false
+  context: "cdc-audit"
+
+# ── Init containers (flyway DB migration) ─────────────────────────────────────
+# Creates the cdc_events table (public schema); the app's own Flyway stays off
+# (common injects SPRING_FLYWAY_ENABLED=false for java services).
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "cdc_audit_schema"
+    image:
+      repository: "cdc-audit-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: db-url
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-username
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: db
+              key: flyway-password
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef:
+              name: egov-config
+              key: flyway-locations
+
+# ── Container ─────────────────────────────────────────────────────────────────
+# Spring Boot (java): common injects SPRING_DATASOURCE_* (audit storage DB) and the
+# shared platform env. CDC/Debezium/Vault config is set below in the env block.
+image:
+  repository: "cdc-audit"
+replicas: 1
+appType: "java"
+tracing-enabled: false
+
+# ── App config (overridable per env) ──────────────────────────────────────────
+# CDC source: ENGINE (embedded Debezium) or KAFKA.
+cdc-source: "ENGINE"
+
+# Debezium source Postgres (needs wal_level=logical, a replication user, slot and publication).
+cdc-debezium-slot-name: "cdc_audit_slot"
+cdc-debezium-plugin-name: "pgoutput"
+cdc-debezium-publication-name: "cdc_audit_pub"
+cdc-debezium-server-name: "digit"
+cdc-debezium-offset-storage-file: "/tmp/cdc-offsets.dat"
+
+# Vault transit signing. The token is read from a secret (see vault-token-* below), never set here.
+cdc-vault-base-url: "http://vault.vault:8200"
+cdc-vault-transit-mount: "transit"
+cdc-vault-key-type: "ecdsa-p256"
+vault-token-secret: "cdc-audit"
+vault-token-key: "vault-token"
+
+# Storage: postgres (cdc_events table per tenant schema) or rolling-local.
+cdc-storage-type: "postgres"
+
+# ── Health checks ─────────────────────────────────────────────────────────────
+# App exposes only the verify API (no actuator health contract), so probes are off.
+healthChecks:
+  enabled: false
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# Image defaults JAVA_OPTS to -Xmx64m -Xms64m.
+resources: |
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# ── Container env ─────────────────────────────────────────────────────────────
+env: |
+  # ── CDC source ───────────────────────────────────────────────────────────
+  - name: CDC_SOURCE
+    value: {{ index .Values "cdc-source" | quote }}
+
+  # ── Debezium (source Postgres, logical replication) ──────────────────────
+  - name: CDC_DEBEZIUM_DATABASE_HOSTNAME
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-host
+  - name: CDC_DEBEZIUM_DATABASE_PORT
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-port
+  - name: CDC_DEBEZIUM_DATABASE_DBNAME
+    valueFrom:
+      configMapKeyRef:
+        name: egov-config
+        key: db-name
+  - name: CDC_DEBEZIUM_DATABASE_USER
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: username
+  - name: CDC_DEBEZIUM_DATABASE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db
+        key: password
+  - name: CDC_DEBEZIUM_SLOT_NAME
+    value: {{ index .Values "cdc-debezium-slot-name" | quote }}
+  - name: CDC_DEBEZIUM_PLUGIN_NAME
+    value: {{ index .Values "cdc-debezium-plugin-name" | quote }}
+  - name: CDC_DEBEZIUM_PUBLICATION_NAME
+    value: {{ index .Values "cdc-debezium-publication-name" | quote }}
+  - name: CDC_DEBEZIUM_DATABASE_SERVER_NAME
+    value: {{ index .Values "cdc-debezium-server-name" | quote }}
+  - name: CDC_DEBEZIUM_OFFSET_STORAGE_FILE
+    value: {{ index .Values "cdc-debezium-offset-storage-file" | quote }}
+
+  # ── Vault transit signing ────────────────────────────────────────────────
+  - name: CDC_VAULT_BASE_URL
+    value: {{ index .Values "cdc-vault-base-url" | quote }}
+  - name: CDC_VAULT_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: {{ index .Values "vault-token-secret" | quote }}
+        key: {{ index .Values "vault-token-key" | quote }}
+  - name: CDC_VAULT_TRANSIT_MOUNT
+    value: {{ index .Values "cdc-vault-transit-mount" | quote }}
+  - name: CDC_VAULT_KEY_TYPE
+    value: {{ index .Values "cdc-vault-key-type" | quote }}
+
+  # ── Storage ──────────────────────────────────────────────────────────────
+  - name: CDC_STORAGE_TYPE
+    value: {{ index .Values "cdc-storage-type" | quote }}

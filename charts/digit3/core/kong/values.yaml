@@ -205,10 +205,10 @@ extraLabels: {}
 
 # Specify Kong's Docker image and repository details here
 image:
-  # DIGIT's kong build, validated for 3.0.1 (release notes: egovio/kong:master-9b942c2).
+  # DIGIT's kong build (kong 3.5 + gateway customizations), from the v3.0.3-beta release.
   # Plain kong:3.5 lacks the DIGIT gateway customizations, and egovio/kong:3.5 does not exist.
   repository: egovio/kong
-  tag: "master-9b942c2"
+  tag: "v3.0.3-beta-1976d84"
   # Kong Enterprise
   # repository: kong/kong-gateway
   # tag: "3.5"
