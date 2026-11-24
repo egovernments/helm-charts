@@ -3,7 +3,7 @@ entries:
   kubescape:
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T16:01:29.116624958Z"
+      created: "2026-11-24T17:40:15.603851707Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -27,7 +27,7 @@ entries:
       version: 1.1.1
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T16:01:29.11003557Z"
+      created: "2026-11-24T17:40:15.597222727Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -51,7 +51,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-24T16:01:29.10400716Z"
+      created: "2026-11-24T17:40:15.590828984Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -73,4 +73,32 @@ entries:
       urls:
         - https://helm.digit.org/digit3/security/kubescape/kubescape-1.0.0.tgz
       version: 1.0.0
-generated: "2026-11-24T16:01:29.097546091Z"
+  kyverno:
+    - apiVersion: v2
+      appVersion: v1.20.0
+      created: "2026-11-24T17:40:15.637326076Z"
+      dependencies:
+        - name: kyverno
+          repository: https://kyverno.github.io/kyverno/
+          version: 3.10.0
+        - name: kyverno-policies
+          repository: https://kyverno.github.io/kyverno/
+          version: 3.10.0
+      description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, Audit only, fail-open webhooks)
+      digest: ffb3cb807c417dc08de94d115d5cbf1db77968044b2555699152a7008795bd44
+      home: https://kyverno.io
+      keywords:
+        - security
+        - policy
+        - admission-control
+        - pod-security
+        - governance
+      name: kyverno
+      sources:
+        - https://github.com/kyverno/kyverno
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/security/kyverno/kyverno-1.0.0.tgz
+      version: 1.0.0
+generated: "2026-11-24T17:40:15.583660623Z"
