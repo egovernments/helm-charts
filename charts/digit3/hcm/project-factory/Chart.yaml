@@ -1,0 +1,10 @@
+apiVersion: v2
+name: project-factory
+description: Project Factory (HCM) - campaign setup service that generates projects, facilities, resources and boundary data from a campaign definition.
+type: application
+version: 3.0.0
+appVersion: "master-product-2.2.1-76ce514"
+dependencies:
+  - name: common
+    version: 3.1.2
+    repository: https://helm.digit.org/digit3/common

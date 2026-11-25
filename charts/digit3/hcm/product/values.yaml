@@ -1,0 +1,104 @@
+# Product (HCM): product and product-variant master data for health campaigns.
+# Java service. `common` injects the datasource, Kafka bootstrap, Hikari pool, flyway
+# (off in-app), timezone and Tomcat tuning for appType: java, so only service-specific
+# config lives here. Per-environment values (hosts, redis) are set in the deploy repo's
+# environments/digit-3.0/hcm-3.0.yaml under a "product" block.
+
+labels:
+  app: "product"
+  group: "hcm"
+
+ingress:
+  enabled: true
+  gateway: true
+  context: "product"        # app hardcodes server.servlet.context-path=/product; kept in sync
+
+image:
+  repository: "product"
+replicas: 1
+appType: "java"
+
+# Flyway DB migration (product-db image).
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "product_schema"
+    image:
+      repository: "product-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: db-url }
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-username }
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-password }
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: flyway-locations }
+        - name: FLYWAY_SCHEMAS
+          value: public
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: public
+
+tracing-enabled: false
+
+# context-path: HARDCODED in the jar (/product) -> no context-path env (would be dead config).
+
+# External service hosts: source defaults; repoint to in-cluster hosts per env.
+idgen-host: "http://idgen.core-3-0:8080"
+idgen-path: "egov-idgen/id/_generate"
+idgen-integration-enabled: "true"
+user-host: "http://user.core-3-0:8080"
+mdms-host: "http://mdms-v2.core-3-0:8080"
+mdms-search-endpoint: "/egov-mdms-service/v1/_search"
+mdms-master-name: "product_master"
+mdms-module-name: "product"
+
+# Redis cache (shared backbone).
+redis-host: "redis.backbone-3-0"
+cache-type: "redis"
+cache-ttl: "60"
+
+healthChecks:
+  enabled: true
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+resources: |
+  requests:
+    cpu: "100m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
+
+env: |
+  # External services (repointed per env in hcm-3.0.yaml)
+  - name: EGOV_IDGEN_HOST
+    value: {{ index .Values "idgen-host" | quote }}
+  - name: EGOV_IDGEN_PATH
+    value: {{ index .Values "idgen-path" | quote }}
+  - name: EGOV_IDGEN_INTEGRATION_ENABLED
+    value: {{ index .Values "idgen-integration-enabled" | quote }}
+  - name: EGOV_USER_HOST
+    value: {{ index .Values "user-host" | quote }}
+  - name: EGOV_MDMS_HOST
+    value: {{ index .Values "mdms-host" | quote }}
+  - name: EGOV_MDMS_SEARCH_ENDPOINT
+    value: {{ index .Values "mdms-search-endpoint" | quote }}
+  - name: EGOV_MDMS_MASTER_NAME
+    value: {{ index .Values "mdms-master-name" | quote }}
+  - name: EGOV_MDMS_MODULE_NAME
+    value: {{ index .Values "mdms-module-name" | quote }}
+  # Redis cache
+  - name: SPRING_REDIS_HOST
+    value: {{ index .Values "redis-host" | quote }}
+  - name: SPRING_CACHE_TYPE
+    value: {{ index .Values "cache-type" | quote }}
+  - name: SPRING_CACHE_REDIS_TIME_TO_LIVE
+    value: {{ index .Values "cache-ttl" | quote }}

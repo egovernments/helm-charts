@@ -1,0 +1,161 @@
+# Project Factory (HCM): campaign setup service (Node 20 / TypeScript). Generates
+# projects, facilities, resources and boundary data from a campaign definition.
+#
+# NOT a java service: `common` does not inject the java datasource/kafka/pool env, so this
+# chart wires the node app's own env. The service reads everything from process.env at
+# startup; most external-host defaults already point at unified-dev.digit.org, so only the
+# required infra (secret, DB, kafka, redis) and a few env-specific values are set here.
+# Per-environment values + secrets live in the deploy repo's environments/digit-3.0/.
+
+labels:
+  app: "project-factory"
+  group: "hcm"
+
+ingress:
+  enabled: true
+  gateway: true
+  context: "project-factory"   # app serves under CONTEXT_PATH (default /project-factory)
+
+image:
+  repository: "project-factory"
+replicas: 1
+appType: ""                    # node service: no java env injection from common
+httpPort: 8080                 # app listens on APP_PORT (default 8080); Dockerfile EXPOSE 3000 is stale
+
+# Flyway DB migration (project-factory-db image).
+initContainers:
+  dbMigration:
+    enabled: true
+    schemaTable: "project_factory_schema"
+    image:
+      repository: "project-factory-db"
+    env: |
+        - name: "DB_URL"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: db-url }
+        - name: "SCHEMA_TABLE"
+          value: {{ .Values.initContainers.dbMigration.schemaTable | quote }}
+        - name: "FLYWAY_USER"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-username }
+        - name: "FLYWAY_PASSWORD"
+          valueFrom:
+            secretKeyRef: { name: db, key: flyway-password }
+        - name: "FLYWAY_LOCATIONS"
+          valueFrom:
+            configMapKeyRef: { name: egov-config, key: flyway-locations }
+        - name: FLYWAY_SCHEMAS
+          value: public
+        - name: FLYWAY_DEFAULT_SCHEMA
+          value: public
+
+tracing-enabled: false
+
+# context-path derives /<ingress.context> unless set; env var is CONTEXT_PATH.
+context-path: ""
+app-port: "8080"
+app-log-level: "info"
+egov-host: "https://unified-dev.digit.org/"
+kafka-consumer-group-id: "project-factory"
+
+# Own Postgres (owns eg_cm_campaign_* tables). Repoint per env; password from the db secret.
+db-host: "postgresql.backbone-3-0"
+db-port: "5432"
+db-name: "postgres"
+db-schema: "egov"
+
+# Redis (shared backbone).
+redis-host: "redis.backbone-3-0"
+redis-port: "6379"
+
+# Campaign / locale config (env-specific).
+module-name: "HCM-ADMIN-CONSOLE"
+localization-module: "hcm-admin-schemas"
+locale: "en_MZ"
+user-main-boundary: "mz"
+user-main-boundary-type: "Country"
+cmp-idgen-format: "CMP-[cy:yyyy-MM-dd]-[SEQ_EG_CMP_ID]"
+
+# Attendance topics (code requires these set explicitly per env; defaults shown).
+attendance-register-delete-topic: "delete-attendance-health"
+attendance-attendee-update-topic: "update-attendee-health"
+attendance-staff-update-topic: "update-staff-health"
+
+# Health probe: the node app uses @godaddy/terminus; the exact route is not declared in
+# config. Left disabled for the first deploy to avoid a crashloop on an unknown path;
+# enable with the real terminus path once confirmed (see README).
+healthChecks:
+  enabled: false
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
+
+# Node heap is 3072m (NODE_OPTIONS); give memory headroom.
+resources: |
+  requests:
+    cpu: "200m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "4Gi"
+
+env: |
+  - name: APP_PORT
+    value: {{ index .Values "app-port" | quote }}
+  - name: CONTEXT_PATH
+    value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
+  - name: APP_LOG_LEVEL
+    value: {{ index .Values "app-log-level" | quote }}
+  - name: NODE_OPTIONS
+    value: "--max-old-space-size=3072"
+  - name: EGOV_HOST
+    value: {{ index .Values "egov-host" | quote }}
+  # Kafka (broker from the platform ConfigMap)
+  - name: KAFKA_BROKER_HOST
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: kafka-brokers }
+  - name: KAFKA_CONSUMER_GROUP_ID
+    value: {{ index .Values "kafka-consumer-group-id" | quote }}
+  # Own Postgres
+  - name: DB_HOST
+    value: {{ index .Values "db-host" | quote }}
+  - name: DB_PORT
+    value: {{ index .Values "db-port" | quote }}
+  - name: DB_NAME
+    value: {{ index .Values "db-name" | quote }}
+  - name: DB_SCHEMA
+    value: {{ index .Values "db-schema" | quote }}
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef: { name: db, key: username }
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef: { name: db, key: password }
+  # Required secret (app throws at startup if missing)
+  - name: BASE_SECRET
+    valueFrom:
+      secretKeyRef: { name: project-factory, key: base-secret }
+  # Redis
+  - name: REDIS_HOST
+    value: {{ index .Values "redis-host" | quote }}
+  - name: REDIS_PORT
+    value: {{ index .Values "redis-port" | quote }}
+  # Campaign / locale
+  - name: MODULE_NAME
+    value: {{ index .Values "module-name" | quote }}
+  - name: LOCALIZATION_MODULE
+    value: {{ index .Values "localization-module" | quote }}
+  - name: LOCALE
+    value: {{ index .Values "locale" | quote }}
+  - name: USER_MAIN_BOUNDARY
+    value: {{ index .Values "user-main-boundary" | quote }}
+  - name: USER_MAIN_BOUNDARY_TYPE
+    value: {{ index .Values "user-main-boundary-type" | quote }}
+  - name: CMP_IDGEN_FORMAT
+    value: {{ index .Values "cmp-idgen-format" | quote }}
+  # Attendance topics (must be set per env)
+  - name: KAFKA_ATTENDANCE_REGISTER_DELETE_TOPIC
+    value: {{ index .Values "attendance-register-delete-topic" | quote }}
+  - name: KAFKA_ATTENDANCE_ATTENDEE_UPDATE_TOPIC
+    value: {{ index .Values "attendance-attendee-update-topic" | quote }}
+  - name: KAFKA_ATTENDANCE_STAFF_UPDATE_TOPIC
+    value: {{ index .Values "attendance-staff-update-topic" | quote }}

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: product
+description: Product (HCM) - product and product-variant master data for health campaigns.
+type: application
+version: 3.0.0
+appVersion: "master-c1dc738"
+dependencies:
+  - name: common
+    version: 3.1.2
+    repository: https://helm.digit.org/digit3/common
