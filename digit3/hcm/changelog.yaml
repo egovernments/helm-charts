@@ -1,0 +1,16 @@
+releases:
+  - date: "2026-11-25"
+    ref: "PR-174"
+    title: "feat(hcm): add product, facility, project-factory charts (new digit3/hcm module)"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "facility"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "product"
+        from: "0.0.0"
+        to: "3.0.0"
+      - name: "project-factory"
+        from: "0.0.0"
+        to: "3.0.0"
