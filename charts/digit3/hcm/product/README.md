@@ -39,7 +39,7 @@ Do not redefine them here. The image tag is the chart `appVersion` in `prod` mod
 | `user-host` | `EGOV_USER_HOST` | `http://user.core-3-0:8080` |
 | `mdms-host` | `EGOV_MDMS_HOST` | `http://mdms-v2.core-3-0:8080` |
 | `mdms-master-name` | `EGOV_MDMS_MASTER_NAME` | `product_master` |
-| `redis-host` | `SPRING_REDIS_HOST` | `redis.backbone-3-0` |
+| `redis-host` | `SPRING_REDIS_HOST` | `redis.backbone` |
 | `cache-ttl` | `SPRING_CACHE_REDIS_TIME_TO_LIVE` | `60` |
 
 The context path is **not** injected as an env var: the app hardcodes

@@ -60,7 +60,7 @@ mdms-master-name: "product_master"
 mdms-module-name: "product"
 
 # Redis cache (shared backbone).
-redis-host: "redis.backbone-3-0"
+redis-host: "redis.backbone"
 cache-type: "redis"
 cache-ttl: "60"
 

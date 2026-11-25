@@ -72,7 +72,7 @@ outside-household-fallback-types: "OUTSIDE_HOUSEHOLD_PLACES,TRANSIT_POST"
 create-return-existing-on-duplicate: "true"
 
 # Redis cache (shared backbone).
-redis-host: "redis.backbone-3-0"
+redis-host: "redis.backbone"
 cache-ttl: "30000"
 
 healthChecks:

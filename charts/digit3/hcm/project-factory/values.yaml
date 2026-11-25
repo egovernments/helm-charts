@@ -65,7 +65,7 @@ db-name: "postgres"
 db-schema: "egov"
 
 # Redis (shared backbone).
-redis-host: "redis.backbone-3-0"
+redis-host: "redis.backbone"
 redis-port: "6379"
 
 # Campaign / locale config (env-specific).
