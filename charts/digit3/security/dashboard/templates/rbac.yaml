@@ -39,7 +39,9 @@ subjects:
     name: {{ include "dashboard.name" . }}
     namespace: {{ .Release.Namespace }}
 ---
-# Write access to exactly one ConfigMap: the rendered page.
+# Write access to exactly two ConfigMaps: the rendered page, and the score
+# history it appends to. Still named explicitly rather than granted over
+# configmaps generally.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -52,7 +54,9 @@ rules:
     verbs: ["create"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    resourceNames: [{{ include "dashboard.pageConfigMap" . | quote }}]
+    resourceNames:
+      - {{ include "dashboard.pageConfigMap" . | quote }}
+      - {{ include "dashboard.historyConfigMap" . | quote }}
     verbs: ["get", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

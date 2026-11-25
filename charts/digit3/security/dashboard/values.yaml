@@ -53,6 +53,18 @@ collector:
   # Name this cluster is filed under in the report.
   localClusterName: ""
 
+  # Score history, kept in a ConfigMap because nothing in Kubescape keeps it:
+  # the storage API overwrites each summary in place on every scan, so a
+  # number not recorded at the time is gone.
+  history:
+    # At the default six-hourly schedule, 180 points is about 45 days.
+    maxPoints: 180
+    # Per-control scores are kept only on this many of the newest points --
+    # they are what attributes a movement to specific controls, and they are
+    # far larger than the headline figures. Older points keep the headline
+    # only, so the trend line survives much longer than the detail.
+    maxDetailedPoints: 12
+
 server:
   image:
     repository: nginxinc/nginx-unprivileged

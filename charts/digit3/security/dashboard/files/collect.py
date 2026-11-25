@@ -27,6 +27,19 @@ person who reads this.
    fixes are downloaded from Kubescape's published control library so that
    nothing shown to a reader is invented here. If that download fails the page
    shows bare IDs, which is the honest degradation.
+
+4. THE COMPLIANCE SCORE IS COMPUTED HERE, BECAUSE NOTHING IN THE CLUSTER
+   COMPUTES IT. The score Kubescape shows in its CLI and SaaS is calculated by
+   the client from a scan report; the in-cluster operator stores findings only,
+   and no object in the aggregated API carries a score field. So `score()`
+   below reimplements the upstream formula exactly -- see its docstring.
+
+5. HISTORY IS OURS TO KEEP. The storage API overwrites each summary in place
+   on every scan (the object keeps its name and gains a new
+   `kubescape.io/report-created-at`), so yesterday's numbers are gone the
+   moment tonight's scan lands. Each run therefore appends one point to a
+   history ConfigMap and reads the whole series back, which is the only reason
+   the page can say a score moved rather than just what it is now.
 """
 import json, os, ssl, sys, time, datetime, collections, urllib.request, urllib.error
 import concurrent.futures as cf
@@ -38,6 +51,15 @@ CONTROLS_URL = "https://github.com/kubescape/regolibrary/releases/latest/downloa
 SEV = ["critical", "high", "medium", "low"]
 TOP_CONTROLS = int(os.environ.get("TOP_CONTROLS", "25"))
 EXAMPLES = 6
+
+# History retention. Points are tiny; per-control scores are not, and they are
+# only needed to attribute a recent change, so they are pruned off older
+# points. MAX_HISTORY_BYTES is the real guard: a ConfigMap is capped at 1 MiB
+# and losing the whole series to a rejected write would be worse than losing
+# its oldest end.
+MAX_POINTS = int(os.environ.get("MAX_POINTS", "180"))
+MAX_DETAILED_POINTS = int(os.environ.get("MAX_DETAILED_POINTS", "12"))
+MAX_HISTORY_BYTES = 700 * 1024
 
 
 def log(m):
@@ -90,6 +112,48 @@ def control_library():
         return {}
 
 
+def score(tally, nworkloads):
+    """Kubescape's compliance score, reimplemented from the upstream formula.
+
+    Nothing in the cluster stores a score: the operator writes findings, and
+    the score a reader recognises is computed client-side by the Kubescape CLI
+    and by the ARMO backend. Rather than invent a grading scheme, this
+    reproduces `kubescape/opa-utils/score` exactly, so the number here means
+    what the same number means anywhere else in the Kubescape ecosystem:
+
+      GetControlComplianceScore:  a control that passed scores 100; otherwise
+                                  passed / all * 100, where `all` includes
+                                  resources the control skipped.
+      SetPostureReportComplianceScores:
+                                  the overall score is the PLAIN MEAN of the
+                                  control scores -- deliberately not weighted
+                                  by severity or by how many resources each
+                                  control touched.
+
+    That plain mean is what makes the trend readable rather than decorative:
+    because every control carries weight 1/N, a control moving from 40 to 100
+    contributes exactly (100-40)/N points to the cluster score, and the
+    per-control contributions sum to the total change. The page attributes a
+    movement on precisely that arithmetic.
+
+    One honest caveat, repeated on the page: this is scored over the workloads
+    the operator scanned, so it is not identical to `kubescape scan` on the
+    same cluster, which also evaluates host- and cluster-level controls that
+    this scan-only profile does not collect. It is consistent with itself over
+    time, which is what a trend needs.
+    """
+    scores = {}
+    for cid, t in tally.items():
+        allr = t["passed"] + t["failed"] + t["other"]
+        scores[cid] = 100.0 if t["failed"] == 0 else (round(t["passed"] / allr * 100.0, 4) if allr else 0.0)
+    return {
+        "compliance": round(sum(scores.values()) / len(scores), 2) if scores else None,
+        "controlsEvaluated": len(scores),
+        "workloadsScanned": nworkloads,
+        "controlScores": scores,
+    }
+
+
 def kubescape(c, lib):
     out = {"available": True, "posture": {}, "cve": {}, "unscanned": [], "controls": []}
     idx = c.try_get(f"{API}/configurationscansummaries")
@@ -123,22 +187,36 @@ def kubescape(c, lib):
         return c.try_get(f"{API}/namespaces/{m['namespace']}/workloadconfigurationscansummaries/{m['name']}")
 
     counts, sevs, examples, nss = collections.Counter(), {}, collections.defaultdict(list), collections.defaultdict(set)
+    tally = collections.defaultdict(lambda: {"passed": 0, "failed": 0, "other": 0})
+    nworkloads = 0
     with cf.ThreadPoolExecutor(max_workers=24) as ex:
         for o in ex.map(wl_one, wl.get("items", [])):
             if not o:
                 continue
+            nworkloads += 1
             L = o["metadata"].get("labels", {}) or {}
             ns = L.get("kubescape.io/workload-namespace", "?")
             kind = L.get("kubescape.io/workload-kind", "?")
             name = L.get("kubescape.io/workload-name", "?")
             for cid, ctl in ((o.get("spec") or {}).get("controls") or {}).items():
-                if ((ctl.get("status") or {}).get("status")) != "failed":
+                st = (ctl.get("status") or {}).get("status")
+                t = tally[cid]
+                t["passed" if st == "passed" else "failed" if st == "failed" else "other"] += 1
+                if st != "failed":
                     continue
                 counts[cid] += 1
                 sevs[cid] = ((ctl.get("severity") or {}).get("severity") or "?").lower()
                 nss[cid].add(ns)
                 if len(examples[cid]) < EXAMPLES:
                     examples[cid].append(f"{ns}/{kind}/{name}")
+
+    out["score"] = score(tally, nworkloads)
+
+    # So the page can say "top N of M" rather than leaving a reader to wonder
+    # why the control counts do not add up to the headline total.
+    out["controlsTotal"] = len(counts)
+    out["failuresTotal"] = {sv: sum(c for cid, c in counts.items() if sevs.get(cid) == sv)
+                            for sv in ("critical", "high", "medium", "low")}
 
     for cid, n in counts.most_common(TOP_CONTROLS):
         meta = lib.get(cid, {})
@@ -216,6 +294,101 @@ def clusters():
     return out
 
 
+def point(data):
+    """One row of history: the headline figures, small enough to keep forever."""
+    row = {"at": data["generated"], "clusters": {}}
+    for name, c in data["clusters"].items():
+        if not c.get("reachable"):
+            row["clusters"][name] = {"reachable": False}
+            continue
+        ks, ky = c.get("kubescape") or {}, c.get("kyverno") or {}
+        sc = ks.get("score") or {}
+        row["clusters"][name] = {
+            "reachable": True,
+            "compliance": sc.get("compliance"),
+            "controlsEvaluated": sc.get("controlsEvaluated"),
+            "workloadsScanned": sc.get("workloadsScanned"),
+            "failing": ks.get("controlsTotal"),
+            "failures": ks.get("failuresTotal") or {},
+            "cveCritical": sum((v or {}).get("critical", 0) for v in (ks.get("cve") or {}).values()),
+            "cveHigh": sum((v or {}).get("high", 0) for v in (ks.get("cve") or {}).values()),
+            "policyFail": (ky.get("totals") or {}).get("fail", 0),
+            "controlScores": sc.get("controlScores") or {},
+        }
+    return row
+
+
+def trim(points):
+    """Keep the series bounded, shedding detail before shedding history.
+
+    Per-control scores are what let the page attribute a movement, but they
+    dwarf everything else, so they live only on the newest points. Past that,
+    the oldest points go -- a ConfigMap rejected for size would cost the whole
+    series, not just its oldest end.
+    """
+    points = points[-MAX_POINTS:]
+    for pt in points[:-MAX_DETAILED_POINTS]:
+        for cl in pt.get("clusters", {}).values():
+            cl.pop("controlScores", None)
+    while len(points) > 2 and len(json.dumps(points)) > MAX_HISTORY_BYTES:
+        points.pop(0)
+    return points
+
+
+def for_page(points):
+    """The series as the page needs it, which is not the series as stored.
+
+    Attribution only ever compares the newest point with the one before it, so
+    only those two need per-control scores. Everything older contributes a
+    dot on a sparkline. Shipping the full detail would push the rendered page
+    towards the same 1 MiB ConfigMap ceiling the history is already guarding.
+    """
+    out = []
+    for i, pt in enumerate(points):
+        keep = i >= len(points) - 2
+        out.append({"at": pt.get("at"), "clusters": {
+            k: ({**v} if keep else {kk: vv for kk, vv in v.items() if kk != "controlScores"})
+            for k, v in (pt.get("clusters") or {}).items()}})
+    return out
+
+
+def history(c, namespace, name, data):
+    """Append this run to the history ConfigMap and return the whole series.
+
+    A failure here must not cost the page: a dashboard that renders today's
+    numbers without a trend is useful, one that renders nothing is not. So
+    every step degrades to an empty series and logs why.
+    """
+    path = f"/api/v1/namespaces/{namespace}/configmaps/{name}"
+    existing, points = None, []
+    try:
+        existing = c.get(path)
+        points = json.loads((existing.get("data") or {}).get("history.json") or "[]")
+        if not isinstance(points, list):
+            raise ValueError("history.json is not a list")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            log(f"  WARNING: cannot read history ({e}); starting a new series")
+    except Exception as e:
+        log(f"  WARNING: history unreadable ({e}); starting a new series")
+        points = []
+
+    points = trim(points + [point(data)])
+    body = {"apiVersion": "v1", "kind": "ConfigMap",
+            "metadata": {"name": name, "namespace": namespace},
+            "data": {"history.json": json.dumps(points, separators=(",", ":"))}}
+    try:
+        if existing is None:
+            c.send("POST", f"/api/v1/namespaces/{namespace}/configmaps", body)
+            log(f"  created history ConfigMap {namespace}/{name}")
+        else:
+            c.send("PUT", path, body)
+        log(f"  history: {len(points)} points, {len(body['data']['history.json'])} bytes")
+    except Exception as e:
+        log(f"  WARNING: could not write history ({e}); this run is not recorded")
+    return points
+
+
 def publish(c, namespace, name, html):
     """Write the page into the ConfigMap nginx serves."""
     body = {"apiVersion": "v1", "kind": "ConfigMap",
@@ -256,10 +429,34 @@ def main():
             log(f"  FAILED: {e}")
             data["clusters"][name] = {"reachable": False, "error": str(e)}
 
-    with open("/opt/dashboard/template.html") as f:
+    out = os.environ.get("OUTPUT_PATH")
+    if out:
+        # Local render: no cluster to keep history in, so the trend comes from
+        # a file if one is given. Never silently from nowhere.
+        hp = os.environ.get("HISTORY_PATH")
+        points = []
+        if hp:
+            try:
+                with open(hp) as f:
+                    points = json.load(f)
+            except Exception as e:
+                log(f"  WARNING: no readable history at {hp} ({e})")
+            points = trim(points + [point(data)])
+            with open(hp, "w") as f:
+                json.dump(points, f, separators=(",", ":"))
+    else:
+        points = history(first, os.environ["POD_NAMESPACE"],
+                         os.environ["HISTORY_CONFIGMAP"], data)
+    data["history"] = for_page(points)
+
+    # The current scan's per-control scores are already on the newest history
+    # point; a second copy only grows the page.
+    for c2 in data["clusters"].values():
+        (c2.get("kubescape") or {}).get("score", {}).pop("controlScores", None)
+
+    with open(os.environ.get("TEMPLATE_PATH", "/opt/dashboard/template.html")) as f:
         html = f.read().replace("/*__DATA__*/null", json.dumps(data))
 
-    out = os.environ.get("OUTPUT_PATH")
     if out:
         with open(out, "w") as f:
             f.write(html)

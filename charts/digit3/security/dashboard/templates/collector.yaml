@@ -52,6 +52,12 @@ spec:
                       fieldPath: metadata.namespace
                 - name: PAGE_CONFIGMAP
                   value: {{ include "dashboard.pageConfigMap" . | quote }}
+                - name: HISTORY_CONFIGMAP
+                  value: {{ include "dashboard.historyConfigMap" . | quote }}
+                - name: MAX_POINTS
+                  value: {{ .Values.collector.history.maxPoints | quote }}
+                - name: MAX_DETAILED_POINTS
+                  value: {{ .Values.collector.history.maxDetailedPoints | quote }}
                 - name: LOCAL_CLUSTER_NAME
                   value: {{ .Values.collector.localClusterName | quote }}
                 - name: REMOTE_CLUSTERS

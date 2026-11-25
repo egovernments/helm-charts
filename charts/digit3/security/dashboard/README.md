@@ -82,6 +82,65 @@ it, Argo CD would see drift and self-heal the page back to its placeholder on
 every sync. nginx mounts it with `optional: true` and falls back to a
 placeholder until the first collection.
 
+## The compliance score, and why this chart computes it
+
+Nothing in the cluster stores a compliance score. The Kubescape operator writes
+findings; the score you recognise from `kubescape scan` and from the ARMO
+platform is computed **client-side** from a scan report. No object in the
+aggregated API has a score field — `ConfigurationScanSummary` carries severity
+counts and nothing else.
+
+So `files/collect.py` reimplements the upstream formula rather than inventing a
+grade, following `kubescape/opa-utils/score`:
+
+| | |
+|---|---|
+| Control score | `100` if the control passed, otherwise `passed / all × 100`, where `all` includes resources the control skipped |
+| Cluster score | the **plain mean** of the control scores — deliberately not weighted by severity, and not weighted by how many resources each control touched |
+
+That plain mean is worth preserving even though a weighted score looks more
+sophisticated, because it is what makes a movement explainable. Every control
+carries exactly `1/N` of the score, so a control going from 40% to 100% moves
+the cluster score by exactly `60/N` points, and the per-control contributions
+**sum to the total change**. The page shows that arithmetic directly. Weight the
+controls and the attribution stops adding up.
+
+One caveat the page repeats in its footer: the score is taken over the workloads
+this scan-only profile collects, so it will not equal `kubescape scan` run from
+a laptop against the same cluster, which also evaluates host- and cluster-level
+controls this deployment does not gather. It is consistent with itself over
+time, which is what a trend needs.
+
+## History, and why it lives in a ConfigMap
+
+The storage API **overwrites each summary in place** on every scan — the object
+keeps its name and resourceVersion simply increments, with a fresh
+`kubescape.io/report-created-at` annotation. There is no history CRD and no
+retained revisions. A number not recorded at the time is gone.
+
+Each collector run therefore appends one point to the
+`security-dashboard-history` ConfigMap and reads the whole series back. The
+ConfigMap is not templated by this chart, for the same reason the page is not
+(see above): Argo CD would self-heal over every write.
+
+Retention is tiered, because a ConfigMap is capped at 1 MiB and per-control
+scores are far larger than the headline figures:
+
+- `collector.history.maxPoints` (180, about 45 days at the default six-hourly
+  schedule) — headline figures per environment.
+- `collector.history.maxDetailedPoints` (12) — how many of the newest points
+  also keep per-control scores. These are what attribute a movement; older
+  points keep only the score itself, so the trend line long outlives the detail.
+- A hard 700 KiB ceiling drops the oldest points if the series somehow grows
+  past it. Shedding the oldest end beats having the whole write rejected.
+
+The page itself carries per-control detail for only the newest two points,
+since attribution only ever compares a reading with the one before it.
+
+If the history ConfigMap cannot be read or written, the run logs a warning and
+still publishes the page — a dashboard with today's numbers and no trend is
+useful; one that renders nothing is not.
+
 ## The collection detail that will trip you up
 
 Kyverno PolicyReports are ordinary CRs in etcd and `LIST` cleanly.
