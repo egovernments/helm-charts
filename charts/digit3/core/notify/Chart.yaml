@@ -3,7 +3,7 @@ name: notify
 description: Multi-channel notifications (SMS, email, WhatsApp, push)
 type: application
 version: 3.1.4
-appVersion: "v3.0.3-beta-1976d84"
+appVersion: "master-b66f90b"
 dependencies:
   - name: common
     version: 3.1.2
