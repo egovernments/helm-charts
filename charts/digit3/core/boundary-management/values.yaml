@@ -142,17 +142,17 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: boundary-java
+        key: boundary
   - name: EGOV_FILESTORE_SERVICE_HOST
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: filestore-java
+        key: filestore
   - name: EGOV_LOCALIZATION_HOST
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: localization-java
+        key: localization
   - name: EGOV_MDMS_HOST
     valueFrom:
       configMapKeyRef:
