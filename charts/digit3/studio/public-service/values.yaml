@@ -195,7 +195,7 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: individual-java
+        key: individual
   - name: BOUNDARY_SERVICE_HOST
     valueFrom:
       configMapKeyRef:
@@ -225,7 +225,7 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: account-java
+        key: account
   - name: KEYCLOAK_HOST
     valueFrom:
       configMapKeyRef:
