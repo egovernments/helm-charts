@@ -71,11 +71,11 @@ appType: "java"
 tracing-enabled: false
 heap: "-XX:InitialRAMPercentage=25.0 -XX:MaxRAMPercentage=70.0"
 
-# Spring Boot actuator health routes, served under the context path
+# Actuator base path is "/" (set by the common java env), so health is at /health
 healthChecks:
   enabled: true
-  livenessProbePath: "/actuator/health/liveness"
-  readinessProbePath: "/actuator/health/readiness"
+  livenessProbePath: "/health"
+  readinessProbePath: "/health"
 
 resources: |
   requests:
