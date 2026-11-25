@@ -1,5 +1,17 @@
 releases:
   - date: "2026-11-25"
+    ref: "PR-179"
+    title: "fix(digit3/core): wire employee-onboarding + localization-management datasource via common chart"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "employee-onboarding"
+        from: "3.1.2"
+        to: "3.1.3"
+      - name: "localization-management"
+        from: "3.1.2"
+        to: "3.1.3"
+  - date: "2026-11-25"
     ref: "PR-175"
     title: "fix(digit3/core): drop legacy -java egov-service-host keys"
     author: "shivam-eGov"
