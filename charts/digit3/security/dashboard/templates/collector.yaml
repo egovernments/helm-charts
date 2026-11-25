@@ -54,6 +54,10 @@ spec:
                   value: {{ include "dashboard.pageConfigMap" . | quote }}
                 - name: HISTORY_CONFIGMAP
                   value: {{ include "dashboard.historyConfigMap" . | quote }}
+                - name: DRILL_WORKLOADS
+                  value: {{ .Values.collector.drillWorkloads | quote }}
+                - name: MAX_PAGE_BYTES
+                  value: {{ .Values.collector.maxPageBytes | quote }}
                 - name: FRAMEWORK
                   value: {{ .Values.collector.framework | quote }}
                 - name: WORKLOAD_SECTIONS

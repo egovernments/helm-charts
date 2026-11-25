@@ -78,6 +78,64 @@
   .kv dt { color: var(--fg-dim); }
   .kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
 
+  .intro { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--accent);
+           border-radius: 6px; padding: 15px 17px; margin-top: 18px; }
+  .intro p { margin: 0 0 9px; font-size: 0.9rem; line-height: 1.6; max-width: 76ch; color: var(--fg-dim); }
+  .intro p:last-child { margin-bottom: 0; }
+  .intro strong { color: var(--fg); font-weight: 600; }
+
+  /* drill-down: every number on this page can be opened */
+  .why { cursor: pointer; border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: inherit;
+         border-bottom: 1px dashed var(--fg-faint); }
+  .why:hover, .why:focus-visible { border-bottom-color: var(--accent); color: var(--accent); outline: none; }
+  .why::after { content: "\00a0\24d8"; font-size: 0.72em; color: var(--fg-faint); vertical-align: super; }
+  .why:hover::after, .why:focus-visible::after { color: var(--accent); }
+  tr.why { display: table-row; border-bottom: 0; }
+  tr.why:hover { background: var(--surface-2); }
+  tr.why::after { content: none; }
+  li.why { border-bottom: 0; }
+  li.why:hover { background: var(--surface-2); }
+  li.why::after { content: none; }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(8, 11, 15, 0.55); z-index: 40; }
+  .sheet {
+    position: fixed; z-index: 41; background: var(--surface); color: var(--fg);
+    inset: 0 0 0 auto; width: min(680px, 100%); overflow-y: auto;
+    border-left: 1px solid var(--rule); box-shadow: -14px 0 40px rgba(0,0,0,0.22);
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+    padding-block: calc(18px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (max-width: 520px) { .sheet { inset: auto 0 0 0; width: 100%; max-height: 88vh; border-left: 0; border-top: 1px solid var(--rule); } }
+  .sheet-top { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
+  .sheet-top h3 { margin: 0; font-size: 1.1rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
+  .sheet-top .eyebrow { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--fg-faint); margin-bottom: 3px; }
+  .sheet-close { margin-left: auto; flex: none; cursor: pointer; border: 1px solid var(--rule); background: var(--surface-2);
+                 color: var(--fg-dim); border-radius: 5px; width: 30px; height: 30px; font-size: 1rem; line-height: 1; }
+  .sheet-close:hover { color: var(--fg); border-color: var(--fg-faint); }
+  .sheet h4 { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em;
+              color: var(--fg-dim); margin: 22px 0 8px; }
+  .lead { font-size: 0.93rem; line-height: 1.6; margin: 14px 0 0; max-width: 62ch; }
+  .lead strong { font-weight: 600; }
+  .maths { background: var(--surface-2); border-radius: 5px; padding: 12px 14px; font-size: 0.86rem; }
+  .maths .row { display: flex; gap: 12px; padding: 3px 0; }
+  .maths .row span:first-child { color: var(--fg-dim); }
+  .maths .row span:last-child { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .maths .row.total { border-top: 1px solid var(--rule); margin-top: 6px; padding-top: 7px; font-weight: 600; }
+  .sheet table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .sheet th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
+              color: var(--fg-faint); font-weight: 600; padding: 4px 8px 6px 0; border-bottom: 1px solid var(--rule); }
+  .sheet td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; }
+  .sheet td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .sheet .scroller { max-height: 320px; overflow-y: auto; }
+  .reslist { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 0.78rem; }
+  .reslist li { padding: 3px 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+  .reslist li .k { color: var(--fg-faint); }
+  .fixbox { background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: 4px;
+            padding: 11px 13px; font-size: 0.86rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .muted { color: var(--fg-dim); font-size: 0.84rem; }
+
+  /* drill-down: every number on this page can be opened */
   /* framework split */
   .fw { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 15px 17px; margin-bottom: 12px; }
   .fw-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 3px; }
@@ -177,6 +235,18 @@
     <h1>DIGIT Security Posture</h1>
     <div class="sub" id="meta"></div>
   </header>
+
+  <div class="intro">
+    <p><strong>How to read this page.</strong> The headline is a compliance score against the
+    <strong>CIS Kubernetes Benchmark</strong>, an published industry standard. It measures how well the
+    things we deploy are configured &mdash; not whether we have been attacked, and not how many
+    vulnerabilities exist.</p>
+    <p><strong>Every number here can be opened.</strong> Click any figure with a
+    <span style="border-bottom:1px dashed var(--fg-faint)">dotted underline</span> to see what it counts,
+    the arithmetic that produced it, and the actual workloads behind it. Nothing on this page asks to be
+    taken on trust.</p>
+    <p id="introscore"></p>
+  </div>
 
   <div class="envs" id="envs"></div>
 
@@ -283,7 +353,9 @@ for (const name of envNames) {
     : (typeof sc.compliance === "number" ? { v: sc.compliance, label: "compliance" } : null);
   if (headline) {
     const row = el("div", "score");
-    row.appendChild(el("span", "score-n", headline.v.toFixed(1) + "%"));
+    const big = el("span", "score-n", headline.v.toFixed(1) + "%");
+    if (ks.framework && typeof ks.framework.workload.score === "number") explain(big, () => cisScoreSheet(name));
+    row.appendChild(big);
     row.appendChild(el("span", "score-u", headline.label));
     const d = deltaSince(name, 1);
     if (d !== null) row.appendChild(deltaChip(d));
@@ -293,16 +365,343 @@ for (const name of envNames) {
   const dl = document.createElement("dl");
   dl.style.margin = "0";
   const rows = [
-    ["Config findings (high)", fmt(sum(ks.posture, "high"))],
-    ["Image CVEs (critical)", fmt(sum(ks.cve, "critical"))],
-    ["Policy — workloads", kyOn ? fmt(workload) : "—"],
-    ["Policy — platform", kyOn ? fmt(platform) : "—"],
+    ["Config findings (high)", fmt(sum(ks.posture, "high")), () => nsTableSheet({
+      env: name, title: "High-severity configuration findings", unit: "High findings", data: ks.posture,
+      pick: v => v.high,
+      lead: "A <strong>finding</strong> is one check failing on one workload, so a single Deployment that breaks "
+        + "four rules contributes four. These are counts of problems, not of workloads, and they are not the "
+        + "score — the score weights every check equally no matter how many workloads it touched.",
+      note: "Namespaces run by the platform (kube-system and friends) legitimately need privileges that would be "
+        + "wrong in an application namespace." })],
+    ["Image CVEs (critical)", fmt(sum(ks.cve, "critical")), () => nsTableSheet({
+      env: name, title: "Critical vulnerabilities in container images", unit: "Critical CVEs", data: ks.cve,
+      pick: v => v.critical,
+      lead: "Known vulnerabilities in the software inside our container images — overwhelmingly inherited from "
+        + "the public base images we build on, not written here. <strong>They are deliberately kept out of the "
+        + "compliance score.</strong> They move with upstream disclosures rather than with anything we did, and a "
+        + "grade that is permanently red stops being read.",
+      note: "The route to reducing these is rebuilding on slimmer or newer base images, not fixing application code." })],
+    ["Policy — workloads", kyOn ? fmt(workload) : "—", kyOn ? () => ({
+      eyebrow: name, title: "Policy violations in application namespaces",
+      lead: "Kyverno enforces Pod Security Standards in <strong>audit mode</strong>: it records what does not comply "
+        + "and lets the resource through. Nothing is blocked, and its webhooks fail open, so Kyverno being "
+        + "unavailable cannot stop a deployment.",
+      blocks: [{ heading: "By namespace", table: { cols: ["Namespace", { label: "Violations", num: true }],
+        rows: Object.entries(ky.by_namespace || {}).filter(([n2]) => !PLATFORM_NS.has(n2))
+          .sort((x, y) => y[1].fail - x[1].fail).map(([n2, v]) => [n2, fmt(v.fail)]) } }] }) : null],
+    ["Policy — platform", kyOn ? fmt(platform) : "—", kyOn ? () => ({
+      eyebrow: name, title: "Policy violations in platform namespaces",
+      lead: "Counted separately on purpose. <code>kube-system</code> and similar namespaces hold components that "
+        + "<strong>legitimately require</strong> host access, host networking or privileged mode — a CNI plugin "
+        + "cannot do its job otherwise. Mixing these into the application total would bury the number anyone is "
+        + "actually going to act on.",
+      blocks: [{ heading: "By namespace", table: { cols: ["Namespace", { label: "Violations", num: true }],
+        rows: Object.entries(ky.by_namespace || {}).filter(([n2]) => PLATFORM_NS.has(n2))
+          .sort((x, y) => y[1].fail - x[1].fail).map(([n2, v]) => [n2, fmt(v.fail)]) } }] }) : null],
   ];
-  for (const [k, v] of rows) {
-    const r = el("div", "kv"); r.appendChild(el("dt", null, k)); r.appendChild(el("dd", null, v)); dl.appendChild(r);
+  for (const [k, v, build] of rows) {
+    const r = el("div", "kv"); r.appendChild(el("dt", null, k));
+    const dd = el("dd", null, v);
+    if (build) explain(dd, build);
+    r.appendChild(dd); dl.appendChild(r);
   }
   card.appendChild(dl);
   envWrap.appendChild(card);
+}
+
+// ---------- drill-down ----------
+//
+// Every number on this page is a claim, and a claim a reader cannot open is a
+// claim they have to take on trust. `explain()` attaches the evidence to an
+// element: what the figure means in plain words, the arithmetic that produced
+// it, and the actual resources behind it. Nothing here recomputes anything --
+// it displays the same values the page already rendered, so the drill-down
+// can never disagree with the headline.
+let sheetEl = null, backdropEl = null, lastFocus = null;
+
+function closeSheet() {
+  if (sheetEl) { sheetEl.remove(); sheetEl = null; }
+  if (backdropEl) { backdropEl.remove(); backdropEl = null; }
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+function openSheet(spec) {
+  closeSheet();
+  lastFocus = document.activeElement;
+  backdropEl = el("div", "backdrop");
+  backdropEl.addEventListener("click", closeSheet);
+  document.body.appendChild(backdropEl);
+
+  const sh = el("div", "sheet");
+  sh.setAttribute("role", "dialog");
+  sh.setAttribute("aria-modal", "true");
+  sh.setAttribute("tabindex", "-1");
+
+  const top = el("div", "sheet-top");
+  const ttl = el("div");
+  if (spec.eyebrow) ttl.appendChild(el("div", "eyebrow", spec.eyebrow));
+  ttl.appendChild(el("h3", null, spec.title));
+  top.appendChild(ttl);
+  const x = el("button", "sheet-close", "\u2715");
+  x.setAttribute("aria-label", "Close");
+  x.addEventListener("click", closeSheet);
+  top.appendChild(x);
+  sh.appendChild(top);
+
+  if (spec.lead) { const l = el("p", "lead"); l.innerHTML = spec.lead; sh.appendChild(l); }
+
+  for (const b of spec.blocks || []) {
+    if (!b) continue;
+    if (b.heading) sh.appendChild(el("h4", null, b.heading));
+    if (b.note) { const n = el("p", "muted"); n.innerHTML = b.note; n.style.margin = "0 0 9px"; sh.appendChild(n); }
+    if (b.maths) {
+      const m = el("div", "maths");
+      for (const r of b.maths) {
+        const row = el("div", "row" + (r.total ? " total" : ""));
+        row.appendChild(el("span", null, r[0] !== undefined ? r[0] : r.label));
+        row.appendChild(el("span", null, r[1] !== undefined ? r[1] : r.value));
+        m.appendChild(row);
+      }
+      sh.appendChild(m);
+    }
+    if (b.fix) { const f = el("div", "fixbox", b.fix); sh.appendChild(f); }
+    if (b.table) {
+      const wrap = el("div", b.table.rows.length > 12 ? "scroller" : null);
+      const t = document.createElement("table");
+      const hr = document.createElement("tr");
+      for (const c of b.table.cols) {
+        const th = el("th", null, typeof c === "string" ? c : c.label);
+        if (typeof c !== "string" && c.num) th.style.textAlign = "right";
+        hr.appendChild(th);
+      }
+      t.appendChild(hr);
+      for (const r of b.table.rows) {
+        const tr = document.createElement("tr");
+        if (r.onOpen) { tr.className = "why"; tr.setAttribute("tabindex", "0"); tr.setAttribute("role", "button");
+          tr.addEventListener("click", () => openSheet(r.onOpen()));
+          tr.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openSheet(r.onOpen()); } }); }
+        (r.cells || r).forEach((cell, i) => {
+          const td = el("td", null, cell === null || cell === undefined ? "\u2014" : String(cell));
+          const col = b.table.cols[i];
+          if (typeof col !== "string" && col.num) td.className = "num";
+          tr.appendChild(td);
+        });
+        t.appendChild(tr);
+      }
+      wrap.appendChild(t);
+      sh.appendChild(wrap);
+    }
+    if (b.resources) {
+      const wrap = el("div", b.resources.length > 12 ? "scroller" : null);
+      const ul = el("ul", "reslist");
+      for (const r of b.resources) {
+        const li = document.createElement("li");
+        li.appendChild(el("span", "k", (r.ns ? r.ns + " / " : "") + r.kind + " / "));
+        li.appendChild(el("span", null, r.name));
+        // For a grant-shaped finding the object name carries the role and
+        // binding that produced it, which is the part you actually revoke.
+        if (r.obj) {
+          const extra = el("div", "k", r.obj);
+          extra.style.fontSize = "0.92em";
+          li.appendChild(extra);
+        }
+        ul.appendChild(li);
+      }
+      wrap.appendChild(ul);
+      sh.appendChild(wrap);
+    }
+    if (b.text) { const t = el("p", "muted"); t.innerHTML = b.text; sh.appendChild(t); }
+  }
+  document.body.appendChild(sh);
+  sh.focus();
+  sheetEl = sh;
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+/** Make an element open a detail sheet. `build` is lazy: the sheet is only
+ *  assembled when a reader actually asks for it. */
+function explain(node, build) {
+  node.classList.add("why");
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("role", "button");
+  node.addEventListener("click", ev => { ev.stopPropagation(); openSheet(build()); });
+  node.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ev.stopPropagation(); openSheet(build()); }
+  });
+  return node;
+}
+
+// ---------- what each number means ----------
+//
+// Written for a reader who does not run these clusters. Every lead sentence
+// says what the figure is in plain words before any arithmetic appears, and
+// every figure that came from counting something can be opened down to the
+// things that were counted.
+const pct = v => (v === null || v === undefined) ? "—" : v.toFixed(1) + "%";
+const KS = n => DATA.clusters[n].kubescape || {};
+const detailOf = (n, cid) => ((KS(n).detail || {}).controls || {})[cid];
+
+function controlSheet(name, cid) {
+  const d = detailOf(name, cid);
+  const fw = KS(name).framework;
+  const N = fw && fw.workload.covered;
+  if (!d) return { title: cid, lead: "No detail was collected for this control." };
+  const contrib = N ? d.score / N : null;
+  return {
+    eyebrow: name + " · " + d.id,
+    title: clean(d.name),
+    lead: d.description ? "<strong>What it checks.</strong> " + clean(d.description) : null,
+    blocks: [
+      { heading: "Why this control scores " + d.score.toFixed(0) + "%",
+        maths: [
+          ["Findings that satisfy it", fmt(d.passed)],
+          ["Findings that do not", fmt(d.failed)],
+          ["Not applicable / skipped", fmt(d.skipped)],
+          ["Findings evaluated", fmt(d.total)],
+          { label: "Score = satisfied ÷ evaluated", value: d.score.toFixed(1) + "%", total: true },
+        ],
+        note: N ? "Every assessed control carries the same weight, so this one contributes <code>"
+          + d.score.toFixed(1) + "% ÷ " + N + "</code> = <strong>" + contrib.toFixed(2)
+          + " points</strong> of the section score. Fixing it everywhere would add <strong>+"
+          + ((100 - d.score) / N).toFixed(2) + " points</strong>." : null },
+      d.failed ? { heading: "What is not satisfying it"
+                 + (d.workloads.length < d.failed ? " (first " + d.workloads.length + " of " + fmt(d.failed) + ")" : ""),
+                   note: d.subjects && d.subjects < d.failed
+                     ? "Kubescape counts one finding per <strong>grant</strong>, not per resource, so the "
+                       + fmt(d.failed) + " findings come from <strong>" + fmt(d.subjects) + " distinct "
+                       + "resources</strong> \u2014 a ServiceAccount reached by five role bindings is five "
+                       + "findings naming the same account. Repeated names below are not a mistake; each row "
+                       + "is a separate grant." : null,
+                   resources: d.workloads } : null,
+      d.remediation ? { heading: "How to fix it", fix: clean(d.remediation),
+                        text: "Upstream Kubescape's own remediation text, not ours." } : null,
+    ],
+  };
+}
+
+function cisScoreSheet(name) {
+  const fw = KS(name).framework, w = fw.workload;
+  const rows = (fw.controls || []).map(c => ({
+    cells: [clean(c.name), c.score.toFixed(0) + "%", (c.score / w.covered).toFixed(2)],
+    onOpen: () => controlSheet(name, c.id),
+  }));
+  return {
+    eyebrow: name,
+    title: "Workload configuration score — " + pct(w.score),
+    lead: "This is section 5 (<strong>Policies</strong>) of the CIS Kubernetes Benchmark: the part of the "
+      + "standard that is about how <em>our own</em> workloads are configured — whether containers run as "
+      + "root, whether they can escalate privileges, who can read secrets, whether namespaces have network "
+      + "policies. <strong>Every one of these is something we control and can change.</strong>",
+    blocks: [
+      { heading: "How the score is built",
+        maths: [
+          ["Checks in CIS section 5", w.total],
+          ["Checks we can assess here", w.covered],
+          ["Each check scored as", "workloads passing ÷ workloads evaluated"],
+          { label: "Section score = average of the " + w.covered + " check scores", value: pct(w.score), total: true },
+        ],
+        note: "Each check counts <strong>equally</strong>, whether it touched three workloads or three hundred. "
+          + "That is CIS's own method, and it is what makes a change traceable: every check is worth <code>1/"
+          + w.covered + "</code> of the score, so the checks that move sum exactly to the movement." },
+      { heading: "Every check, worst first", note: "Click any row for what it checks, which workloads fail it, and the fix.",
+        table: { cols: ["Check", { label: "Score", num: true }, { label: "Points", num: true }], rows } },
+      { heading: "The " + (w.total - w.covered) + " we cannot assess",
+        table: { cols: ["Check"], rows: ((KS(name).detail || {}).unassessed || {})["5"]
+          ? ((KS(name).detail || {}).unassessed || {})["5"].map(c => [clean(c.name)]) : [] },
+        text: "These need data this scan does not gather (for example, inspecting the CNI plugin itself). They are "
+          + "excluded from the average rather than counted as failures." },
+    ],
+  };
+}
+
+function infraSheet(name) {
+  const fw = KS(name).framework;
+  const un = (KS(name).detail || {}).unassessed || {};
+  const secs = fw.sections.filter(s => s.scope === "infrastructure");
+  const rows = [];
+  for (const s of secs) for (const c of (un[s.id] || [])) rows.push([s.id + ". " + s.name, clean(c.name)]);
+  return {
+    eyebrow: name,
+    title: "Control plane & nodes — not assessed",
+    lead: "<strong>What these checks are.</strong> CIS sections 1 to 4 inspect the machines that run Kubernetes "
+      + "itself — the API server's command-line flags, etcd's file permissions, the kubelet's configuration. "
+      + "They are about the <em>platform</em>, not about anything we deploy onto it."
+      + "<br><br><strong>Why there is no score.</strong> These clusters run on a managed Kubernetes service. The "
+      + "control-plane machines are operated by the cloud provider and are not exposed to us: there is no host to "
+      + "read those files from. So the checks were never run."
+      + "<br><br><strong>This is not a failure.</strong> “Not assessed” means we have no evidence either "
+      + "way — it is not the same as “failed”. Scoring them zero would invent a problem; folding them "
+      + "into the score above would quietly drag down a number that is supposed to measure our own work. The "
+      + "provider certifies this layer separately under its own compliance programme, and that certification is "
+      + "the right evidence for it.",
+    blocks: [
+      { heading: "Coverage by section",
+        table: { cols: ["Section", { label: "Assessed", num: true }], rows: secs.map(s => [s.id + ". " + s.name, s.covered + " / " + s.total]) } },
+      { heading: "The checks in question", note: "Listed so “not assessed” is a statement you can verify rather than take on trust.",
+        table: { cols: ["Section", "Check"], rows } },
+    ],
+  };
+}
+
+function scopeSheet(name) {
+  const ks = KS(name), fw = ks.framework, all = ks.score;
+  if (!fw || typeof all.compliance !== "number") return null;
+  return {
+    eyebrow: name,
+    title: "Why the score reads " + pct(fw.workload.score) + " and not " + pct(all.compliance),
+    lead: "<strong>Nothing got worse.</strong> These are two different measurements of the same cluster, and we "
+      + "changed which one is the headline.",
+    blocks: [
+      { maths: [
+          ["Average across every Kubescape check we collect", pct(all.compliance)],
+          [" of which: checks in CIS section 5", fw.workload.covered],
+          [" of which: Kubescape's own extra checks", all.controlsEvaluated - fw.workload.covered],
+          { label: "CIS section 5 only — the published standard", value: pct(fw.workload.score), total: true },
+        ] },
+      { text: "The larger number averaged in roughly " + (all.controlsEvaluated - fw.workload.covered)
+          + " additional Kubescape checks that are not part of any published benchmark. They are useful "
+          + "internally, but no auditor asks about them, and many were easy passes that lifted the average "
+          + "without telling us anything. The CIS figure is lower because it is concentrated on the checks the "
+          + "standard considers important — chiefly Pod Security — which is exactly where this cluster "
+          + "has work to do." },
+      { heading: "What to take from it",
+        text: "A lower number against a recognised standard is more useful than a higher number against a "
+          + "private one. The old figure is still collected and still trends; it is just no longer the headline." },
+    ],
+  };
+}
+
+function nsTableSheet(opts) {
+  const rows = Object.entries(opts.data).map(([ns, v]) => [ns, fmt(opts.pick(v))])
+    .filter(r => r[1] !== "0").sort((a, b) => Number(String(b[1]).replace(/,/g, "")) - Number(String(a[1]).replace(/,/g, "")));
+  return { eyebrow: opts.env, title: opts.title, lead: opts.lead,
+    blocks: [{ heading: "By namespace", table: { cols: ["Namespace", { label: opts.unit, num: true }], rows } },
+             opts.note ? { text: opts.note } : null] };
+}
+
+function policySheet(name, pol) {
+  return {
+    eyebrow: name + " · Kyverno",
+    title: clean(pol.id),
+    lead: "<strong>This policy is deployed and running.</strong> It is in audit mode, so it records what does not "
+      + "comply and admits the resource anyway — nothing is blocked."
+      + (pol.message ? "<br><br><strong>What it reports.</strong> " + clean(pol.message) : ""),
+    blocks: [
+      { heading: "How it is doing",
+        maths: [
+          ["Resources satisfying it", fmt(pol.passed || 0)],
+          ["Resources not satisfying it", fmt(pol.count)],
+          ["Resources evaluated", fmt(pol.evaluated || pol.count)],
+          ["Namespaces affected", fmt(pol.namespaceCount ?? 0)],
+          { label: "Share satisfying it",
+            value: (pol.evaluated ? (pol.passed / pol.evaluated * 100).toFixed(1) : "0.0") + "%", total: true },
+        ] },
+      (pol.workloads || []).length ? { heading: "Resources not satisfying it"
+        + ((pol.workloads || []).length < pol.count ? " (first " + pol.workloads.length + " of " + fmt(pol.count) + ")" : ""),
+        resources: pol.workloads } : null,
+    ],
+  };
 }
 
 // ---------- CIS benchmark ----------
@@ -334,6 +733,12 @@ for (const name of envNames) {
   const hd = el("div", "fw-head");
   hd.appendChild(el("h3", null, fw.description || fw.id));
   hd.appendChild(el("span", "who", name));
+  const sc = scopeSheet(name);
+  if (sc) {
+    const q = el("span", "who", "why not " + pct((KS(name).score || {}).compliance) + "?");
+    explain(q, () => sc);
+    hd.appendChild(q);
+  }
   box.appendChild(hd);
 
   const halves = el("div", "halves");
@@ -341,6 +746,7 @@ for (const name of envNames) {
   const a = el("div", "half owned");
   a.appendChild(el("div", "lbl", "Workload configuration \u2014 ours to fix"));
   const av = el("div", "big", fw.workload.score === null ? "\u2014" : fw.workload.score.toFixed(1) + "%");
+  if (fw.workload.score !== null) explain(av, () => cisScoreSheet(name));
   a.appendChild(av);
   const d = fwDelta(name);
   if (d !== null) { const w = el("div"); w.appendChild(deltaChip(d)); a.appendChild(w); }
@@ -356,6 +762,7 @@ for (const name of envNames) {
   const bv = fw.infrastructure.score === null
     ? el("div", "big none", "Not assessed")
     : el("div", "big", fw.infrastructure.score.toFixed(1) + "%");
+  explain(bv, () => infraSheet(name));
   b.appendChild(bv);
   b.appendChild(el("div", "cov", fw.infrastructure.covered + " of " + fw.infrastructure.total + " controls assessed"));
   b.appendChild(el("p", null, "API server flags, etcd, kubelet and control-plane file permissions. On a managed "
@@ -370,7 +777,8 @@ for (const name of envNames) {
     const li = document.createElement("li");
     li.appendChild(el("span", "sscore", sec.score === null ? "\u2014" : sec.score.toFixed(0) + "%"));
     li.appendChild(el("span", "sname", sec.id + ". " + sec.name));
-    li.appendChild(el("span", "scov", sec.covered + "/" + sec.total));
+    li.appendChild(el("span", "scov", sec.covered + " of " + sec.total + " assessed"));
+    explain(li, () => sec.scope === "workload" ? cisScoreSheet(name) : infraSheet(name));
     ul.appendChild(li);
   }
   box.appendChild(ul);
@@ -390,6 +798,9 @@ for (const name of envNames) {
       const li = document.createElement("li");
       li.appendChild(el("span", "sscore", c.score.toFixed(0) + "%"));
       li.appendChild(el("span", "sname", clean(c.name)));
+      const d = detailOf(name, c.id);
+      if (d) li.appendChild(el("span", "scov", fmt(d.failed) + " of " + fmt(d.total) + " failing"));
+      explain(li, () => controlSheet(name, c.id));
       wl.appendChild(li);
     }
     box.appendChild(wl);
@@ -587,6 +998,22 @@ for (const name of envNames) {
   trendHost.appendChild(t);
 }
 
+// A one-line plain-English statement of where things stand, assembled from
+// the same values the cards show rather than written by hand.
+(function () {
+  const host = document.getElementById("introscore");
+  const live = envNames.filter(n => (KS(n).framework || {}).workload);
+  if (!live.length) { host.remove(); return; }
+  const lo = Math.min(...live.map(n => KS(n).framework.workload.score));
+  const hi = Math.max(...live.map(n => KS(n).framework.workload.score));
+  const w = KS(live[0]).framework.workload;
+  host.innerHTML = "<strong>Where we stand.</strong> " + (lo === hi ? pct(lo) : pct(lo) + "\u2013" + pct(hi))
+    + " across " + live.length + " environment" + (live.length === 1 ? "" : "s")
+    + ", measured over the " + w.covered + " of " + w.total
+    + " CIS workload checks this scan can assess. The control-plane half of the benchmark is run by the cloud "
+    + "provider and cannot be inspected from here, so it is reported separately rather than folded in.";
+})();
+
 // ---------- coverage gaps ----------
 const gapsHost = document.getElementById("gaps");
 const allGaps = [];
@@ -607,14 +1034,17 @@ if (!allGaps.length) {
 }
 
 // ---------- finding renderer ----------
-function card(f, kind) {
+function card(f, kind, env) {
   const sev = (f.severity || "?").toLowerCase();
   const d = el("div", "f " + sev);
   const h = el("div", "f-head");
   if (f.id && kind === "ks") h.appendChild(el("span", "f-id", f.id));
   h.appendChild(el("span", "f-title", f.name || f.id));
   h.appendChild(el("span", "f-sev " + sev, sev));
-  h.appendChild(el("span", "f-count", fmt(f.count) + (f.count === 1 ? " workload" : " workloads") + " · " + f.namespaces + " ns"));
+  h.appendChild(el("span", "f-count", fmt(f.count) + (f.count === 1 ? " workload" : " workloads") + " \u00b7 " + (f.namespaceCount ?? f.namespaces) + " ns"));
+  // The whole card opens: a finding card is itself a number ("47 workloads")
+  // and the same rule applies to it as to every other number here.
+  explain(h, () => kind === "ky" ? policySheet(env, f) : controlSheet(env, f.id));
   d.appendChild(h);
 
   const body = kind === "ks" ? f.description : f.message;
@@ -643,7 +1073,7 @@ function tabbed(tabHost, listHost, pick, kind, emptyMsg) {
     list.textContent = "";
     const items = pick(active) || [];
     if (!items.length) { const p = el("p", "note", emptyMsg(active)); list.appendChild(p); return; }
-    for (const f of items) list.appendChild(card(f, kind));
+    for (const f of items) list.appendChild(card(f, kind, active));
     for (const b of tabs.children) b.setAttribute("aria-selected", String(b.dataset.env === active));
   }
   for (const n of envNames) {

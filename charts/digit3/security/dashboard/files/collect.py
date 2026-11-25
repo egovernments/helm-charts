@@ -75,6 +75,15 @@ MIN_COVERAGE = float(os.environ.get("MIN_COVERAGE", "0.5"))
 SEV = ["critical", "high", "medium", "low"]
 TOP_CONTROLS = int(os.environ.get("TOP_CONTROLS", "25"))
 EXAMPLES = 6
+# Affected workloads listed per control when a reader drills into it. Every
+# number on the page has to be answerable with "which ones?", and a count
+# without the list behind it is the thing people stop believing.
+DRILL_WORKLOADS = int(os.environ.get("DRILL_WORKLOADS", "25"))
+
+# The page is served from a ConfigMap, which Kubernetes caps at 1 MiB. The
+# drill-down detail is what grows, so it is what gets shed -- in order of
+# least use first -- rather than letting the publish fail.
+MAX_PAGE_BYTES = int(os.environ.get("MAX_PAGE_BYTES", str(800 * 1024)))
 
 # History retention, in days rather than points, because the thing being
 # retained is days of posture.
@@ -314,6 +323,8 @@ def kubescape(c, lib, fw):
 
     counts, sevs, examples, nss = collections.Counter(), {}, collections.defaultdict(list), collections.defaultdict(set)
     tally = collections.defaultdict(lambda: {"passed": 0, "failed": 0, "other": 0})
+    affected = collections.defaultdict(list)
+    subjects = collections.defaultdict(set)
     nworkloads = 0
     with cf.ThreadPoolExecutor(max_workers=24) as ex:
         for o in ex.map(wl_one, wl.get("items", [])):
@@ -335,6 +346,26 @@ def kubescape(c, lib, fw):
                 nss[cid].add(ns)
                 if len(examples[cid]) < EXAMPLES:
                     examples[cid].append(f"{ns}/{kind}/{name}")
+                if len(affected[cid]) < DRILL_WORKLOADS:
+                    # Some controls are evaluated against the Namespace itself,
+                    # which has no workload-namespace label of its own.
+                    # The summary object's own name is only worth carrying
+                    # when it says more than the subject does -- for a grant
+                    # finding it names the role and binding, which is the part
+                    # you revoke; for a plain workload it is just the subject
+                    # again, and 2500 copies of that is most of the page.
+                    obj = o["metadata"].get("name", "")
+                    row = {"ns": "" if ns == "?" and kind == "Namespace" else ns,
+                           "kind": kind, "name": name}
+                    if obj and obj != f"{kind.lower()}-{name}":
+                        row["obj"] = obj[:160]
+                    affected[cid].append(row)
+                # RBAC controls produce one finding per GRANT, not per subject:
+                # a ServiceAccount with five role bindings that reach secrets
+                # is five findings naming the same ServiceAccount. Both numbers
+                # are real and the drill-down has to be able to say which is
+                # which, or the list reads as duplicated rows.
+                subjects[cid].add((ns, kind, name))
 
     out["score"] = score(tally, nworkloads)
     out["framework"] = framework_score(out["score"]["controlScores"], *fw)
@@ -355,6 +386,11 @@ def kubescape(c, lib, fw):
             "namespaces": len(nss[cid]), "examples": examples[cid],
         })
 
+    # After out["controls"], not before: the detail set is the union of the
+    # framework's controls and the worklist's, and the worklist does not exist
+    # until the loop above has run.
+    out["detail"] = control_detail(out, tally, affected, nss, sevs, lib, fw, subjects)
+
     for it in (c.try_get(f"{API}/sbomsyfts") or {"items": []})["items"]:
         a = (it.get("metadata", {}) or {}).get("annotations", {}) or {}
         if a.get("kubescape.io/status") == "too-large":
@@ -366,13 +402,62 @@ def kubescape(c, lib, fw):
     return out
 
 
+def control_detail(out, tally, affected, nss, sevs, lib, fw, subjects):
+    """Everything needed to answer "why is this number what it is?" offline.
+
+    The page must be able to justify every figure it prints without going back
+    to the cluster: which controls make up a score, how each one was scored,
+    which workloads failed it, and what the fix is. So each control carries
+    its own arithmetic -- passed, failed and skipped counts -- rather than
+    just the percentage those produce.
+
+    Controls that could NOT be assessed are listed too, by name. "0 of 60
+    assessed" is meaningless to a reader until they can see the 60 and read
+    what they would have checked.
+    """
+    meta, sections, fwnames = fw
+    scores = out["score"]["controlScores"]
+    wanted = set(cid for cid in sections if sections[cid][0] in WORKLOAD_SECTIONS) if meta else set()
+    wanted |= {c["id"] for c in out["controls"]}
+
+    detail = {}
+    for cid in wanted:
+        if cid not in scores:
+            continue
+        t = tally[cid]
+        lm = lib.get(cid, {})
+        allr = t["passed"] + t["failed"] + t["other"]
+        detail[cid] = {
+            "id": cid,
+            "name": fwnames.get(cid) or lm.get("name") or cid,
+            "section": sections.get(cid, (None, None))[0],
+            "score": round(scores[cid], 1),
+            "passed": t["passed"], "failed": t["failed"], "skipped": t["other"], "total": allr,
+            "severity": sevs.get(cid) or ((lm.get("baseScore") or 0) >= 7 and "high" or "medium"),
+            "description": (lm.get("description") or "")[:600],
+            "remediation": (lm.get("remediation") or "")[:800],
+            "namespaces": sorted(nss.get(cid, []))[:40],
+            "subjects": len(subjects.get(cid, ())),
+            "workloads": affected.get(cid, []),
+        }
+
+    # The controls we could not assess, so "0 of 60" can be opened and read.
+    unassessed = collections.defaultdict(list)
+    for cid, (sid, _) in (sections or {}).items():
+        if cid not in scores:
+            unassessed[sid].append({"id": cid, "name": fwnames.get(cid) or cid})
+    for v in unassessed.values():
+        v.sort(key=lambda r: r["name"])
+    return {"controls": detail, "unassessed": dict(unassessed)}
+
+
 def kyverno(c):
     out = {"available": True, "policies": [], "by_namespace": {}, "totals": {"pass": 0, "fail": 0}}
     d = c.try_get(f"{KYV}/policyreports")
     if d is None:
         out["available"] = False
         return out
-    agg = {}
+    agg, passes = {}, collections.Counter()
     for it in d.get("items", []):
         ns = (it.get("metadata") or {}).get("namespace", "-")
         s = it.get("summary") or {}
@@ -380,20 +465,37 @@ def kyverno(c):
         out["totals"]["fail"] += s.get("fail", 0) or 0
         scope = it.get("scope") or {}
         for res in it.get("results") or []:
+            # A policy with passes and no failures is implemented and holding;
+            # one with failures is implemented and not yet satisfied. Both are
+            # "deployed" -- only the counts distinguish them, so count both.
+            if res.get("result") == "pass":
+                passes[res.get("policy", "?")] += 1
+                continue
             if res.get("result") != "fail":
                 continue
             pol = res.get("policy", "?")
             a = agg.setdefault(pol, {"id": pol, "severity": res.get("severity", "?"),
                                      "category": res.get("category", ""), "message": res.get("message", ""),
-                                     "count": 0, "examples": [], "namespaces": set()})
+                                     "count": 0, "examples": [], "namespaces": set(),
+                                     "workloads": []})
             a["count"] += 1
             a["namespaces"].add(ns)
             if len(a["examples"]) < EXAMPLES:
                 a["examples"].append(f"{ns}/{scope.get('kind','?')}/{scope.get('name','?')}")
+            if len(a["workloads"]) < DRILL_WORKLOADS:
+                a["workloads"].append({"ns": ns, "kind": scope.get("kind", "?"), "name": scope.get("name", "?")})
             out["by_namespace"].setdefault(ns, {"fail": 0})["fail"] += 1
-    for a in agg.values():
-        a["namespaces"] = len(a["namespaces"])
+    for pol, n in passes.items():
+        agg.setdefault(pol, {"id": pol, "severity": "", "category": "", "message": "",
+                             "count": 0, "examples": [], "namespaces": set(), "workloads": []})
+    for pol, a in agg.items():
+        a["namespaceCount"] = len(a["namespaces"])
+        a["namespaces"] = sorted(a["namespaces"])[:40]
+        a["passed"] = passes.get(pol, 0)
+        a["evaluated"] = a["passed"] + a["count"]
     out["policies"] = sorted(agg.values(), key=lambda x: -x["count"])
+    out["totals"]["policies"] = len(agg)
+    out["totals"]["satisfied"] = sum(1 for a in agg.values() if a["count"] == 0)
     return out
 
 
@@ -567,6 +669,10 @@ def publish(c, namespace, name, html):
             raise
 
 
+def render(tpl, data):
+    return tpl.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
+
+
 def main():
     log("fetching control library ...")
     lib = control_library()
@@ -619,7 +725,19 @@ def main():
         (c2.get("kubescape") or {}).get("score", {}).pop("controlScores", None)
 
     with open(os.environ.get("TEMPLATE_PATH", "/opt/dashboard/template.html")) as f:
-        html = f.read().replace("/*__DATA__*/null", json.dumps(data))
+        tpl = f.read()
+
+    html = render(tpl, data)
+    for shrink in (10, 0):
+        if len(html.encode()) <= MAX_PAGE_BYTES:
+            break
+        log(f"  page is {len(html.encode())} bytes; trimming drill-down lists to {shrink}")
+        for cl in data["clusters"].values():
+            for d in (((cl.get("kubescape") or {}).get("detail") or {}).get("controls") or {}).values():
+                d["workloads"] = d["workloads"][:shrink]
+            for pol in ((cl.get("kyverno") or {}).get("policies") or []):
+                pol["workloads"] = pol["workloads"][:shrink]
+        html = render(tpl, data)
 
     if out:
         with open(out, "w") as f:

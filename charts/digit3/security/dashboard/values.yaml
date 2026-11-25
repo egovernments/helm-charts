@@ -71,6 +71,16 @@ collector:
   # reported separately rather than blended in. Comma-separated.
   workloadSections: "5"
 
+  # How many affected resources each control lists in its drill-down panel.
+  # Every number on the page has to be answerable with "which ones?", and a
+  # count with no list behind it is the thing readers stop believing.
+  drillWorkloads: 25
+
+  # The page is served from a ConfigMap, which Kubernetes caps at 1 MiB. Past
+  # this size the drill-down lists are trimmed and then dropped -- least
+  # useful detail first -- rather than letting the publish fail outright.
+  maxPageBytes: 819200
+
   # Score history, kept in a ConfigMap because nothing in Kubescape keeps it:
   # the storage API overwrites each summary in place on every scan, so a
   # number not recorded at the time is gone.

@@ -111,6 +111,31 @@ a laptop against the same cluster, which also evaluates host- and cluster-level
 controls this deployment does not gather. It is consistent with itself over
 time, which is what a trend needs.
 
+## Every number opens
+
+The page is read by people who do not operate these clusters, so no figure is
+allowed to stand on its own. Clicking any number with a dotted underline opens
+a panel giving, in this order: what the figure means in plain words, the
+arithmetic that produced it, and the actual resources behind it.
+
+The drill-down never recomputes anything. It renders the same values the page
+already holds, so it cannot disagree with the headline it was opened from.
+
+Two units get confused constantly, and the panels name which one is in play:
+
+- A **finding** is one check failing against one resource. A Deployment
+  breaking four rules is four findings.
+- A **grant** is how Kubescape counts the RBAC controls. One ServiceAccount
+  reached by five role bindings that can read secrets is **five** findings
+  naming the same account. The panel says so explicitly and shows the role and
+  binding on each row, because otherwise the list reads as duplicated and the
+  reader concludes the page is broken.
+
+`collector.drillWorkloads` caps how many resources each control lists. If the
+rendered page would exceed `collector.maxPageBytes` (800 KiB, against a 1 MiB
+ConfigMap limit) those lists are trimmed and then dropped, in that order,
+rather than letting the publish fail. The trimming is logged.
+
 ## The CIS score, and why it is split in two
 
 The headline is the **generic** CIS Kubernetes Benchmark (`cis-v1.12.0`),
