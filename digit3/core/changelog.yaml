@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-25"
+    ref: "PR-180"
+    title: "fix(digit3/core): localization-management health probes use /health"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "localization-management"
+        from: "3.1.3"
+        to: "3.1.4"
+  - date: "2026-11-25"
     ref: "PR-179"
     title: "fix(digit3/core): wire employee-onboarding + localization-management datasource via common chart"
     author: "shivam-eGov"
