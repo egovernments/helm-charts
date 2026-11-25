@@ -65,9 +65,9 @@ initContainers:
 image:
   repository: "employee-onboarding"
 replicas: 1
-# Reads its datasource via DB_HOST/DB_USER (not SPRING_DATASOURCE), so appType is
-# blank and the common chart does not inject the Spring env block.
-appType: ""
+# Spring Boot service: the common chart injects the shared datasource (SPRING_DATASOURCE_*
+# from egov-config/db-url) and Hikari pool; do not redefine the datasource here.
+appType: "java"
 tracing-enabled: false
 # span export switch (MANAGEMENT_TRACING_EXPORT_ENABLED); override per env
 tracing-export-enabled: "true"
@@ -90,10 +90,6 @@ resources: |
 # ── App config (overridable per env) ──────────────────────────────────────────
 context-path: ""  # blank -> /<ingress.context>
 dbSchema: "public"
-db-host: "postgres.egov"
-db-port: "5432"
-db-name: "postgres"
-db-ssl-mode: "disable"
 
 keycloak-base-url: "http://keycloak.keycloak.svc.cluster.local:8080/keycloak/"
 
@@ -146,26 +142,6 @@ env: |
     value: {{ .Values.httpPort | quote }}
   - name: SERVER_CONTEXT_PATH
     value: {{ index .Values "context-path" | default (printf "/%s" .Values.ingress.context) | quote }}
-
-  # ── Database ─────────────────────────────────────────────────────────────
-  - name: DB_HOST
-    value: {{ index .Values "db-host" | quote }}
-  - name: DB_PORT
-    value: {{ index .Values "db-port" | quote }}
-  - name: DB_NAME
-    value: {{ index .Values "db-name" | quote }}
-  - name: DB_SSL_MODE
-    value: {{ index .Values "db-ssl-mode" | quote }}
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        name: db
-        key: username
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: db
-        key: password
 
   # ── Keycloak ─────────────────────────────────────────────────────────────
   - name: KEYCLOAK_BASE_URL
