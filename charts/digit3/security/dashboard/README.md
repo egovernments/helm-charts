@@ -111,6 +111,48 @@ a laptop against the same cluster, which also evaluates host- and cluster-level
 controls this deployment does not gather. It is consistent with itself over
 time, which is what a trend needs.
 
+## The CIS score, and why it is split in two
+
+The headline is the **generic** CIS Kubernetes Benchmark (`cis-v1.12.0`),
+chosen over the cloud-specific variants deliberately: its controls are plain
+Kubernetes API objects, so the same score means the same thing on AKS, EKS,
+GKE or bare metal. `cis-aks-*`, `cis-eks-*` and `cis-gke-*` exist precisely
+because the *other* half of the benchmark is not portable.
+
+The benchmark's own section tree is downloaded with it, so the split below is
+CIS's, not a classification invented from control names:
+
+| CIS section | What it covers | Assessed here |
+|---|---|---|
+| 1 Control Plane Components | API server, controller manager, scheduler, node config files | 0 / 60 |
+| 2 etcd | etcd flags and file permissions | 1 / 7 |
+| 3 Control Plane Configuration | authn/authz, audit logging | 0 / 5 |
+| 4 Worker Nodes | kubelet, kube-proxy, node file permissions | 0 / 25 |
+| **5 Policies** | **Pod Security, RBAC, network policy, secrets** | **30 / 34** |
+
+Sections 1–4 are not a gap this chart can close. On a managed cluster there is
+no control-plane node whose files you can read, and the provider attests to
+them separately under its own certifications. Section 5 is entirely properties
+of objects we deploy, which is why it is nearly fully assessed and entirely
+actionable.
+
+**The two halves are never averaged together.** Blending a half we measure
+completely with a half we cannot measure at all yields one number that
+misrepresents both. The page reports them side by side, and the unassessed
+half says *"Not assessed"* rather than showing a score.
+
+For the same reason a section reports a score only once at least
+`MIN_COVERAGE` (default half) of its controls were assessed. Scoring 1 of
+etcd's 7 controls and publishing "100%" would be true of the one and
+meaningless of the section — and a number that is only correct beside its own
+caveat eventually gets quoted without it.
+
+`collector.framework` takes any framework published by the Kubescape
+regolibrary (`cis-v1.12.0`, `cis-v1.10.0`, `nsa`, `mitre`, `armobest`,
+`devopsbest`, `soc2`). `collector.workloadSections` lists which top-level
+sections of it are the workload half — `5` for CIS. Change one and you must
+revisit the other.
+
 ## History, and why it lives in a ConfigMap
 
 The storage API **overwrites each summary in place** on every scan — the object
@@ -123,16 +165,25 @@ Each collector run therefore appends one point to the
 ConfigMap is not templated by this chart, for the same reason the page is not
 (see above): Argo CD would self-heal over every write.
 
-Retention is tiered, because a ConfigMap is capped at 1 MiB and per-control
-scores are far larger than the headline figures:
+Retention is expressed in **days**, not points, because the posture scan runs
+once a night — the four collections a day are four copies of the same posture.
 
-- `collector.history.maxPoints` (180, about 45 days at the default six-hourly
-  schedule) — headline figures per environment.
-- `collector.history.maxDetailedPoints` (12) — how many of the newest points
-  also keep per-control scores. These are what attribute a movement; older
-  points keep only the score itself, so the trend line long outlives the detail.
+- `collector.history.retainDays` (60) — days of trend kept.
+- `collector.history.detailDays` (30) — days that also keep per-control
+  scores, which are what attribute a movement to specific controls. Older
+  points keep their headline figures and their place on the trend line.
+- `collector.history.rawDays` (3) — days at the near end where **every**
+  reading is kept rather than compacted to one a day. Beyond this window only
+  the last reading of each UTC day survives. Compacting the near window would
+  erase exactly the comparison this page exists to show: fix something this
+  morning, re-run the collector this afternoon, and there must still be a
+  before and an after.
 - A hard 700 KiB ceiling drops the oldest points if the series somehow grows
   past it. Shedding the oldest end beats having the whole write rejected.
+
+Measured: 40 days of four-hourly readings compact to 50 stored points, 327 KiB
+across three clusters, with per-control detail spanning exactly the newest 30
+days.
 
 The page itself carries per-control detail for only the newest two points,
 since attribution only ever compares a reading with the one before it.

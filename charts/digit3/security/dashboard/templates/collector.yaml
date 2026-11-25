@@ -54,10 +54,16 @@ spec:
                   value: {{ include "dashboard.pageConfigMap" . | quote }}
                 - name: HISTORY_CONFIGMAP
                   value: {{ include "dashboard.historyConfigMap" . | quote }}
-                - name: MAX_POINTS
-                  value: {{ .Values.collector.history.maxPoints | quote }}
-                - name: MAX_DETAILED_POINTS
-                  value: {{ .Values.collector.history.maxDetailedPoints | quote }}
+                - name: FRAMEWORK
+                  value: {{ .Values.collector.framework | quote }}
+                - name: WORKLOAD_SECTIONS
+                  value: {{ .Values.collector.workloadSections | quote }}
+                - name: RETAIN_DAYS
+                  value: {{ .Values.collector.history.retainDays | quote }}
+                - name: DETAIL_DAYS
+                  value: {{ .Values.collector.history.detailDays | quote }}
+                - name: RAW_DAYS
+                  value: {{ .Values.collector.history.rawDays | quote }}
                 - name: LOCAL_CLUSTER_NAME
                   value: {{ .Values.collector.localClusterName | quote }}
                 - name: REMOTE_CLUSTERS

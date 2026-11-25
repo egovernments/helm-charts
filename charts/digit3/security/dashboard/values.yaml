@@ -53,17 +53,41 @@ collector:
   # Name this cluster is filed under in the report.
   localClusterName: ""
 
+  # Compliance framework the headline score is reported against.
+  #
+  # cis-v1.12.0 is the GENERIC CIS Kubernetes Benchmark: its controls are
+  # plain Kubernetes API objects, so the score means the same thing on AKS,
+  # EKS, GKE or bare metal. The cloud-specific variants (cis-aks-t1.8.0,
+  # cis-eks-t1.8.0, cis-gke-v1.9.0) differ mainly in the control-plane
+  # sections, which a managed service does not let you read anyway.
+  #
+  # Any framework published by the Kubescape regolibrary works here:
+  #   cis-v1.12.0  cis-v1.10.0  nsa  mitre  armobest  devopsbest  soc2
+  framework: cis-v1.12.0
+
+  # Top-level sections of that framework whose controls are workload
+  # configuration -- the half these clusters own. For CIS that is section 5,
+  # "Policies"; sections 1-4 are control plane, etcd and worker nodes, and are
+  # reported separately rather than blended in. Comma-separated.
+  workloadSections: "5"
+
   # Score history, kept in a ConfigMap because nothing in Kubescape keeps it:
   # the storage API overwrites each summary in place on every scan, so a
   # number not recorded at the time is gone.
+  #
+  # Retention is in days, because the posture scan runs once a night and the
+  # four collections a day are four copies of the same posture.
   history:
-    # At the default six-hourly schedule, 180 points is about 45 days.
-    maxPoints: 180
-    # Per-control scores are kept only on this many of the newest points --
-    # they are what attributes a movement to specific controls, and they are
-    # far larger than the headline figures. Older points keep the headline
-    # only, so the trend line survives much longer than the detail.
-    maxDetailedPoints: 12
+    # Days of trend to keep.
+    retainDays: 60
+    # Days of per-control detail, which is what attributes a movement to
+    # specific controls. Older points keep their headline figures and their
+    # place on the trend line.
+    detailDays: 30
+    # Days at the near end where EVERY reading is kept rather than compacted
+    # to one a day -- so a fix applied this morning and a collector re-run
+    # this afternoon still have a before and an after to compare.
+    rawDays: 3
 
 server:
   image:

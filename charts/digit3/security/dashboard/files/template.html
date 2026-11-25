@@ -78,6 +78,26 @@
   .kv dt { color: var(--fg-dim); }
   .kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
 
+  /* framework split */
+  .fw { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 15px 17px; margin-bottom: 12px; }
+  .fw-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 3px; }
+  .fw-head h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+  .fw-head .who { font-family: var(--font-mono); font-size: 0.78rem; color: var(--fg-faint); }
+  .halves { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+  .half { border: 1px solid var(--rule); border-radius: 5px; padding: 11px 13px; min-width: 0; }
+  .half.owned { border-left: 4px solid var(--accent); }
+  .half.notowned { border-left: 4px solid var(--fg-faint); background: var(--surface-2); }
+  .half .lbl { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-dim); }
+  .half .big { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .half .big.none { font-size: 1rem; color: var(--fg-faint); font-weight: 500; }
+  .half .cov { font-size: 0.76rem; color: var(--fg-dim); margin-top: 3px; }
+  .half p { font-size: 0.8rem; color: var(--fg-dim); margin: 7px 0 0; }
+  .secs { list-style: none; margin: 12px 0 0; padding: 11px 0 0; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 5px; }
+  .secs li { display: flex; gap: 10px; align-items: baseline; font-size: 0.82rem; }
+  .secs .sname { color: var(--fg-dim); min-width: 0; overflow-wrap: anywhere; }
+  .secs .scov { margin-left: auto; font-family: var(--font-mono); font-size: 0.74rem; color: var(--fg-faint); flex: none; }
+  .secs .sscore { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600; font-variant-numeric: tabular-nums; flex: none; width: 4.2em; text-align: right; }
+
   /* compliance score */
   .score { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 10px; }
   .score-n { font-family: var(--font-mono); font-size: 1.85rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
@@ -160,6 +180,10 @@
 
   <div class="envs" id="envs"></div>
 
+  <h2>CIS benchmark</h2>
+  <p class="note" id="fwnote"></p>
+  <div id="fw"></div>
+
   <h2>Compliance score over time</h2>
   <p class="note" id="trendnote"></p>
   <div class="trend" id="trend"></div>
@@ -222,6 +246,9 @@ const fmt = n => (n || 0).toLocaleString("en-US");
 const envNames = Object.keys(DATA.clusters);
 const HISTORY = (DATA.history || []).filter(h => h && h.clusters);
 
+// Upstream control names are written for markdown rendering, so they arrive
+// with escapes like NET\_RAW. This page is not markdown.
+function clean(x) { return String(x == null ? "" : x).replace(/\\(?=[_*`\[\]])/g, ""); }
 function el(t, c, x) { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
 function sum(o, k) { return Object.values(o || {}).reduce((a, v) => a + (v[k] || 0), 0); }
 
@@ -250,10 +277,14 @@ for (const name of envNames) {
     if (PLATFORM_NS.has(ns)) platform += v.fail; else workload += v.fail;
   }
   const sc = (ks.score || {});
-  if (sc.compliance !== null && sc.compliance !== undefined) {
+  const fwl = ks.framework && ks.framework.workload;
+  const headline = fwl && typeof fwl.score === "number"
+    ? { v: fwl.score, label: "CIS policies" }
+    : (typeof sc.compliance === "number" ? { v: sc.compliance, label: "compliance" } : null);
+  if (headline) {
     const row = el("div", "score");
-    row.appendChild(el("span", "score-n", sc.compliance.toFixed(1) + "%"));
-    row.appendChild(el("span", "score-u", "compliance"));
+    row.appendChild(el("span", "score-n", headline.v.toFixed(1) + "%"));
+    row.appendChild(el("span", "score-u", headline.label));
     const d = deltaSince(name, 1);
     if (d !== null) row.appendChild(deltaChip(d));
     card.appendChild(row);
@@ -274,6 +305,98 @@ for (const name of envNames) {
   envWrap.appendChild(card);
 }
 
+// ---------- CIS benchmark ----------
+//
+// The two halves are never averaged together. We measure the workload half
+// almost completely and the control-plane half barely at all, so one blended
+// number would misrepresent both -- and on a managed cluster the missing half
+// is missing permanently, not pending.
+const fwHost = document.getElementById("fw");
+const anyFw = envNames.some(n => (DATA.clusters[n].kubescape || {}).framework);
+document.getElementById("fwnote").innerHTML = anyFw
+  ? "Scored against the <strong>generic</strong> CIS Kubernetes Benchmark, whose controls are plain "
+    + "Kubernetes objects &mdash; so the same score means the same thing on AKS, EKS, GKE or bare metal. "
+    + "Sections are CIS&rsquo;s own, and the two halves are reported separately rather than blended."
+  : "The CIS framework definition could not be downloaded on the last collection, so no benchmark score "
+    + "is shown. The findings below are unaffected.";
+
+function fwDelta(name) {
+  const s = HISTORY.map(h => h.clusters[name])
+    .filter(c => c && c.reachable && c.framework && typeof c.framework.workload?.score === "number");
+  if (s.length < 2) return null;
+  return s[s.length - 1].framework.workload.score - s[s.length - 2].framework.workload.score;
+}
+
+for (const name of envNames) {
+  const fw = (DATA.clusters[name].kubescape || {}).framework;
+  if (!fw) continue;
+  const box = el("div", "fw");
+  const hd = el("div", "fw-head");
+  hd.appendChild(el("h3", null, fw.description || fw.id));
+  hd.appendChild(el("span", "who", name));
+  box.appendChild(hd);
+
+  const halves = el("div", "halves");
+
+  const a = el("div", "half owned");
+  a.appendChild(el("div", "lbl", "Workload configuration \u2014 ours to fix"));
+  const av = el("div", "big", fw.workload.score === null ? "\u2014" : fw.workload.score.toFixed(1) + "%");
+  a.appendChild(av);
+  const d = fwDelta(name);
+  if (d !== null) { const w = el("div"); w.appendChild(deltaChip(d)); a.appendChild(w); }
+  a.appendChild(el("div", "cov", fw.workload.covered + " of " + fw.workload.total + " controls assessed"));
+  a.appendChild(el("p", null, "Pod Security, RBAC, network policy, secrets. Every one of these is a property "
+    + "of something we deploy, so every one of them is actionable."));
+  halves.appendChild(a);
+
+  const b = el("div", "half notowned");
+  b.appendChild(el("div", "lbl", "Control plane & nodes \u2014 managed"));
+  // The collector suppresses a score whose section was barely assessed, so a
+  // null here means "we did not measure this", never "this scored zero".
+  const bv = fw.infrastructure.score === null
+    ? el("div", "big none", "Not assessed")
+    : el("div", "big", fw.infrastructure.score.toFixed(1) + "%");
+  b.appendChild(bv);
+  b.appendChild(el("div", "cov", fw.infrastructure.covered + " of " + fw.infrastructure.total + " controls assessed"));
+  b.appendChild(el("p", null, "API server flags, etcd, kubelet and control-plane file permissions. On a managed "
+    + "cluster there is no control-plane node to read these from, so they are not a gap we can close \u2014 "
+    + "the provider attests to them separately. Scoring them as failures would be wrong; folding them into "
+    + "the number above would be worse."));
+  halves.appendChild(b);
+  box.appendChild(halves);
+
+  const ul = el("ul", "secs");
+  for (const sec of fw.sections) {
+    const li = document.createElement("li");
+    li.appendChild(el("span", "sscore", sec.score === null ? "\u2014" : sec.score.toFixed(0) + "%"));
+    li.appendChild(el("span", "sname", sec.id + ". " + sec.name));
+    li.appendChild(el("span", "scov", sec.covered + "/" + sec.total));
+    ul.appendChild(li);
+  }
+  box.appendChild(ul);
+
+  // Section scores say where the ground is soft; these say what to dig.
+  const worst = (fw.controls || []).filter(c => c.score < 100).slice(0, 8);
+  if (worst.length) {
+    const wl = el("ul", "secs");
+    const cap = el("li");
+    cap.appendChild(el("span", "sname", "Lowest-scoring assessed controls"));
+    cap.style.color = "var(--fg-faint)";
+    cap.style.fontSize = "0.72rem";
+    cap.style.textTransform = "uppercase";
+    cap.style.letterSpacing = "0.08em";
+    wl.appendChild(cap);
+    for (const c of worst) {
+      const li = document.createElement("li");
+      li.appendChild(el("span", "sscore", c.score.toFixed(0) + "%"));
+      li.appendChild(el("span", "sname", clean(c.name)));
+      wl.appendChild(li);
+    }
+    box.appendChild(wl);
+  }
+  fwHost.appendChild(box);
+}
+
 // ---------- score history ----------
 //
 // The cluster score is the plain mean of the per-control scores, so a control
@@ -281,16 +404,30 @@ for (const name of envNames) {
 // attribution arithmetic rather than guesswork, and it is the whole reason
 // the per-control scores are carried on the two newest history points.
 
+// THE score, defined once. Where a framework is configured the headline is
+// its workload half -- the number the team reports -- and the broader
+// all-controls figure stays available but never competes with it. Two
+// headline numbers on one page is how a dashboard stops being believed.
+function valueOf(c) {
+  const f = c && c.framework && c.framework.workload;
+  if (f && typeof f.score === "number") return f.score;
+  return c && typeof c.compliance === "number" ? c.compliance : null;
+}
+const SCORED_BY_FRAMEWORK = envNames.some(n => {
+  const f = (DATA.clusters[n].kubescape || {}).framework;
+  return f && typeof f.workload.score === "number";
+});
+
 function seriesFor(name) {
   return HISTORY
-    .map(h => ({ at: h.at, c: h.clusters[name] }))
-    .filter(x => x.c && x.c.reachable && typeof x.c.compliance === "number");
+    .map(h => ({ at: h.at, c: h.clusters[name], v: valueOf(h.clusters[name]) }))
+    .filter(x => x.c && x.c.reachable && typeof x.v === "number");
 }
 
 function deltaSince(name, back) {
   const s = seriesFor(name);
   if (s.length < back + 1) return null;
-  return s[s.length - 1].c.compliance - s[s.length - 1 - back].c.compliance;
+  return s[s.length - 1].v - s[s.length - 1 - back].v;
 }
 
 function deltaChip(d) {
@@ -314,7 +451,7 @@ function sparkline(points) {
   svg.setAttribute("viewBox", "0 0 300 56");
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("role", "img");
-  const vals = points.map(p => p.c.compliance);
+  const vals = points.map(p => p.v);
   // A fixed floor would flatten every real movement; a tight window would
   // turn noise into a cliff. Pad the observed range to at least 10 points.
   let lo = Math.min(...vals), hi = Math.max(...vals);
@@ -322,7 +459,7 @@ function sparkline(points) {
   lo = Math.max(0, mid - half); hi = Math.min(100, mid + half);
   const x = i => points.length < 2 ? 150 : (i / (points.length - 1)) * 300;
   const y = v => 52 - ((v - lo) / (hi - lo || 1)) * 48;
-  const d = points.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.c.compliance).toFixed(1)).join(" ");
+  const d = points.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.v).toFixed(1)).join(" ");
   const area = document.createElementNS(NS, "path");
   area.setAttribute("d", d + " L300 56 L0 56 Z");
   area.setAttribute("fill", "currentColor");
@@ -348,15 +485,29 @@ function sparkline(points) {
 
 const CTRL_NAME = {};
 for (const n of envNames) for (const f of ((DATA.clusters[n].kubescape || {}).controls || [])) if (f.name) CTRL_NAME[f.id] = f.name;
+// Prefer the framework's own naming ("CIS-5.2.2 Minimize the admission of
+// privileged containers") -- it is what an auditor will ask for by number.
+for (const n of envNames) for (const f of (((DATA.clusters[n].kubescape || {}).framework || {}).controls || [])) if (f.name) CTRL_NAME[f.id] = f.name;
+
+// Attribution must divide by the same N the headline was divided by, and
+// consider the same controls -- otherwise the contributions stop summing to
+// the movement, which is the one property that makes them worth printing.
+function scopeOf(name) {
+  const f = (DATA.clusters[name].kubescape || {}).framework;
+  if (!f || typeof f.workload.score !== "number") return null;
+  return { ids: new Set((f.controls || []).map(c => c.id)), n: f.workload.covered };
+}
 
 function movers(name) {
   const s = seriesFor(name);
   if (s.length < 2) return null;
   const now = s[s.length - 1].c, prev = s[s.length - 2].c;
   if (!now.controlScores || !prev.controlScores) return null;
-  const N = now.controlsEvaluated || Object.keys(now.controlScores).length;
+  const sc = scopeOf(name);
+  const N = sc ? sc.n : (now.controlsEvaluated || Object.keys(now.controlScores).length);
   const out = [];
   for (const id of new Set([...Object.keys(now.controlScores), ...Object.keys(prev.controlScores)])) {
+    if (sc && !sc.ids.has(id)) continue;
     const a = prev.controlScores[id], b = now.controlScores[id];
     if (a === undefined || b === undefined || Math.abs(b - a) < 0.005) continue;
     out.push({ id, from: a, to: b, points: (b - a) / N });
@@ -369,11 +520,15 @@ function movers(name) {
 const trendHost = document.getElementById("trend");
 const anyHistory = envNames.some(n => seriesFor(n).length > 1);
 document.getElementById("trendnote").innerHTML = anyHistory
-  ? "The cluster score is the mean of every Kubescape control&rsquo;s score, so each control carries "
-    + "the same weight and a change can be traced back to the controls that caused it. The movements "
-    + "below sum to the change in the score."
+  ? (SCORED_BY_FRAMEWORK
+      ? "Tracking the CIS workload score above. Each assessed control carries the same weight, so a "
+        + "change traces back to the controls that caused it &mdash; the movements below sum to the "
+        + "change in the score. Sixty days are kept; the last thirty keep per-control detail."
+      : "The cluster score is the mean of every Kubescape control&rsquo;s score, so each control carries "
+        + "the same weight and a change can be traced back to the controls that caused it. The movements "
+        + "below sum to the change in the score.")
   : "Kubescape overwrites its findings on every scan and keeps no history, so this page records its "
-    + "own. The trend begins once a second collection has run.";
+    + "own, retaining 60 days. The trend begins once a second collection has run.";
 
 for (const name of envNames) {
   const s = seriesFor(name);
@@ -384,7 +539,7 @@ for (const name of envNames) {
     trendHost.appendChild(t); continue;
   }
   const head = el("div", "score");
-  head.appendChild(el("span", "score-n", s[s.length - 1].c.compliance.toFixed(1) + "%"));
+  head.appendChild(el("span", "score-n", s[s.length - 1].v.toFixed(1) + "%"));
   const d1 = deltaSince(name, 1);
   if (d1 !== null) head.appendChild(deltaChip(d1));
   t.appendChild(head);
@@ -417,7 +572,7 @@ for (const name of envNames) {
       // outside that set still deserves its numbers, without a dangling dash.
       const nm = CTRL_NAME[mv.id];
       li.appendChild(el("span", "mname",
-        (nm ? nm + " \u2014 " : "") + mv.from.toFixed(0) + "% \u2192 " + mv.to.toFixed(0) + "%"));
+        (nm ? clean(nm) + " \u2014 " : "") + mv.from.toFixed(0) + "% \u2192 " + mv.to.toFixed(0) + "%"));
       const pts = Math.round(mv.points * 100) / 100;
       li.appendChild(el("span", "mdelta " + (pts > 0 ? "up" : "down"),
         (pts > 0 ? "+" : "") + pts.toFixed(2) + " pts"));

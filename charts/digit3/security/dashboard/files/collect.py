@@ -47,18 +47,52 @@ import concurrent.futures as cf
 SA = "/var/run/secrets/kubernetes.io/serviceaccount"
 API = "/apis/spdx.softwarecomposition.kubescape.io/v1beta1"
 KYV = "/apis/wgpolicyk8s.io/v1alpha2"
-CONTROLS_URL = "https://github.com/kubescape/regolibrary/releases/latest/download/controls"
+REGO = "https://github.com/kubescape/regolibrary/releases/latest/download"
+CONTROLS_URL = f"{REGO}/controls"
+
+# The compliance framework the headline score is reported against.
+#
+# cis-v1.12.0 is the GENERIC CIS Kubernetes Benchmark, which is the point: its
+# controls are plain Kubernetes API objects, so the same score means the same
+# thing on AKS, EKS, GKE or bare metal. The cloud-specific variants
+# (cis-aks-*, cis-eks-*, cis-gke-*) exist precisely because the control-plane
+# half of the benchmark is NOT portable -- and that half is the part a managed
+# service does not let you read anyway. See README.
+FRAMEWORK = os.environ.get("FRAMEWORK", "cis-v1.12.0")
+FRAMEWORK_URL = f"{REGO}/{FRAMEWORK}"
+
+# Top-level section numbers whose controls are workload configuration -- the
+# part these clusters own and can fix. For CIS that is section 5, "Policies";
+# sections 1-4 are control plane, etcd and worker nodes. Kept as a setting
+# rather than inferred, so a framework change is a deliberate edit.
+WORKLOAD_SECTIONS = set(filter(None, os.environ.get("WORKLOAD_SECTIONS", "5").split(",")))
+
+# A section reports a score only once at least this fraction of its controls
+# were actually assessed. Scoring 1 of etcd's 7 controls and publishing "100%"
+# would be true of the one and meaningless of the section, and a number that
+# is only correct beside its own caveat eventually gets quoted without it.
+MIN_COVERAGE = float(os.environ.get("MIN_COVERAGE", "0.5"))
 SEV = ["critical", "high", "medium", "low"]
 TOP_CONTROLS = int(os.environ.get("TOP_CONTROLS", "25"))
 EXAMPLES = 6
 
-# History retention. Points are tiny; per-control scores are not, and they are
-# only needed to attribute a recent change, so they are pruned off older
-# points. MAX_HISTORY_BYTES is the real guard: a ConfigMap is capped at 1 MiB
-# and losing the whole series to a rejected write would be worse than losing
-# its oldest end.
-MAX_POINTS = int(os.environ.get("MAX_POINTS", "180"))
-MAX_DETAILED_POINTS = int(os.environ.get("MAX_DETAILED_POINTS", "12"))
+# History retention, in days rather than points, because the thing being
+# retained is days of posture.
+#
+# The posture scan runs once a night, so the four collections a day produce
+# four identical readings. Older points are therefore compacted to one per UTC
+# day, which loses nothing. The exception is a RAW_DAYS window at the near
+# end: within it every reading is kept, so that fixing something and
+# re-running the collector the same day still has a before and an after to
+# compare. Compacting that window would erase exactly the comparison this
+# page exists to show.
+#
+# MAX_HISTORY_BYTES is the backstop: a ConfigMap is capped at 1 MiB, and
+# losing the whole series to a rejected write would be worse than losing its
+# oldest end.
+RETAIN_DAYS = int(os.environ.get("RETAIN_DAYS", "60"))
+DETAIL_DAYS = int(os.environ.get("DETAIL_DAYS", "30"))
+RAW_DAYS = int(os.environ.get("RAW_DAYS", "3"))
 MAX_HISTORY_BYTES = 700 * 1024
 
 
@@ -154,7 +188,99 @@ def score(tally, nworkloads):
     }
 
 
-def kubescape(c, lib):
+def framework():
+    """The CIS benchmark's own section tree, downloaded rather than hard-coded.
+
+    This is what makes the control-plane/workload split defensible: the
+    sections are CIS's ("1 Control Plane Components" ... "5 Policies"), not a
+    classification invented here from control names. Each control also carries
+    its CIS number in its name (`CIS-5.2.2 Minimize the admission of
+    privileged containers`), which is what an auditor will ask for.
+
+    Returns (meta, {controlID: (sectionID, sectionName)}, {controlID: name}).
+    Degrades to empty, which drops the framework panel but leaves the rest of
+    the page intact.
+    """
+    try:
+        with urllib.request.urlopen(FRAMEWORK_URL, timeout=60) as r:
+            f = json.load(r)
+    except Exception as e:
+        log(f"  WARNING: framework {FRAMEWORK} unavailable ({e}); no framework score")
+        return None, {}, {}
+
+    sections, order = {}, []
+
+    def walk(node, top=None, topname=None):
+        for key, v in (node or {}).items():
+            if not isinstance(v, dict):
+                continue
+            t, tn = (top, topname) if top else (key, v.get("name", key))
+            if not top:
+                order.append((t, tn))
+            for cid in (v.get("controlsIDs") or []):
+                sections[cid] = (t, tn)
+            walk(v.get("subSections"), t, tn)
+
+    walk(f.get("subSections"))
+    names = {c["controlID"]: c.get("name", "") for c in (f.get("controls") or [])}
+    meta = {"id": f.get("name") or FRAMEWORK,
+            "description": (f.get("description") or "").split(" - ")[0],
+            "order": [t for t, _ in order],
+            "sectionNames": dict(order)}
+    return meta, sections, names
+
+
+def framework_score(scores, meta, sections, names):
+    """Score the framework by section, and never average across the split.
+
+    The two halves are reported separately on purpose. Blending a workload
+    score we measure completely with a control-plane score we cannot measure
+    at all produces one number that misrepresents both.
+    """
+    if not meta:
+        return None
+    per = {}
+    for cid, (sid, sname) in sections.items():
+        b = per.setdefault(sid, {"id": sid, "name": sname, "total": 0, "covered": 0, "sum": 0.0})
+        b["total"] += 1
+        if cid in scores:
+            b["covered"] += 1
+            b["sum"] += scores[cid]
+    out = []
+    for sid in meta["order"]:
+        b = per.get(sid)
+        if not b:
+            continue
+        enough = b["covered"] >= b["total"] * MIN_COVERAGE and b["covered"] > 0
+        out.append({"id": sid, "name": b["name"], "total": b["total"], "covered": b["covered"],
+                    "score": round(b["sum"] / b["covered"], 2) if enough else None,
+                    "scope": "workload" if sid in WORKLOAD_SECTIONS else "infrastructure"})
+
+    def roll(scope):
+        rows = [r for r in out if r["scope"] == scope]
+        cov = sum(r["covered"] for r in rows)
+        tot = sum(r["total"] for r in rows)
+        # Weighted back by control count, not a mean of the section scores: a
+        # two-control section must not outweigh a thirty-control one. Summed
+        # from the raw control scores so that sections suppressed above still
+        # contribute what they measured.
+        num = sum(scores[cid] for cid, (sid, _) in sections.items()
+                  if cid in scores and (sid in WORKLOAD_SECTIONS) == (scope == "workload"))
+        enough = cov >= tot * MIN_COVERAGE and cov > 0
+        return {"score": round(num / cov, 2) if enough else None,
+                "covered": cov, "total": tot, "assessed": enough}
+
+    detail = sorted(
+        ({"id": cid, "name": names.get(cid) or cid, "score": round(scores[cid], 1),
+          "section": sections[cid][0]}
+         for cid in sections if cid in scores and sections[cid][0] in WORKLOAD_SECTIONS),
+        key=lambda r: r["score"])
+    return {"id": meta["id"], "description": meta["description"], "sections": out,
+            "workload": roll("workload"), "infrastructure": roll("infrastructure"),
+            "controls": detail}
+
+
+def kubescape(c, lib, fw):
     out = {"available": True, "posture": {}, "cve": {}, "unscanned": [], "controls": []}
     idx = c.try_get(f"{API}/configurationscansummaries")
     vdx = c.try_get(f"{API}/vulnerabilitysummaries")
@@ -211,6 +337,7 @@ def kubescape(c, lib):
                     examples[cid].append(f"{ns}/{kind}/{name}")
 
     out["score"] = score(tally, nworkloads)
+    out["framework"] = framework_score(out["score"]["controlScores"], *fw)
 
     # So the page can say "top N of M" rather than leaving a reader to wonder
     # why the control counts do not add up to the headline total.
@@ -313,23 +440,57 @@ def point(data):
             "cveCritical": sum((v or {}).get("critical", 0) for v in (ks.get("cve") or {}).values()),
             "cveHigh": sum((v or {}).get("high", 0) for v in (ks.get("cve") or {}).values()),
             "policyFail": (ky.get("totals") or {}).get("fail", 0),
+            "framework": ({"id": fwk["id"], "workload": fwk["workload"],
+                           "infrastructure": fwk["infrastructure"]}
+                          if (fwk := ks.get("framework")) else None),
             "controlScores": sc.get("controlScores") or {},
         }
     return row
 
 
-def trim(points):
-    """Keep the series bounded, shedding detail before shedding history.
+def _ts(iso):
+    try:
+        return datetime.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except Exception:
+        return None
 
-    Per-control scores are what let the page attribute a movement, but they
-    dwarf everything else, so they live only on the newest points. Past that,
-    the oldest points go -- a ConfigMap rejected for size would cost the whole
-    series, not just its oldest end.
+
+def trim(points):
+    """Keep RETAIN_DAYS of posture, compacting older readings to one a day.
+
+    Four readings a day off one nightly scan are four copies of the same
+    posture, so beyond RAW_DAYS only the last reading of each UTC day is
+    kept. Inside RAW_DAYS every reading survives, because that is where a fix
+    applied this morning and the collector re-run this afternoon need a before
+    and an after.
+
+    Detail is shed before history is: per-control scores stay on the newest
+    DETAIL_DAYS, everything older keeps its headline figures and its place on
+    the trend line.
     """
-    points = points[-MAX_POINTS:]
-    for pt in points[:-MAX_DETAILED_POINTS]:
-        for cl in pt.get("clusters", {}).values():
-            cl.pop("controlScores", None)
+    points = sorted((p for p in points if p.get("at") and _ts(p["at"])), key=lambda p: str(p["at"]))
+    if not points:
+        return []
+    newest = _ts(points[-1]["at"])
+
+    raw_cut = newest - datetime.timedelta(days=RAW_DAYS)
+    daily, raw = {}, []
+    for pt in points:
+        if _ts(pt["at"]) > raw_cut:
+            raw.append(pt)
+        else:
+            daily[str(pt["at"])[:10]] = pt      # sorted, so the last of the day wins
+    points = sorted(daily.values(), key=lambda p: str(p["at"])) + raw
+
+    keep_cut = newest - datetime.timedelta(days=RETAIN_DAYS)
+    points = [pt for pt in points if _ts(pt["at"]) > keep_cut]
+
+    detail_cut = newest - datetime.timedelta(days=DETAIL_DAYS)
+    for pt in points:
+        if _ts(pt["at"]) <= detail_cut:
+            for cl in pt.get("clusters", {}).values():
+                cl.pop("controlScores", None)
+
     while len(points) > 2 and len(json.dumps(points)) > MAX_HISTORY_BYTES:
         points.pop(0)
     return points
@@ -410,6 +571,9 @@ def main():
     log("fetching control library ...")
     lib = control_library()
     log(f"  {len(lib)} controls")
+    log(f"fetching framework {FRAMEWORK} ...")
+    fw = framework()
+    log(f"  {len(fw[1])} controls in {len(fw[0]['order']) if fw[0] else 0} sections")
 
     data = {"generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "clusters": {}}
@@ -423,7 +587,7 @@ def main():
         t = time.time()
         log(f"collecting {name} ...")
         try:
-            data["clusters"][name] = {"reachable": True, "kubescape": kubescape(c, lib), "kyverno": kyverno(c)}
+            data["clusters"][name] = {"reachable": True, "kubescape": kubescape(c, lib, fw), "kyverno": kyverno(c)}
             log(f"  done in {time.time() - t:.1f}s")
         except Exception as e:
             log(f"  FAILED: {e}")
