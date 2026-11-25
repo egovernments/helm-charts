@@ -3,7 +3,21 @@ entries:
   facility:
     - apiVersion: v2
       appVersion: master-c1dc738
-      created: "2026-11-25T12:17:55.717640614Z"
+      created: "2026-11-25T12:58:43.046059342Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Facility (HCM) - facility master data and facility-project mapping for health campaigns.
+      digest: 4706801c77a4ed24ca7fbd68b5321b78bebca4345ca7b7627711116e61066269
+      name: facility
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/hcm/facility/facility-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: master-c1dc738
+      created: "2026-11-25T12:58:43.04495506Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -18,7 +32,21 @@ entries:
   product:
     - apiVersion: v2
       appVersion: master-c1dc738
-      created: "2026-11-25T12:17:55.718378441Z"
+      created: "2026-11-25T12:58:43.047646572Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Product (HCM) - product and product-variant master data for health campaigns.
+      digest: f806dc5c129bf40b74600af35182656c212196bb930e8ff0397934726d51185b
+      name: product
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/hcm/product/product-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: master-c1dc738
+      created: "2026-11-25T12:58:43.046853954Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -33,7 +61,21 @@ entries:
   project-factory:
     - apiVersion: v2
       appVersion: master-product-2.2.1-76ce514
-      created: "2026-11-25T12:17:55.719678535Z"
+      created: "2026-11-25T12:58:43.049431456Z"
+      dependencies:
+        - name: common
+          repository: https://helm.digit.org/digit3/common
+          version: 3.1.2
+      description: Project Factory (HCM) - campaign setup service that generates projects, facilities, resources and boundary data from a campaign definition.
+      digest: c38ce925aafced4bddf1e3565b88c9d1196751905405922da2b55c725b440cdd
+      name: project-factory
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/hcm/project-factory/project-factory-3.0.1.tgz
+      version: 3.0.1
+    - apiVersion: v2
+      appVersion: master-product-2.2.1-76ce514
+      created: "2026-11-25T12:58:43.048509996Z"
       dependencies:
         - name: common
           repository: https://helm.digit.org/digit3/common
@@ -45,4 +87,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/hcm/project-factory/project-factory-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-25T12:17:55.716643604Z"
+generated: "2026-11-25T12:58:43.043352067Z"
