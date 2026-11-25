@@ -176,7 +176,7 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: individual-java
+        key: individual
   - name: INDIVIDUAL_PATH
     value: {{ index .Values "individual-path" | quote }}
   - name: INDIVIDUAL_CONFIG_PATH
@@ -185,14 +185,14 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: employee-java
+        key: employee
   - name: EMPLOYEE_PATH
     value: {{ index .Values "employee-path" | quote }}
   - name: BOUNDARY_HOST
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: boundary-java
+        key: boundary
   - name: BOUNDARY_RELATIONSHIP_PATH
     value: {{ index .Values "boundary-relationship-path" | quote }}
   - name: BOUNDARY_HIERARCHY_PATH
@@ -201,7 +201,7 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: idgen-java
+        key: idgen
   - name: IDGEN_TEMPLATE_PATH
     value: {{ index .Values "idgen-template-path" | quote }}
   - name: IDGEN_TEMPLATE_CODE

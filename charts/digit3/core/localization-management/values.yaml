@@ -136,12 +136,12 @@ env: |
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: filestore-java
+        key: filestore
   - name: EGOV_LOCALIZATION_HOST
     valueFrom:
       configMapKeyRef:
         name: egov-service-host
-        key: localization-java
+        key: localization
 
   # ── App config ─────────────────────────────────────────────────────────────
   - name: FILESTORE_MODULE
