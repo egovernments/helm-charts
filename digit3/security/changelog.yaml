@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-25"
+    ref: "PR-181"
+    title: "fix(security/dashboard): grant the CVE pass the RBAC it needs"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "dashboard"
+        from: "1.2.0"
+        to: "1.2.1"
+  - date: "2026-11-25"
     ref: "PR-178"
     title: "feat(security/dashboard): four pages, image CVE detail, honest CVE counts"
     author: "SriPadma8997-egov"
