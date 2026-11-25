@@ -3,7 +3,7 @@ entries:
   clickhouse:
     - apiVersion: v2
       appVersion: 25.7.8.71
-      created: "2026-11-23T11:59:18.062067323Z"
+      created: "2026-11-25T09:18:13.255114684Z"
       description: A ClickHouse cluster and its Keeper, run by the ClickHouse operator (digit3/analytics/clickhouse-operator)
       digest: 9c855ba8ca72110b1f6ec22ab20438fbc7bc310dae85b7000b5af758e3ecb693
       home: https://clickhouse.com
@@ -22,7 +22,7 @@ entries:
   clickhouse-operator:
     - apiVersion: v2
       appVersion: v0.0.8
-      created: "2026-11-23T11:59:18.066948625Z"
+      created: "2026-11-25T09:18:13.259831555Z"
       dependencies:
         - alias: clickhouse-operator
           name: clickhouse-operator-helm
@@ -46,7 +46,26 @@ entries:
   superset:
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-23T11:59:18.070307062Z"
+      created: "2026-11-25T09:18:13.265064556Z"
+      description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
+      digest: 662cd3e77a67a26dd9bc39db635ad70b84772e14d775a2912ee273ff1b9c8c6b
+      home: https://superset.apache.org
+      keywords:
+        - analytics
+        - superset
+        - business-intelligence
+        - data-visualization
+      name: superset
+      sources:
+        - https://github.com/apache/superset
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/analytics/superset/superset-3.0.3.tgz
+      version: 3.0.3
+    - apiVersion: v2
+      appVersion: care-20261120
+      created: "2026-11-25T09:18:13.26320491Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 35ea6934e3762820c6dce6ff010c2e768f8bf5cca8ffaab3616749baf06fbfd3
       home: https://superset.apache.org
@@ -65,7 +84,7 @@ entries:
       version: 3.0.2
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-23T11:59:18.069190752Z"
+      created: "2026-11-25T09:18:13.262081377Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 69c001c659e7417e64e90660c2d0fcdb29c350d417258f9689d2fb06b5e9dada
       home: https://superset.apache.org
@@ -84,7 +103,7 @@ entries:
       version: 3.0.1
     - apiVersion: v2
       appVersion: care-20261120
-      created: "2026-11-23T11:59:18.068073509Z"
+      created: "2026-11-25T09:18:13.260948947Z"
       description: Apache Superset (web, Celery worker and beat, init job) with ClickHouse and Postgres drivers and optional GitHub OAuth
       digest: 89fc419cd504e94b7a0eb62053ad0d0250e1cd9bf219e8157aabf172e6ff85e7
       home: https://superset.apache.org
@@ -101,4 +120,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/analytics/superset/superset-3.0.0.tgz
       version: 3.0.0
-generated: "2026-11-23T11:59:18.061370006Z"
+generated: "2026-11-25T09:18:13.254380686Z"
