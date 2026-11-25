@@ -501,8 +501,24 @@ def cve_detail(c):
     out = {"byImage": [], "byWorkload": [], "topCves": {}, "sampled": 0,
            "totals": {k: 0 for k in SEV}, "totalsUnique": {k: 0 for k in SEV},
            "images": 0, "workloads": 0}
-    idx = c.try_get(f"{API}/vulnerabilitymanifestsummaries")
-    if idx is None:
+    # Not try_get: a failure here has to be LOUD. This pass was shipped once
+    # with its two resources missing from the collector's ClusterRole, and a
+    # swallowed 403 is indistinguishable in the logs from a cluster that
+    # simply has no images. The page degrades honestly either way -- it says
+    # the data was not collected rather than showing zero -- but nobody reads
+    # the page to find out why the collector is unhappy.
+    try:
+        idx = c.get(f"{API}/vulnerabilitymanifestsummaries")
+    except Exception as e:
+        code = getattr(e, "code", None)
+        if code == 403:
+            log(f"  ERROR: not allowed to read vulnerabilitymanifestsummaries ({e}). The "
+                f"collector's ClusterRole needs `vulnerabilitymanifestsummaries` and "
+                f"`vulnerabilitymanifests` in the spdx.softwarecomposition.kubescape.io group. "
+                f"Image vulnerabilities will be reported as not collected.")
+        else:
+            log(f"  ERROR: cannot read vulnerabilitymanifestsummaries ({e}); image "
+                f"vulnerabilities will be reported as not collected.")
         out["available"] = False
         return out
     out["available"] = True

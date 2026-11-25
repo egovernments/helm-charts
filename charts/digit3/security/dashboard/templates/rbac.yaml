@@ -19,6 +19,11 @@ rules:
       - vulnerabilitysummaries
       - workloadconfigurationscansummaries
       - sbomsyfts
+      # Per-workload CVE summaries and the per-image manifests behind them.
+      # Both are read by the image-vulnerability pass; without them it gets
+      # 403 and the page reports CVEs as uncollected.
+      - vulnerabilitymanifestsummaries
+      - vulnerabilitymanifests
     verbs: ["get", "list"]
   # Kyverno findings.
   - apiGroups: ["wgpolicyk8s.io"]
