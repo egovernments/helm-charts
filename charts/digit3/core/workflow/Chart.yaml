@@ -15,7 +15,7 @@ type: application
 version: 3.1.4
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: "v3.0.3-beta-1976d84"
+appVersion: "master-b66f90b"
 dependencies:
   - name: common
     version: 3.1.2
