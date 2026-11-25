@@ -39,12 +39,23 @@ collector:
 
   # Other clusters to include, beyond the one this runs in.
   #
-  # Each needs `name`, `server`, and `tokenSecret` naming a Secret with a
-  # `token` key -- a token for the read-only dashboard-collector
-  # ServiceAccount on THAT cluster, never an admin credential.
+  # Each needs `name`, `server`, and `tokenSecret`. The Secret must carry both
+  # a `token` and a `ca.crt` key -- which is exactly what a Secret of type
+  # kubernetes.io/service-account-token contains, so copy the whole thing. The
+  # token must be for the read-only `security-dashboard` ServiceAccount on THAT
+  # cluster, never an admin credential.
   #
-  # Left empty, the dashboard shows only the local cluster, and says so rather
-  # than rendering the others as clean.
+  # The CA is not optional. The connection crosses the public internet carrying
+  # a cluster-wide read token, and an AKS API server presents a certificate
+  # signed by its own CA rather than a public one, so the system trust store
+  # cannot validate it. A remote with no ca.crt is marked unreachable rather
+  # than trusted blindly; `insecureSkipTlsVerify: true` overrides that and
+  # should not be used outside a throwaway test.
+  #
+  # LEFT EMPTY -- THE DEFAULT -- THE DASHBOARD COVERS ONLY ITS OWN CLUSTER.
+  # That is the single-environment deployment: same chart, same image, nothing
+  # to switch off. A cluster that is listed but unreadable is reported as
+  # unreachable, never rendered as clean.
   remoteClusters: []
   # - name: unified-qa
   #   server: https://unified-qa-xxxx.hcp.centralindia.azmk8s.io:443
@@ -52,6 +63,52 @@ collector:
 
   # Name this cluster is filed under in the report.
   localClusterName: ""
+
+  # Compliance framework the headline score is reported against.
+  #
+  # cis-v1.12.0 is the GENERIC CIS Kubernetes Benchmark: its controls are
+  # plain Kubernetes API objects, so the score means the same thing on AKS,
+  # EKS, GKE or bare metal. The cloud-specific variants (cis-aks-t1.8.0,
+  # cis-eks-t1.8.0, cis-gke-v1.9.0) differ mainly in the control-plane
+  # sections, which a managed service does not let you read anyway.
+  #
+  # Any framework published by the Kubescape regolibrary works here:
+  #   cis-v1.12.0  cis-v1.10.0  nsa  mitre  armobest  devopsbest  soc2
+  framework: cis-v1.12.0
+
+  # Top-level sections of that framework whose controls are workload
+  # configuration -- the half these clusters own. For CIS that is section 5,
+  # "Policies"; sections 1-4 are control plane, etcd and worker nodes, and are
+  # reported separately rather than blended in. Comma-separated.
+  workloadSections: "5"
+
+  # How many affected resources each control lists in its drill-down panel.
+  # Every number on the page has to be answerable with "which ones?", and a
+  # count with no list behind it is the thing readers stop believing.
+  drillWorkloads: 25
+
+  # The page is served from a ConfigMap, which Kubernetes caps at 1 MiB. Past
+  # this size the drill-down lists are trimmed and then dropped -- least
+  # useful detail first -- rather than letting the publish fail outright.
+  maxPageBytes: 819200
+
+  # Score history, kept in a ConfigMap because nothing in Kubescape keeps it:
+  # the storage API overwrites each summary in place on every scan, so a
+  # number not recorded at the time is gone.
+  #
+  # Retention is in days, because the posture scan runs once a night and the
+  # four collections a day are four copies of the same posture.
+  history:
+    # Days of trend to keep.
+    retainDays: 60
+    # Days of per-control detail, which is what attributes a movement to
+    # specific controls. Older points keep their headline figures and their
+    # place on the trend line.
+    detailDays: 30
+    # Days at the near end where EVERY reading is kept rather than compacted
+    # to one a day -- so a fix applied this morning and a collector re-run
+    # this afternoon still have a before and an after to compare.
+    rawDays: 3
 
 server:
   image:

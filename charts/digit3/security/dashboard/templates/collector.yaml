@@ -52,6 +52,22 @@ spec:
                       fieldPath: metadata.namespace
                 - name: PAGE_CONFIGMAP
                   value: {{ include "dashboard.pageConfigMap" . | quote }}
+                - name: HISTORY_CONFIGMAP
+                  value: {{ include "dashboard.historyConfigMap" . | quote }}
+                - name: DRILL_WORKLOADS
+                  value: {{ .Values.collector.drillWorkloads | quote }}
+                - name: MAX_PAGE_BYTES
+                  value: {{ .Values.collector.maxPageBytes | quote }}
+                - name: FRAMEWORK
+                  value: {{ .Values.collector.framework | quote }}
+                - name: WORKLOAD_SECTIONS
+                  value: {{ .Values.collector.workloadSections | quote }}
+                - name: RETAIN_DAYS
+                  value: {{ .Values.collector.history.retainDays | quote }}
+                - name: DETAIL_DAYS
+                  value: {{ .Values.collector.history.detailDays | quote }}
+                - name: RAW_DAYS
+                  value: {{ .Values.collector.history.rawDays | quote }}
                 - name: LOCAL_CLUSTER_NAME
                   value: {{ .Values.collector.localClusterName | quote }}
                 - name: REMOTE_CLUSTERS
