@@ -1,8 +1,7 @@
 # Facility (HCM): facility master data and facility-project mapping for health campaigns.
 # Java service. `common` injects the datasource, Kafka bootstrap, Hikari pool, flyway
-# (off in-app), timezone and Tomcat tuning for appType: java, so only service-specific
-# config lives here. Per-environment values (hosts, boundary hierarchy) are set in the
-# deploy repo's environments/digit-3.0/hcm-3.0.yaml under a "facility" block.
+# (off in-app), timezone and Tomcat tuning for appType: java. Shared infra (redis) and
+# service hosts come from the egov-config / egov-service-host ConfigMaps, like core.
 
 labels:
   app: "facility"
@@ -18,8 +17,6 @@ image:
 replicas: 1
 appType: "java"
 
-# Flyway DB migration (facility-db image). History table is public_facility; missing
-# migrations are ignored (matches the app's spring.flyway settings).
 initContainers:
   dbMigration:
     enabled: true
@@ -50,29 +47,19 @@ initContainers:
 
 tracing-enabled: false
 
-# context-path: HARDCODED in the jar (/facility) -> no context-path env (would be dead config).
+# context-path: HARDCODED in the jar (/facility) -> no context-path env.
 
-# External service hosts: repoint to in-cluster hosts per env (source has localhost for
-# idgen/boundary, which MUST be overridden).
-idgen-host: "http://idgen.core-3-0:8080"
+# App-specific config (overridable). Hosts/infra come from the ConfigMaps below, not here.
 idgen-path: "egov-idgen/id/_generate"
 idgen-integration-enabled: "true"
 facility-idgen-id-format: "facility.id"
-user-host: "http://user.core-3-0:8080"
-mdms-host: "http://mdms-v2.core-3-0:8080"
 mdms-search-endpoint: "/egov-mdms-service/v1/_search"
 mdms-search-v2-endpoint: "/egov-mdms-service/v2/_search"
-boundary-host: "http://boundary-management.core-3-0:8080"
 boundary-hierarchy: "HCM-Moz-Hierarchy"
-
-# Feature flags / constants (overridable).
 search-descendants-find-hierarchy: "true"
 validate-outside-household-sites: "true"
 outside-household-fallback-types: "OUTSIDE_HOUSEHOLD_PLACES,TRANSIT_POST"
 create-return-existing-on-duplicate: "true"
-
-# Redis cache (shared backbone).
-redis-host: "redis.backbone"
 cache-ttl: "30000"
 
 healthChecks:
@@ -89,25 +76,26 @@ resources: |
     memory: "1Gi"
 
 env: |
-  # External services (repointed per env in hcm-3.0.yaml)
+  # External services (from egov-service-host, like core)
   - name: EGOV_IDGEN_HOST
-    value: {{ index .Values "idgen-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: idgen }
   - name: EGOV_IDGEN_PATH
     value: {{ index .Values "idgen-path" | quote }}
   - name: EGOV_IDGEN_INTEGRATION_ENABLED
     value: {{ index .Values "idgen-integration-enabled" | quote }}
   - name: FACILITY_IDGEN_ID_FORMAT
     value: {{ index .Values "facility-idgen-id-format" | quote }}
-  - name: EGOV_USER_HOST
-    value: {{ index .Values "user-host" | quote }}
   - name: EGOV_MDMS_HOST
-    value: {{ index .Values "mdms-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: mdms-v2 }
   - name: EGOV_MDMS_SEARCH_ENDPOINT
     value: {{ index .Values "mdms-search-endpoint" | quote }}
   - name: EGOV_MDMS_SEARCH_V2_ENDPOINT
     value: {{ index .Values "mdms-search-v2-endpoint" | quote }}
   - name: EGOV_BOUNDARY_HOST
-    value: {{ index .Values "boundary-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: boundary-management }
   - name: EGOV_BOUNDARY_HIERARCHY
     value: {{ index .Values "boundary-hierarchy" | quote }}
   # Feature flags
@@ -119,8 +107,12 @@ env: |
     value: {{ index .Values "outside-household-fallback-types" | quote }}
   - name: FACILITY_CREATE_RETURN_EXISTING_ON_DUPLICATE_CLIENT_REFERENCE_ID
     value: {{ index .Values "create-return-existing-on-duplicate" | quote }}
-  # Redis cache
+  # Redis (from egov-config, like core)
   - name: SPRING_REDIS_HOST
-    value: {{ index .Values "redis-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-host }
+  - name: SPRING_REDIS_PORT
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-port }
   - name: SPRING_CACHE_REDIS_TIME_TO_LIVE
     value: {{ index .Values "cache-ttl" | quote }}

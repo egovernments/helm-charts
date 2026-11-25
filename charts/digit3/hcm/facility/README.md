@@ -42,7 +42,7 @@ tag is the chart `appVersion` in `prod` mode.
 | `boundary-host` | `EGOV_BOUNDARY_HOST` | `http://boundary-management.core-3-0:8080` |
 | `boundary-hierarchy` | `EGOV_BOUNDARY_HIERARCHY` | `HCM-Moz-Hierarchy` |
 | `validate-outside-household-sites` | `FACILITY_VALIDATE_OUTSIDE_HOUSEHOLD_SITES` | `true` |
-| `redis-host` | `SPRING_REDIS_HOST` | `redis.backbone` |
+| redis + service hosts | from `egov-config` / `egov-service-host` | (shared) |
 
 The context path is **not** injected as an env var: the app hardcodes
 `server.servlet.context-path=/facility`.

@@ -64,10 +64,6 @@ db-port: "5432"
 db-name: "postgres"
 db-schema: "egov"
 
-# Redis (shared backbone).
-redis-host: "redis.backbone"
-redis-port: "6379"
-
 # Campaign / locale config (env-specific).
 module-name: "HCM-ADMIN-CONSOLE"
 localization-module: "hcm-admin-schemas"
@@ -134,11 +130,13 @@ env: |
   - name: BASE_SECRET
     valueFrom:
       secretKeyRef: { name: project-factory, key: base-secret }
-  # Redis
+  # Redis (from egov-config, like core)
   - name: REDIS_HOST
-    value: {{ index .Values "redis-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-host }
   - name: REDIS_PORT
-    value: {{ index .Values "redis-port" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-port }
   # Campaign / locale
   - name: MODULE_NAME
     value: {{ index .Values "module-name" | quote }}
