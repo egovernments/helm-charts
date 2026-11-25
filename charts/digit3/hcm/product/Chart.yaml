@@ -2,7 +2,7 @@ apiVersion: v2
 name: product
 description: Product (HCM) - product and product-variant master data for health campaigns.
 type: application
-version: 3.0.0
+version: 3.0.1
 appVersion: "master-c1dc738"
 dependencies:
   - name: common
