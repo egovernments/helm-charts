@@ -1,4 +1,13 @@
 releases:
+  - date: "2026-11-25"
+    ref: "PR-170"
+    title: "feat(security/dashboard): CIS score, split by ownership, with history and drill-downs"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "dashboard"
+        from: "1.0.0"
+        to: "1.1.0"
   - date: "2026-11-24"
     ref: "PR-168"
     title: "feat(digit3/security/dashboard): internal security dashboard behind oauth2-proxy"
