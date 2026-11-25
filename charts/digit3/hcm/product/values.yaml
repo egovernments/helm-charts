@@ -1,8 +1,7 @@
 # Product (HCM): product and product-variant master data for health campaigns.
 # Java service. `common` injects the datasource, Kafka bootstrap, Hikari pool, flyway
-# (off in-app), timezone and Tomcat tuning for appType: java, so only service-specific
-# config lives here. Per-environment values (hosts, redis) are set in the deploy repo's
-# environments/digit-3.0/hcm-3.0.yaml under a "product" block.
+# (off in-app), timezone and Tomcat tuning for appType: java. Shared infra (redis) and
+# service hosts come from the egov-config / egov-service-host ConfigMaps, like core.
 
 labels:
   app: "product"
@@ -18,7 +17,6 @@ image:
 replicas: 1
 appType: "java"
 
-# Flyway DB migration (product-db image).
 initContainers:
   dbMigration:
     enabled: true
@@ -47,20 +45,14 @@ initContainers:
 
 tracing-enabled: false
 
-# context-path: HARDCODED in the jar (/product) -> no context-path env (would be dead config).
+# context-path: HARDCODED in the jar (/product) -> no context-path env.
 
-# External service hosts: source defaults; repoint to in-cluster hosts per env.
-idgen-host: "http://idgen.core-3-0:8080"
+# App-specific config (overridable). Hosts/infra come from the ConfigMaps below, not here.
 idgen-path: "egov-idgen/id/_generate"
 idgen-integration-enabled: "true"
-user-host: "http://user.core-3-0:8080"
-mdms-host: "http://mdms-v2.core-3-0:8080"
 mdms-search-endpoint: "/egov-mdms-service/v1/_search"
 mdms-master-name: "product_master"
 mdms-module-name: "product"
-
-# Redis cache (shared backbone).
-redis-host: "redis.backbone-3-0"
 cache-type: "redis"
 cache-ttl: "60"
 
@@ -78,26 +70,30 @@ resources: |
     memory: "1Gi"
 
 env: |
-  # External services (repointed per env in hcm-3.0.yaml)
+  # External services (from egov-service-host, like core)
   - name: EGOV_IDGEN_HOST
-    value: {{ index .Values "idgen-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: idgen }
   - name: EGOV_IDGEN_PATH
     value: {{ index .Values "idgen-path" | quote }}
   - name: EGOV_IDGEN_INTEGRATION_ENABLED
     value: {{ index .Values "idgen-integration-enabled" | quote }}
-  - name: EGOV_USER_HOST
-    value: {{ index .Values "user-host" | quote }}
   - name: EGOV_MDMS_HOST
-    value: {{ index .Values "mdms-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-service-host, key: mdms-v2 }
   - name: EGOV_MDMS_SEARCH_ENDPOINT
     value: {{ index .Values "mdms-search-endpoint" | quote }}
   - name: EGOV_MDMS_MASTER_NAME
     value: {{ index .Values "mdms-master-name" | quote }}
   - name: EGOV_MDMS_MODULE_NAME
     value: {{ index .Values "mdms-module-name" | quote }}
-  # Redis cache
+  # Redis (from egov-config, like core)
   - name: SPRING_REDIS_HOST
-    value: {{ index .Values "redis-host" | quote }}
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-host }
+  - name: SPRING_REDIS_PORT
+    valueFrom:
+      configMapKeyRef: { name: egov-config, key: redis-port }
   - name: SPRING_CACHE_TYPE
     value: {{ index .Values "cache-type" | quote }}
   - name: SPRING_CACHE_REDIS_TIME_TO_LIVE
