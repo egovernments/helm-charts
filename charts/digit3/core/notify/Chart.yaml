@@ -2,7 +2,7 @@ apiVersion: v2
 name: notify
 description: Multi-channel notifications (SMS, email, WhatsApp, push)
 type: application
-version: 3.1.4
+version: 3.1.5
 appVersion: "master-b66f90b"
 dependencies:
   - name: common
