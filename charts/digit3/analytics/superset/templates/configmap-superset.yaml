@@ -364,3 +364,38 @@ data:
     # ---- configOverrides.{{ $name }} ----
 {{ $snippet | indent 4 }}
 {{- end }}
+{{- if not .Values.engineCache.shared }}
+
+    # ---- engineCache.shared: false -- no engine shared between threads ----
+    # This Superset build caches one SQLAlchemy engine per database per process
+    # (models/core.py _ENGINE_CACHE, apache/superset#27897) but still adds and
+    # removes a per-query "connect" listener (run_prequeries) on that shared
+    # engine. SQLAlchemy's listener list is an unlocked deque, so concurrent
+    # chart queries in one gunicorn worker (gthread) fail at random with
+    # "RuntimeError: deque mutated during iteration" -- dashboards show
+    # "Data error". Upstream fixed it in apache/superset#41642 (private engine
+    # when prequeries exist); this image predates that. Until the image has it,
+    # give every use its own engine again, as Superset did before the cache.
+    # Engines are NullPool, so this only costs create_engine() per query.
+    # Runs from FLASK_APP_MUTATOR (after the app and models are loaded) in the
+    # web, worker and beat processes; a mutator set in configOverrides still
+    # runs after it.
+    _previous_flask_app_mutator = globals().get("FLASK_APP_MUTATOR")
+
+    def FLASK_APP_MUTATOR(app):
+        import superset.models.core as _models_core
+
+        if isinstance(getattr(_models_core, "_ENGINE_CACHE", None), dict):
+
+            class _NoSharedEngines(dict):
+                def get(self, key, default=None):
+                    return default
+
+                def __setitem__(self, key, value):
+                    pass
+
+            _models_core._ENGINE_CACHE = _NoSharedEngines()
+            app.logger.info("superset_config: shared engine cache disabled (engineCache.shared=false)")
+        if _previous_flask_app_mutator:
+            _previous_flask_app_mutator(app)
+{{- end }}

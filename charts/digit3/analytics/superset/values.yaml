@@ -114,6 +114,14 @@ configMapAnnotations:
 #       CSV_EXTENSIONS = {"csv", "tsv"}
 configOverrides: {}
 
+# SQLAlchemy engine reuse across request threads. false (default): every query
+# gets its own engine, which avoids the random "deque mutated during iteration"
+# chart errors of this Superset build (shared engine + per-query connect
+# listener, fixed upstream in apache/superset#41642). Set true only on an image
+# that includes that fix.
+engineCache:
+  shared: false
+
 # Secrets configuration
 secrets:
   create: false  # Set to true to create secret from chart, or use existing secret
