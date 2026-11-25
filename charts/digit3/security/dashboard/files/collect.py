@@ -79,6 +79,21 @@ EXAMPLES = 6
 # number on the page has to be answerable with "which ones?", and a count
 # without the list behind it is the thing people stop believing.
 DRILL_WORKLOADS = int(os.environ.get("DRILL_WORKLOADS", "25"))
+# How many of the worst images to open up for their actual CVE list.
+#
+# Deliberately a handful. The per-image manifests hold every match Grype
+# found -- roughly 800 for a mid-sized image -- and fetching all 343 of them
+# on unified-dev moves about 700 MB, against a collector limited to 512Mi.
+# The summaries give every image its counts cheaply; only the worst few need
+# their CVEs enumerated, because those are the only ones anyone is going to
+# work through.
+CVE_IMAGES = int(os.environ.get("CVE_IMAGES", "10"))
+CVE_PER_IMAGE = int(os.environ.get("CVE_PER_IMAGE", "30"))
+# Tables are capped at what a person would ever scroll. The totals above them
+# are computed over EVERYTHING, so a cap shortens the list without making any
+# headline figure wrong -- and each table says how many it is showing.
+CVE_TOP_IMAGES = int(os.environ.get("CVE_TOP_IMAGES", "100"))
+CVE_TOP_WORKLOADS = int(os.environ.get("CVE_TOP_WORKLOADS", "150"))
 
 # The page is served from a ConfigMap, which Kubernetes caps at 1 MiB. The
 # drill-down detail is what grows, so it is what gets shed -- in order of
@@ -390,6 +405,7 @@ def kubescape(c, lib, fw):
     # framework's controls and the worklist's, and the worklist does not exist
     # until the loop above has run.
     out["detail"] = control_detail(out, tally, affected, nss, sevs, lib, fw, subjects)
+    out["cveDetail"] = cve_detail(c)
 
     for it in (c.try_get(f"{API}/sbomsyfts") or {"items": []})["items"]:
         a = (it.get("metadata", {}) or {}).get("annotations", {}) or {}
@@ -449,6 +465,141 @@ def control_detail(out, tally, affected, nss, sevs, lib, fw, subjects):
     for v in unassessed.values():
         v.sort(key=lambda r: r["name"])
     return {"controls": detail, "unassessed": dict(unassessed)}
+
+
+def cve_detail(c):
+    """CVEs by image and by workload, plus the real CVE list for the worst few.
+
+    Three levels, because three different questions get asked:
+
+      which images are worst        -> every image, counts by severity
+      which service is affected     -> every workload+container, with its image
+      what exactly do I fix         -> the actual CVE ids, for the top images only
+
+    The last one is sampled on purpose. A per-image manifest holds every match
+    Grype produced -- around 800 for a mid-sized image -- and pulling all of
+    them moves roughly 700 MB on a cluster this size, against a collector
+    limited to 512Mi. The counts come from the cheap summaries; only the
+    images anyone would actually start with get their CVEs enumerated.
+
+    Fixable CVEs are separated from the rest. A critical with no upstream fix
+    is not work anyone can do today, and mixing the two produces a number that
+    cannot be driven down.
+    """
+    # TWO totals, because there are two honest answers and they differ a lot.
+    #
+    #   totals        summed over every running container. Twelve containers
+    #                 on one image count that image's CVEs twelve times. This
+    #                 is exposure: how many vulnerable things are running.
+    #   totalsUnique  summed over distinct images. This is WORK: one image to
+    #                 rebuild, however many places run it.
+    #
+    # The page leads with the unique figure, because it is the one that can be
+    # driven to zero by doing something, and names the other beside it. One
+    # number presented alone would be challenged the first time someone
+    # noticed the same image counted repeatedly -- and they would be right.
+    out = {"byImage": [], "byWorkload": [], "topCves": {}, "sampled": 0,
+           "totals": {k: 0 for k in SEV}, "totalsUnique": {k: 0 for k in SEV},
+           "images": 0, "workloads": 0}
+    idx = c.try_get(f"{API}/vulnerabilitymanifestsummaries")
+    if idx is None:
+        out["available"] = False
+        return out
+    out["available"] = True
+
+    def one(it):
+        m = it["metadata"]
+        return m, c.try_get(f"{API}/namespaces/{m['namespace']}/vulnerabilitymanifestsummaries/{m['name']}")
+
+    images, refs = {}, {}
+    with cf.ThreadPoolExecutor(max_workers=16) as ex:
+        for m, d in ex.map(one, idx.get("items", [])):
+            if not d:
+                continue
+            L = m.get("labels", {}) or {}
+            # The labels carry a SANITISED image name (dots and slashes
+            # flattened to dashes) because label values are constrained. The
+            # real reference is on the annotation, and the real reference is
+            # what someone has to go and change.
+            A_ = (d["metadata"].get("annotations") or {}) or (m.get("annotations") or {})
+            sev = ((d.get("spec") or {}).get("severities") or {})
+            counts = {k: (sev.get(k) or {}).get("all", 0) or 0 for k in SEV}
+            img = A_.get("kubescape.io/image-tag") or L.get("kubescape.io/image-name", "?")
+            ns = L.get("kubescape.io/workload-namespace", "?")
+            wl = {
+                "ns": ns,
+                "kind": (L.get("kubescape.io/workload-kind") or "?"),
+                "name": L.get("kubescape.io/workload-name", "?"),
+                "container": L.get("kubescape.io/workload-container-name", "?"),
+                "image": img,
+                "digest": (A_.get("kubescape.io/image-id", "").split("@") + [""])[1][:19],
+                **counts,
+            }
+            out["byWorkload"].append(wl)
+            for k in SEV:
+                out["totals"][k] += counts[k]
+
+            e = images.setdefault(img, {"image": img, "workloads": 0, "namespaces": set(),
+                                        **{k: 0 for k in SEV}})
+            # Counts are per image, so take them once rather than summing over
+            # every workload that happens to run the same image.
+            for k in SEV:
+                e[k] = max(e[k], counts[k])
+            e["workloads"] += 1
+            e["namespaces"].add(ns)
+            ref = ((d.get("spec") or {}).get("vulnerabilitiesRef") or {}).get("all") or {}
+            if ref.get("name"):
+                refs[img] = (ref.get("namespace") or "kubescape", ref["name"])
+
+    for e in images.values():
+        e["namespaceList"] = sorted(e["namespaces"])[:20]
+        e["namespaces"] = len(e["namespaces"])
+    allimg = sorted(images.values(), key=lambda r: (-r["critical"], -r["high"], r["image"]))
+    out["byWorkload"].sort(key=lambda r: (-r["critical"], -r["high"], r["ns"], r["name"]))
+    for e in allimg:
+        for k in SEV:
+            out["totalsUnique"][k] += e[k]
+    out["images"] = len(images)
+    out["workloads"] = len(out["byWorkload"])
+    out["byImage"] = allimg[:CVE_TOP_IMAGES]
+    out["byWorkload"] = out["byWorkload"][:CVE_TOP_WORKLOADS]
+
+    worst = [e["image"] for e in allimg[:CVE_IMAGES] if e["image"] in refs]
+    def manifest(img):
+        ns, nm = refs[img]
+        return img, c.try_get(f"{API}/namespaces/{ns}/vulnerabilitymanifests/{nm}", timeout=120)
+
+    rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    with cf.ThreadPoolExecutor(max_workers=4) as ex:
+        for img, d in ex.map(manifest, worst):
+            if not d:
+                continue
+            out["sampled"] += 1
+            seen, rows = set(), []
+            for mt in ((d.get("spec") or {}).get("payload") or {}).get("matches") or []:
+                v = mt.get("vulnerability") or {}
+                sv = (v.get("severity") or "").lower()
+                if sv not in rank:
+                    continue
+                art = mt.get("artifact") or {}
+                fix = v.get("fix") or {}
+                key = (v.get("id"), art.get("name"), art.get("version"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append({
+                    "id": v.get("id", "?"), "severity": sv,
+                    "pkg": art.get("name", "?"), "version": art.get("version", "?"),
+                    "fixedIn": ", ".join((fix.get("versions") or [])[:2]),
+                    "fixable": fix.get("state") == "fixed",
+                })
+            rows.sort(key=lambda r: (not r["fixable"], rank[r["severity"]], r["id"]))
+            out["topCves"][img] = {
+                "fixable": sum(1 for r in rows if r["fixable"]),
+                "total": len(rows),
+                "rows": rows[:CVE_PER_IMAGE],
+            }
+    return out
 
 
 def kyverno(c):

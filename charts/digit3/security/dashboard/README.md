@@ -171,6 +171,62 @@ a laptop against the same cluster, which also evaluates host- and cluster-level
 controls this deployment does not gather. It is consistent with itself over
 time, which is what a trend needs.
 
+## Four pages
+
+One file, four pages, routed on the URL hash so each can be sent to someone on
+its own: `#overview`, `#config`, `#policies`, `#images`.
+
+**Overview** is written for a reader who does not operate these clusters and
+has never heard of Kubescape. Four plain-language panels say what the page is,
+what the score means, what it deliberately does not measure, and how to read
+it; then the environments, the trend and the coverage gaps. No acronym is used
+before it is explained.
+
+**Configuration**, **Policies** and **Image CVEs** are the technical views. The
+drill-down rule holds on all of them.
+
+## Image vulnerabilities, and the two ways to count them
+
+The same vulnerability can be counted twice over and both answers are honest:
+
+| | what it answers | `cveDetail` field |
+|---|---|---|
+| **once per image** | how much *work* there is: one image to rebuild, however many places run it | `totalsUnique` |
+| **once per container** | how much *exposure* there is: how many running things carry it | `totals` |
+
+They differ a lot. On unified-dev, critical findings are **13,495** per image
+and **22,642** per container, because images like `egovio/airflow` run in a
+dozen containers and each copy re-counts the same CVEs.
+
+**The page leads with the per-image figure** — it is the one that corresponds
+to an action someone can take — states the unit on the tile, and gives both
+when the figure is opened. A single number here, presented without its unit,
+gets challenged the first time somebody notices the same image counted twice,
+and they would be right.
+
+Three levels of detail are collected, because three different questions get
+asked:
+
+- **every image**, with counts by severity — cheap, from the per-workload
+  summaries.
+- **every workload and container**, with the image it runs — so an owner can
+  find their own service by namespace, kind, name and container rather than
+  working backwards from an image.
+- **the actual CVE ids** for the worst `collector.cve.images` images: id,
+  severity, package, installed version and the version that fixes it.
+
+That last one is sampled deliberately. A per-image manifest holds every match
+the scanner produced — around 800 for a mid-sized image — and fetching all of
+them moves roughly **700 MB** on a cluster this size, against a collector with
+a few hundred MiB. Counts are complete for every image; the itemised list is
+not, and the page says so rather than implying otherwise.
+
+**Fixable CVEs are separated from the rest.** A critical with no published
+patch is not work anyone can do today, and adding the two together produces a
+number that cannot be driven down. `project-factory` on unified-dev reports
+7,672 CVEs of which 5,777 have an upstream fix; those are the ones worth
+listing first.
+
 ## Every number opens
 
 The page is read by people who do not operate these clusters, so no figure is
