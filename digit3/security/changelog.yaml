@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-25"
+    ref: "PR-178"
+    title: "feat(security/dashboard): four pages, image CVE detail, honest CVE counts"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "dashboard"
+        from: "1.1.0"
+        to: "1.2.0"
+  - date: "2026-11-25"
     ref: "PR-170"
     title: "feat(security/dashboard): CIS score, split by ownership, with history and drill-downs"
     author: "SriPadma8997-egov"
