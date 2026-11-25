@@ -33,9 +33,12 @@ collector:
   resources:
     requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 192Mi
     limits:
-      memory: 512Mi
+      # Raised for the CVE pass: a handful of multi-megabyte vulnerability
+      # manifests are parsed concurrently, and a collector killed halfway
+      # leaves the page showing the previous run with no indication why.
+      memory: 768Mi
 
   # Other clusters to include, beyond the one this runs in.
   #
@@ -90,7 +93,29 @@ collector:
   # The page is served from a ConfigMap, which Kubernetes caps at 1 MiB. Past
   # this size the drill-down lists are trimmed and then dropped -- least
   # useful detail first -- rather than letting the publish fail outright.
+  #
+  # A single-cluster dashboard lands around 300 KiB and never reaches this. A
+  # roll-up of three does, so a roll-up deliberately shows shorter resource
+  # lists; the headline figures are unaffected either way.
   maxPageBytes: 819200
+
+  # Image vulnerabilities.
+  #
+  # Counts for EVERY image come from the per-workload summaries and are cheap.
+  # The itemised CVE list does not: a per-image manifest holds every match the
+  # scanner produced, and on a cluster of this size pulling all of them moves
+  # roughly 700 MB against a collector limited to a few hundred MiB. So only
+  # the worst images are opened up, and the page says the list is sampled
+  # rather than implying it is exhaustive.
+  cve:
+    # Images whose full CVE list is fetched, worst-by-critical first.
+    images: 10
+    # CVEs listed per sampled image, fixable first, then worst first.
+    perImage: 30
+    # Rows in the two tables. The totals above them are computed over
+    # everything, so a cap shortens a list without making a figure wrong.
+    topImages: 100
+    topWorkloads: 150
 
   # Score history, kept in a ConfigMap because nothing in Kubescape keeps it:
   # the storage API overwrites each summary in place on every scan, so a

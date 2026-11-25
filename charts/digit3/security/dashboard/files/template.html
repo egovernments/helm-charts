@@ -84,6 +84,50 @@
   .intro p:last-child { margin-bottom: 0; }
   .intro strong { color: var(--fg); font-weight: 600; }
 
+  /* page navigation */
+  nav.pages { display: flex; gap: 4px; flex-wrap: wrap; margin: 18px 0 4px; border-bottom: 1px solid var(--rule); }
+  nav.pages a {
+    font-size: 0.86rem; font-weight: 500; text-decoration: none; color: var(--fg-dim);
+    padding: 9px 15px; border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0;
+    margin-bottom: -1px; white-space: nowrap;
+  }
+  nav.pages a:hover { color: var(--fg); background: var(--surface-2); }
+  nav.pages a[aria-current="page"] {
+    color: var(--accent); font-weight: 600; background: var(--surface);
+    border-color: var(--rule); border-bottom: 1px solid var(--surface);
+  }
+  nav.pages a .n { font-family: var(--font-mono); font-size: 0.76rem; color: var(--fg-faint); margin-left: 6px; }
+  .page[hidden] { display: none !important; }
+  .page > h2:first-child { margin-top: 22px; }
+
+  /* plain-language overview */
+  .plain { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; margin: 16px 0 6px; }
+  .plain div { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; }
+  .plain h3 { margin: 0 0 6px; font-size: 0.88rem; font-weight: 600; }
+  .plain p { margin: 0; font-size: 0.86rem; line-height: 1.6; color: var(--fg-dim); }
+  .plain p + p { margin-top: 8px; }
+
+  /* data tables on the technical pages */
+  .dt { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .dt th {
+    text-align: left; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-faint); font-weight: 600; padding: 6px 10px 7px 0; border-bottom: 1px solid var(--rule);
+    position: sticky; top: 0; background: var(--bg);
+  }
+  .dt td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; }
+  .dt td.num, .dt th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dt tr.why:hover { background: var(--surface-2); }
+  .dt .mono { font-family: var(--font-mono); font-size: 0.78rem; }
+  .dt .dim { color: var(--fg-faint); }
+  .tablebox { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 15px 8px; overflow-x: auto; }
+  .sev-c { color: var(--crit); font-weight: 600; } .sev-h { color: var(--high); font-weight: 600; }
+
+  /* headline figures row */
+  .figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+  .fig { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; }
+  .fig .lbl { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-dim); }
+  .fig .v { font-family: var(--font-mono); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; }
+
   /* drill-down: every number on this page can be opened */
   .why { cursor: pointer; border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: inherit;
          border-bottom: 1px dashed var(--fg-faint); }
@@ -236,75 +280,125 @@
     <div class="sub" id="meta"></div>
   </header>
 
-  <div class="intro">
-    <p><strong>How to read this page.</strong> The headline is a compliance score against the
-    <strong>CIS Kubernetes Benchmark</strong>, an published industry standard. It measures how well the
-    things we deploy are configured &mdash; not whether we have been attacked, and not how many
-    vulnerabilities exist.</p>
-    <p><strong>Every number here can be opened.</strong> Click any figure with a
-    <span style="border-bottom:1px dashed var(--fg-faint)">dotted underline</span> to see what it counts,
-    the arithmetic that produced it, and the actual workloads behind it. Nothing on this page asks to be
-    taken on trust.</p>
-    <p id="introscore"></p>
-  </div>
+  <nav class="pages" id="nav"></nav>
 
-  <div class="envs" id="envs"></div>
+  <!-- ===================== OVERVIEW ===================== -->
+  <section class="page" id="page-overview">
+    <div class="plain">
+      <div>
+        <h3>What this is</h3>
+        <p>A standing measurement of how safely our Kubernetes environments are
+        <em>configured</em>. Two tools produce it: <strong>Kubescape</strong>, which reads every
+        workload and checks it against the CIS Kubernetes Benchmark, and <strong>Kyverno</strong>,
+        which watches what gets deployed and records anything that breaks the Pod Security rules.</p>
+        <p>Both run on a schedule and change nothing. Nothing here blocks a deployment.</p>
+      </div>
+      <div>
+        <h3>What the score means</h3>
+        <p>The headline percentage is the <strong>CIS Kubernetes Benchmark</strong>, an industry
+        standard, measured over the part of it we control: how our own workloads are set up.
+        100% would mean every workload satisfies every check.</p>
+        <p>It is not a measure of whether we have been attacked, and not a count of
+        vulnerabilities. Those are separate, and both are on this page.</p>
+      </div>
+      <div>
+        <h3>What it is not</h3>
+        <p>Roughly two thirds of the CIS benchmark examines the machines that run Kubernetes
+        itself. Our clusters are managed by the cloud provider, who does not expose those
+        machines, so <strong>we cannot check them and we do not score them</strong>. The provider
+        certifies that layer separately.</p>
+        <p>We report what we measured, and say plainly what we did not.</p>
+      </div>
+      <div>
+        <h3>How to read it</h3>
+        <p><strong>Every number here can be opened.</strong> Click any figure with a
+        <span style="border-bottom:1px dashed var(--fg-faint)">dotted underline</span> to see what
+        it counts, the arithmetic behind it, and the exact services affected.</p>
+        <p>Movement matters more than the absolute value. A number against a published standard,
+        trending the right way, is the thing to watch.</p>
+      </div>
+    </div>
 
-  <h2>CIS benchmark</h2>
-  <p class="note" id="fwnote"></p>
-  <div id="fw"></div>
+    <h2>Environments</h2>
+    <p class="note" id="introscore"></p>
+    <div class="envs" id="envs"></div>
 
-  <h2>Compliance score over time</h2>
-  <p class="note" id="trendnote"></p>
-  <div class="trend" id="trend"></div>
+    <h2>Compliance score over time</h2>
+    <p class="note" id="trendnote"></p>
+    <div class="trend" id="trend"></div>
 
-  <h2>Coverage gaps</h2>
-  <p class="note">
-    An image that fails to scan reports <strong>no vulnerabilities</strong>, which everywhere
-    else on this page is indistinguishable from an image with nothing wrong with it. These are
-    the places where a zero is not evidence.
-  </p>
-  <div id="gaps"></div>
+    <h2>Coverage gaps</h2>
+    <p class="note">
+      An image that fails to scan reports <strong>no vulnerabilities</strong>, which everywhere
+      else is indistinguishable from an image with nothing wrong with it. These are the places
+      where a zero is not evidence.
+    </p>
+    <div id="gaps"></div>
+  </section>
 
-  <h2>What to fix &mdash; configuration</h2>
-  <p class="note">
-    Kubescape controls that are failing, most-affected first, each with the workloads it lands
-    on. Control names and remediation are upstream Kubescape's own text, not ours. A count is
-    failing workloads, so one Deployment can appear under several controls.
-  </p>
-  <div class="tabs" id="tabs-ks" role="tablist"></div>
-  <div class="findings" id="controls"></div>
+  <!-- ===================== CONFIGURATION ===================== -->
+  <section class="page" id="page-config">
+    <h2>CIS benchmark</h2>
+    <p class="note" id="fwnote"></p>
+    <div id="fw"></div>
 
-  <h2>What to fix &mdash; policy</h2>
-  <p class="note" id="kyvnote"></p>
-  <div class="tabs" id="tabs-ky" role="tablist"></div>
-  <div class="findings" id="policies"></div>
+    <h2>What to fix &mdash; configuration</h2>
+    <p class="note">
+      Kubescape checks that are failing, most-affected first, each with the services it lands on.
+      Check names and remediation are upstream Kubescape&rsquo;s own text, not ours. A count is
+      failing findings, so one service can appear under several checks.
+    </p>
+    <p class="note" id="ksCoverage"></p>
+    <div class="tabs" id="tabs-ks" role="tablist"></div>
+    <div class="findings" id="controls"></div>
+  </section>
+
+  <!-- ===================== POLICIES ===================== -->
+  <section class="page" id="page-policies">
+    <h2>Kyverno policies</h2>
+    <p class="note" id="kyvnote"></p>
+    <div class="figs" id="kyfigs"></div>
+    <div class="tabs" id="tabs-ky" role="tablist"></div>
+    <div class="findings" id="policies"></div>
+  </section>
+
+  <!-- ===================== IMAGES ===================== -->
+  <section class="page" id="page-images">
+    <h2>Image vulnerabilities</h2>
+    <p class="note">
+      Known vulnerabilities in the software inside our container images, found by scanning each
+      image. These are overwhelmingly <strong>inherited from the public base images we build
+      on</strong> rather than written here, which is why they sit beside the compliance score
+      instead of inside it &mdash; they move with upstream disclosures rather than with our work.
+      The route to reducing them is rebuilding on newer or slimmer base images.
+    </p>
+    <div class="tabs" id="tabs-cve" role="tablist"></div>
+    <div id="cve"></div>
+  </section>
 
   <footer>
-    <p><strong>Audit, not enforcement.</strong> Kyverno reports these and admits the resource
-    anyway. Its webhooks are also fail-open, so if Kyverno is unavailable the API server
-    proceeds rather than blocking deployments.</p>
-    <p><strong>CVE counts are deliberately not graded.</strong> They are dominated by inherited
-    base-image CVEs rather than anything written here, so they sit beside posture instead of
-    being folded into one score. A grade that is permanently red stops being read.</p>
+    <p><strong>Audit, not enforcement.</strong> Kyverno reports violations and admits the resource
+    anyway. Its webhooks are also fail-open, so if Kyverno is unavailable the API server proceeds
+    rather than blocking deployments.</p>
+    <p><strong>The score is computed here, and so is its history.</strong> Nothing in the cluster
+    stores either. Kubescape&rsquo;s operator writes findings; the score its CLI shows is
+    calculated by the client, so the collector reimplements the upstream formula &mdash; a check
+    that passes scores 100, otherwise passed/all, and the section score is the plain mean across
+    checks, unweighted by severity. That plain mean is why a movement can be attributed exactly:
+    each check carries 1/N of the score, so the per-check changes sum to the total. Because the
+    storage API overwrites every summary in place on each scan, history exists only because each
+    run appends a point to a ConfigMap.</p>
+    <p><strong>Scored over what we can see.</strong> The CIS figure covers the workloads this
+    scan-only profile collects, so it will not match <code>kubescape scan</code> run from a
+    laptop, which also evaluates host- and cluster-level checks this deployment does not gather.
+    It is consistent with itself, which is what a trend needs.</p>
     <p><strong>Platform namespaces are counted separately.</strong> <code>kube-system</code>
     components legitimately need hostPath, hostNetwork and privileged mode, so their policy
     violations are not mixed in with work anyone is going to do.</p>
-    <p><strong>The score is computed here, and so is its history.</strong> Nothing in the
-    cluster stores either. Kubescape&rsquo;s operator writes findings; the score you see in its
-    CLI is calculated by the client, so the collector reimplements the upstream formula &mdash;
-    a control that passes scores 100, otherwise passed/all, and the cluster score is the plain
-    mean across controls, unweighted by severity. That plain mean is why a movement can be
-    attributed exactly: each control carries 1/N of the score, so the per-control changes sum
-    to the total. Because the storage API overwrites every summary in place on each scan,
-    history exists only because each run appends a point to a ConfigMap. The score is taken
-    over the workloads this scan-only profile collects, so it will not match
-    <code>kubescape scan</code> run from a laptop, which also evaluates host- and
-    cluster-level controls. It is consistent with itself, which is what a trend needs.</p>
-    <p><strong>Collection.</strong> Kyverno PolicyReports are ordinary cluster resources and
-    list cleanly. Kubescape summaries come from an aggregated API whose <code>LIST</code>
-    returns every figure as zero &mdash; only a <code>GET</code> of each object carries real
-    numbers, so the collector fetches them one at a time through a local API proxy.</p>
+    <p><strong>Collection.</strong> Kyverno PolicyReports are ordinary cluster resources and list
+    cleanly. Kubescape summaries come from an aggregated API whose <code>LIST</code> returns every
+    figure as zero &mdash; only a <code>GET</code> of each object carries real numbers, so the
+    collector fetches them one at a time.</p>
   </footer>
 </div>
 
@@ -373,14 +467,28 @@ for (const name of envNames) {
         + "score — the score weights every check equally no matter how many workloads it touched.",
       note: "Namespaces run by the platform (kube-system and friends) legitimately need privileges that would be "
         + "wrong in an application namespace." })],
-    ["Image CVEs (critical)", fmt(sum(ks.cve, "critical")), () => nsTableSheet({
-      env: name, title: "Critical vulnerabilities in container images", unit: "Critical CVEs", data: ks.cve,
-      pick: v => v.critical,
-      lead: "Known vulnerabilities in the software inside our container images — overwhelmingly inherited from "
-        + "the public base images we build on, not written here. <strong>They are deliberately kept out of the "
-        + "compliance score.</strong> They move with upstream disclosures rather than with anything we did, and a "
-        + "grade that is permanently red stops being read.",
-      note: "The route to reducing these is rebuilding on slimmer or newer base images, not fixing application code." })],
+    ["Image CVEs (critical)", fmt(((ks.cveDetail || {}).totalsUnique || (ks.cveDetail || {}).totals || {}).critical ?? sum(ks.cve, "critical")), () => {
+      const cd = ks.cveDetail || {};
+      return {
+        eyebrow: name, title: "Critical vulnerabilities in container images",
+        lead: "Known vulnerabilities in the software inside our container images \u2014 overwhelmingly inherited "
+          + "from the public base images we build on, not written here. <strong>They are deliberately kept out of "
+          + "the compliance score</strong>, because they move with upstream disclosures rather than with anything "
+          + "we did, and a grade that is permanently red stops being read.",
+        blocks: [
+          { heading: "Across this environment",
+            maths: [["Images scanned", fmt(cd.images || 0)], ["Containers affected", fmt(cd.workloads || 0)],
+                    ["Critical, once per image", fmt((cd.totalsUnique || {}).critical || 0)],
+                    ["High, once per image", fmt((cd.totalsUnique || {}).high || 0)],
+                    ["Critical, once per container", fmt((cd.totals || {}).critical || 0)]] },
+          { heading: "Worst images",
+            note: "Fix the image once and every service running it improves. The <strong>Image CVEs</strong> "
+              + "page has the full list, the services affected, and which package versions fix each CVE.",
+            table: { cols: ["Image", { label: "Critical", num: true }, { label: "Containers", num: true }],
+              rows: (cd.byImage || []).slice(0, 15).map(e => ({
+                cells: [e.image, fmt(e.critical), fmt(e.workloads)], onOpen: () => imageSheet(name, e) })) } },
+        ] };
+    }],
     ["Policy — workloads", kyOn ? fmt(workload) : "—", kyOn ? () => ({
       eyebrow: name, title: "Policy violations in application namespaces",
       lead: "Kyverno enforces Pod Security Standards in <strong>audit mode</strong>: it records what does not comply "
@@ -1092,9 +1200,249 @@ tabbed("tabs-ky", "policies", n => (DATA.clusters[n].kyverno || {}).policies, "k
   n => "Kyverno is deployed on " + n + " but has not produced reports yet — this is not a clean result.");
 
 const live = envNames.filter(n => ((DATA.clusters[n].kyverno || {}).policies || []).length);
-document.getElementById("kyvnote").textContent =
-  "Kyverno Pod Security Standards (baseline), running in Audit mode — every violation below was reported and the resource admitted anyway. Reporting in "
-  + live.length + " of " + envNames.length + " environments.";
+document.getElementById("kyvnote").innerHTML =
+  "Kyverno enforces the <strong>Pod Security Standards (baseline)</strong> in <strong>Audit mode</strong>: every "
+  + "violation below was recorded and the resource admitted anyway. Its webhooks are fail-open, so Kyverno being "
+  + "unavailable cannot stop a deployment. Reporting in " + live.length + " of " + envNames.length
+  + " environments. Click any policy for the services affected and how many resources satisfy it.";
+// ---------- page routing ----------
+//
+// Four pages in one file. The hash is a bare token because that is all an
+// artifact link carries back into the page, and each page is worth sending
+// to someone on its own.
+const PAGES = [
+  { id: "overview", label: "Overview" },
+  { id: "config", label: "Configuration" },
+  { id: "policies", label: "Policies" },
+  { id: "images", label: "Image CVEs" },
+];
+
+function showPage(id) {
+  if (!PAGES.some(p => p.id === id)) id = "overview";
+  for (const p of PAGES) {
+    const sec = document.getElementById("page-" + p.id);
+    if (sec) sec.hidden = p.id !== id;
+    const a = document.getElementById("nav-" + p.id);
+    if (a) { if (p.id === id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
+  }
+  closeSheet();
+}
+
+(function buildNav() {
+  const host = document.getElementById("nav");
+  const counts = {
+    config: envNames.reduce((a, n) => a + (((KS(n).framework || {}).controls || []).filter(c => c.score < 100).length), 0),
+    policies: envNames.reduce((a, n) => a + (((DATA.clusters[n].kyverno || {}).policies || []).filter(p => p.count).length), 0),
+    images: envNames.reduce((a, n) => a + (((KS(n).cveDetail || {}).totalsUnique || (KS(n).cveDetail || {}).totals || {}).critical || 0), 0),
+  };
+  for (const p of PAGES) {
+    const a = el("a", null);
+    a.id = "nav-" + p.id;
+    a.href = "#" + p.id;
+    a.appendChild(el("span", null, p.label));
+    if (counts[p.id]) a.appendChild(el("span", "n", fmt(counts[p.id])));
+    a.addEventListener("click", ev => { ev.preventDefault(); location.hash = p.id; showPage(p.id); });
+    host.appendChild(a);
+  }
+})();
+
+window.addEventListener("hashchange", () => showPage((location.hash || "").replace(/^#/, "")));
+
+// ---------- images page ----------
+function cveSeverityCell(r) { return [fmt(r.critical), fmt(r.high), fmt(r.medium), fmt(r.low)]; }
+
+function imageSheet(env, e) {
+  const cd = KS(env).cveDetail || {};
+  const top = (cd.topCves || {})[e.image];
+  const users = (cd.byWorkload || []).filter(w => w.image === e.image);
+  const blocks = [
+    { heading: "What is in this image",
+      maths: [
+        ["Critical", fmt(e.critical)], ["High", fmt(e.high)],
+        ["Medium", fmt(e.medium)], ["Low", fmt(e.low)],
+        { label: "Running in", value: e.workloads + " container" + (e.workloads === 1 ? "" : "s")
+          + " across " + e.namespaces + " namespace" + (e.namespaces === 1 ? "" : "s"), total: true },
+      ],
+      note: "Counts are per image, not per copy: the same image running in ten places has these "
+        + "vulnerabilities once, and fixing the image fixes all ten." },
+  ];
+  if (users.length) blocks.push({
+    heading: "Services running it",
+    table: { cols: ["Namespace", "Kind", "Service", "Container"],
+      rows: users.map(w => [w.ns, w.kind, w.name, w.container]) } });
+  if (top) {
+    blocks.push({
+      heading: "Vulnerabilities with a fix available",
+      note: "<strong>" + fmt(top.fixable) + " of " + fmt(top.total) + "</strong> have an upstream "
+        + "fix. The rest have no patch published yet, so they are not work anyone can do today "
+        + "&mdash; which is why they are separated rather than added together."
+        + (top.rows.length < top.total ? " Showing the first " + top.rows.length + ", worst first." : ""),
+      table: { cols: ["CVE", "Severity", "Package", "Installed", "Fixed in"],
+        rows: top.rows.map(r => [r.id, r.severity, r.pkg, r.version, r.fixedIn || "no fix yet"]) } });
+  } else {
+    blocks.push({ heading: "Vulnerability list",
+      text: "Only the worst few images have their full CVE list collected &mdash; the per-image "
+        + "manifests are large enough that pulling all of them would move hundreds of megabytes "
+        + "each run. The counts above are complete; the itemised list for this image is not "
+        + "collected." });
+  }
+  return { eyebrow: env, title: e.image, lead: null, blocks };
+}
+
+function workloadCveSheet(env, w) {
+  const cd = KS(env).cveDetail || {};
+  const img = (cd.byImage || []).find(e => e.image === w.image);
+  return {
+    eyebrow: env + " · " + w.ns,
+    title: w.name + " / " + w.container,
+    lead: "This container runs <code>" + clean(w.image) + "</code>. Its vulnerabilities are "
+      + "<strong>properties of that image</strong>, not of this service's own code, so the fix is "
+      + "to rebuild or re-tag the image rather than to change anything in this workload.",
+    blocks: [
+      { heading: "Counts", maths: [["Critical", fmt(w.critical)], ["High", fmt(w.high)],
+                                   ["Medium", fmt(w.medium)], ["Low", fmt(w.low)]] },
+      img ? { heading: "The image", note: "Open the image for its CVE list and everything else running it.",
+              table: { cols: ["Image", { label: "Used by", num: true }],
+                rows: [{ cells: [img.image, img.workloads + " containers"], onOpen: () => imageSheet(env, img) }] } } : null,
+    ],
+  };
+}
+
+function renderCve(env) {
+  const host = document.getElementById("cve");
+  host.textContent = "";
+  const cd = KS(env).cveDetail;
+  if (!cd || cd.available === false) {
+    host.appendChild(el("p", "note", "No vulnerability data collected for " + env + " yet — this is not a clean result."));
+    return;
+  }
+  const t = cd.totalsUnique || cd.totals || {};
+  const tRun = cd.totals || {};
+  const figs = el("div", "figs");
+  const mk = (lbl, v, cls, build) => {
+    const d = el("div", "fig");
+    d.appendChild(el("div", "lbl", lbl));
+    const n = el("div", "v" + (cls ? " " + cls : ""), v);
+    if (build) explain(n, build);
+    d.appendChild(n); return d;
+  };
+  const critSheet = () => ({
+    eyebrow: env, title: "Critical vulnerabilities",
+    lead: "There are two honest ways to count these and they differ a lot, so both are here.",
+    blocks: [
+      { heading: "Two counts",
+        maths: [
+          ["Distinct images affected", fmt(cd.images || 0)],
+          ["Critical, counted once per image", fmt((cd.totalsUnique || {}).critical || 0)],
+          ["Running containers affected", fmt(cd.workloads || 0)],
+          { label: "Critical, counted once per container", value: fmt((cd.totals || {}).critical || 0), total: true },
+        ],
+        note: "The page leads with the <strong>per-image</strong> figure because that is the "
+          + "amount of <em>work</em>: one image to rebuild, however many places run it. The "
+          + "per-container figure is <em>exposure</em> \u2014 how many running things carry the "
+          + "vulnerability. Twelve containers on one image multiply the second and not the first." },
+      { heading: "Worst images", table: { cols: ["Image", { label: "Critical", num: true }, { label: "Containers", num: true }],
+        rows: (cd.byImage || []).slice(0, 30).map(e => ({ cells: [e.image, fmt(e.critical), fmt(e.workloads)],
+          onOpen: () => imageSheet(env, e) })) } },
+    ] });
+  figs.appendChild(mk("Critical", fmt(t.critical), "sev-c", critSheet));
+  figs.appendChild(mk("High", fmt(t.high), "sev-h", critSheet));
+  figs.appendChild(mk("Images scanned", fmt(cd.images)));
+  figs.appendChild(mk("Containers affected", fmt(cd.workloads)));
+  host.appendChild(figs);
+  const unit = el("p", "note");
+  unit.innerHTML = "Critical and High are counted <strong>once per image</strong> \u2014 the number of "
+    + "rebuilds, not the number of running copies. Counted per running container instead they are "
+    + fmt(tRun.critical || 0) + " and " + fmt(tRun.high || 0) + ", because one image used by several "
+    + "services carries the same vulnerabilities into each. Open a figure for both.";
+  host.appendChild(unit);
+
+  const section = (title, note) => { host.appendChild(el("h2", null, title));
+    if (note) { const p = el("p", "note"); p.innerHTML = note; host.appendChild(p); } };
+
+  section("Worst images", "Fix the image once and every service running it improves. Click any row for "
+    + "its CVE list, which packages are affected, and which versions fix them."
+    + ((cd.byImage || []).length >= 100 ? " Showing the worst 100 of " + fmt(cd.images) + "." : ""));
+  const box1 = el("div", "tablebox");
+  const t1 = document.createElement("table"); t1.className = "dt";
+  const h1 = document.createElement("tr");
+  for (const c of ["Image", "Critical", "High", "Medium", "Low", "Containers", "Namespaces"]) {
+    const th = el("th", ["Image"].includes(c) ? null : "num", c); h1.appendChild(th);
+  }
+  t1.appendChild(h1);
+  for (const e of cd.byImage || []) {
+    const tr = document.createElement("tr");
+    tr.appendChild(el("td", "mono", e.image));
+    tr.appendChild(el("td", "num sev-c", fmt(e.critical)));
+    tr.appendChild(el("td", "num sev-h", fmt(e.high)));
+    tr.appendChild(el("td", "num", fmt(e.medium)));
+    tr.appendChild(el("td", "num", fmt(e.low)));
+    tr.appendChild(el("td", "num", fmt(e.workloads)));
+    tr.appendChild(el("td", "num", fmt(e.namespaces)));
+    explain(tr, () => imageSheet(env, e));
+    t1.appendChild(tr);
+  }
+  box1.appendChild(t1); host.appendChild(box1);
+
+  section("Most affected services", "The same vulnerabilities, arranged by what is running them, so an "
+    + "owner can find their own service. Namespace, kind, service, container and the image each one runs."
+    + ((cd.byWorkload || []).length >= 150 ? " Showing the worst 150 of " + fmt(cd.workloads) + "." : ""));
+  const box2 = el("div", "tablebox");
+  const t2 = document.createElement("table"); t2.className = "dt";
+  const h2 = document.createElement("tr");
+  for (const c of ["Namespace", "Kind", "Service", "Container", "Image", "Critical", "High"]) {
+    h2.appendChild(el("th", ["Critical", "High"].includes(c) ? "num" : null, c));
+  }
+  t2.appendChild(h2);
+  for (const w of cd.byWorkload || []) {
+    const tr = document.createElement("tr");
+    tr.appendChild(el("td", null, w.ns));
+    tr.appendChild(el("td", "dim", w.kind));
+    tr.appendChild(el("td", null, w.name));
+    tr.appendChild(el("td", "dim", w.container));
+    tr.appendChild(el("td", "mono dim", w.image));
+    tr.appendChild(el("td", "num sev-c", fmt(w.critical)));
+    tr.appendChild(el("td", "num sev-h", fmt(w.high)));
+    explain(tr, () => workloadCveSheet(env, w));
+    t2.appendChild(tr);
+  }
+  box2.appendChild(t2); host.appendChild(box2);
+}
+
+(function cveTabs() {
+  const tabs = document.getElementById("tabs-cve");
+  let active = envNames.find(n => (KS(n).cveDetail || {}).images) || envNames[0];
+  function draw() {
+    for (const b of tabs.children) b.setAttribute("aria-selected", String(b.dataset.env === active));
+    renderCve(active);
+  }
+  for (const n of envNames) {
+    const b = el("button", "tab", n);
+    b.dataset.env = n; b.type = "button"; b.setAttribute("role", "tab");
+    b.onclick = () => { active = n; draw(); };
+    tabs.appendChild(b);
+  }
+  draw();
+})();
+
+// ---------- policy summary figures ----------
+(function kyFigs() {
+  const host = document.getElementById("kyfigs");
+  for (const n of envNames) {
+    const ky = DATA.clusters[n].kyverno || {}, tot = ky.totals || {};
+    const d = el("div", "fig");
+    d.appendChild(el("div", "lbl", n));
+    d.appendChild(el("div", "v", fmt(tot.fail || 0)));
+    const sub = el("div", "lbl", (tot.policies || 0) + " policies, " + (tot.satisfied || 0) + " fully satisfied");
+    sub.style.textTransform = "none"; sub.style.letterSpacing = "0";
+    sub.style.color = "var(--fg-faint)"; sub.style.fontWeight = "400"; sub.style.marginTop = "3px";
+    d.appendChild(sub);
+    host.appendChild(d);
+  }
+})();
+
+showPage((location.hash || "").replace(/^#/, "") || "overview");
+
 </script>
 
 </body>
