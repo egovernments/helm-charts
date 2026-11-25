@@ -1,4 +1,16 @@
 releases:
+  - date: "2026-11-25"
+    ref: "PR-171"
+    title: "core: pin workflow and notify to master-b66f90b"
+    author: "shivam-eGov"
+    release_type: "patch"
+    charts:
+      - name: "notify"
+        from: "3.1.4"
+        to: "3.1.5"
+      - name: "workflow"
+        from: "3.1.4"
+        to: "3.1.5"
   - date: "2026-11-24"
     ref: "PR-162"
     title: "feat(core): package DIGIT v3.0.3-beta build (appVersion v3.0.3-beta-1976d84)"
