@@ -44,26 +44,86 @@ nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start?rd=$escaped_
 That is the only thing between this page and anyone who can reach the
 ingress. Setting `auth.enabled: false` is a deliberate act, not a convenience.
 
-## Including other clusters
+## One cluster or several: the same chart
 
-The collector reads its own cluster through its ServiceAccount. For others,
-give it a read-only token per cluster:
+`collector.remoteClusters` is the only difference between the two deployments.
+
+**Left empty (the default), the dashboard covers the cluster it runs in.** That
+is the single-environment deployment — a production team installs this chart,
+sets `ingress.host` and `collector.localClusterName`, and gets a dashboard for
+their own cluster with no reference to any other. Nothing to switch off, no
+separate chart, no second image. Verified: with `remoteClusters: []` the page
+renders one environment and every drill-down works.
+
+**Listing other clusters rolls them into one page.** Each entry needs:
 
 ```yaml
-dashboard:
-  collector:
-    remoteClusters:
-      - name: unified-qa
-        server: https://unified-qa-xxxx.hcp.centralindia.azmk8s.io:443
-        tokenSecret: dashboard-collector-unified-qa   # Secret with key: token
+collector:
+  remoteClusters:
+    - name: unified-qa
+      server: https://unified-qa-xxxx.hcp.centralindia.azmk8s.io:443
+      tokenSecret: dashboard-collector-unified-qa
 ```
 
-Create that token on the remote cluster from a ServiceAccount bound to the
-same read-only ClusterRole this chart installs -- `get` and `list` on four
-Kubescape resources and PolicyReports, nothing else. Never an admin kubeconfig.
+A cluster that is listed but cannot be read is reported as **unreachable**,
+never rendered as clean. An environment with no data must not look like an
+environment with no problems.
 
-A cluster whose token is missing or unusable is recorded as **unreachable**
-and rendered as such. It is never shown as an environment with no findings.
+### The token Secret
+
+The Secret needs a `token` **and** a `ca.crt`. That is exactly what a Secret of
+type `kubernetes.io/service-account-token` contains, so the simplest correct
+thing is to copy one whole.
+
+The read-only ServiceAccount already exists on any cluster running this chart
+(`security-dashboard` in the release namespace), with `get` and `list` on the
+Kubescape aggregated API and on PolicyReports, and nothing else. **Never use an
+admin credential here.**
+
+On the remote cluster, mint a long-lived token for it:
+
+```sh
+kubectl -n kubescape create -f - <<'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: security-dashboard-token
+  namespace: kubescape
+  annotations:
+    kubernetes.io/service-account.name: security-dashboard
+type: kubernetes.io/service-account-token
+EOF
+```
+
+Then copy `token` and `ca.crt` out of it into a Secret of the configured
+`tokenSecret` name on the cluster running the collector. Put it through the
+same secrets path as everything else in that environment (SOPS, Azure Key
+Vault) — it is a cluster-wide read credential and belongs nowhere near git in
+plaintext.
+
+`kubectl create token security-dashboard -n kubescape --duration=...` issues a
+**bounded** token instead, which is better practice but has to be re-issued
+before it expires. A Secret-backed token does not expire, so if you use one,
+decide who rotates it and when.
+
+### Why the CA is not optional
+
+The connection crosses the public internet carrying a cluster-wide read token.
+An AKS API server presents a certificate signed by its own cluster CA, not a
+public one, so the system trust store cannot validate it and the CA has to
+travel with the token.
+
+A remote with no `ca.crt` is **marked unreachable and skipped**, with the
+reason logged — the collector will not send a token to an endpoint it cannot
+verify. `insecureSkipTlsVerify: true` on an entry overrides this and exists
+only for throwaway testing.
+
+### Networking
+
+Nothing special is needed if the API servers are reachable from the collector's
+cluster. On AKS with no authorized-IP-range restriction they are. If a cluster
+restricts its API server by IP, the collector cluster's egress address has to
+be allowed, or that cluster has to run its own dashboard instead.
 
 ## Populating it immediately
 

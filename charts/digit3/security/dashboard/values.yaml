@@ -39,12 +39,23 @@ collector:
 
   # Other clusters to include, beyond the one this runs in.
   #
-  # Each needs `name`, `server`, and `tokenSecret` naming a Secret with a
-  # `token` key -- a token for the read-only dashboard-collector
-  # ServiceAccount on THAT cluster, never an admin credential.
+  # Each needs `name`, `server`, and `tokenSecret`. The Secret must carry both
+  # a `token` and a `ca.crt` key -- which is exactly what a Secret of type
+  # kubernetes.io/service-account-token contains, so copy the whole thing. The
+  # token must be for the read-only `security-dashboard` ServiceAccount on THAT
+  # cluster, never an admin credential.
   #
-  # Left empty, the dashboard shows only the local cluster, and says so rather
-  # than rendering the others as clean.
+  # The CA is not optional. The connection crosses the public internet carrying
+  # a cluster-wide read token, and an AKS API server presents a certificate
+  # signed by its own CA rather than a public one, so the system trust store
+  # cannot validate it. A remote with no ca.crt is marked unreachable rather
+  # than trusted blindly; `insecureSkipTlsVerify: true` overrides that and
+  # should not be used outside a throwaway test.
+  #
+  # LEFT EMPTY -- THE DEFAULT -- THE DASHBOARD COVERS ONLY ITS OWN CLUSTER.
+  # That is the single-environment deployment: same chart, same image, nothing
+  # to switch off. A cluster that is listed but unreadable is reported as
+  # unreachable, never rendered as clean.
   remoteClusters: []
   # - name: unified-qa
   #   server: https://unified-qa-xxxx.hcp.centralindia.azmk8s.io:443

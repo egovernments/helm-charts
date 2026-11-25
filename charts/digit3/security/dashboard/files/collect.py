@@ -519,7 +519,32 @@ def clusters():
             log(f"  WARNING: no token for {name} at {path} ({e}); it will be marked unreachable")
             out.append((name, None))
             continue
-        out.append((name, Client(server, rtok, insecure=True)))
+        # VERIFY THE REMOTE API SERVER'S CERTIFICATE.
+        #
+        # This connection crosses the public internet carrying a bearer token
+        # for a read-only-but-cluster-wide ServiceAccount. Skipping
+        # verification would hand that token to anything that can answer for
+        # the hostname. An AKS API server presents a certificate signed by the
+        # cluster's OWN CA, not a public one, so the system trust store cannot
+        # validate it -- the CA has to come with the token.
+        #
+        # A Secret of type kubernetes.io/service-account-token carries exactly
+        # what is needed: `token`, `ca.crt` and `namespace`. Mount the whole
+        # Secret and both files are there.
+        ca = f"/remote/{name}/ca.crt"
+        if not os.path.exists(ca):
+            if not spec.get("insecureSkipTlsVerify"):
+                log(f"  ERROR: no CA at {ca} for {name}. Mount the ServiceAccount token Secret "
+                    f"(it contains ca.crt), or set insecureSkipTlsVerify on this entry to accept "
+                    f"an unverified connection. Marking {name} unreachable rather than sending its "
+                    f"token to an unverified endpoint.")
+                out.append((name, None))
+                continue
+            log(f"  WARNING: {name} is configured with insecureSkipTlsVerify; its token is being "
+                f"sent over an unverified TLS connection.")
+            out.append((name, Client(server, rtok, insecure=True)))
+            continue
+        out.append((name, Client(server, rtok, cafile=ca)))
     return out
 
 
@@ -688,7 +713,8 @@ def main():
         if first is None and c is not None:
             first = c
         if c is None:
-            data["clusters"][name] = {"reachable": False, "error": "no credentials mounted"}
+            data["clusters"][name] = {"reachable": False,
+                                      "error": "no usable credentials mounted (see collector logs)"}
             continue
         t = time.time()
         log(f"collecting {name} ...")
