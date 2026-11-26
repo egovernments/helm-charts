@@ -238,6 +238,14 @@
   .f-sev.high { color: var(--high); background: color-mix(in srgb, var(--high) 12%, transparent); }
   .f-sev.medium { color: var(--med); background: color-mix(in srgb, var(--med) 14%, transparent); }
   .f-sev.low { color: var(--low); background: color-mix(in srgb, var(--low) 14%, transparent); }
+  /* A policy's state is a word, never a bare zero. "0 workloads" is true of a
+     policy that is satisfied, of one that matched nothing, and of one Kyverno
+     never managed to run -- and only the first of those is good news. */
+  .f-state { font-size: 0.63rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+  .f-state.st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .f-state.st-warn { color: var(--med); background: color-mix(in srgb, var(--med) 14%, transparent); }
+  .f-state.st-bad { color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, transparent); }
+  .f.muted { opacity: 0.86; }
   .f-count { margin-left: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--fg-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .f-desc { font-size: 0.85rem; color: var(--fg-dim); margin: 0 0 9px; max-width: 78ch; }
   .f-fix {
@@ -821,23 +829,80 @@ function nsTableSheet(opts) {
              opts.note ? { text: opts.note } : null] };
 }
 
+function policyLead(pol) {
+  // Only claim a mode that was actually read off the policy object. When the
+  // policy list could not be read, the findings are still true but the mode
+  // is not known, and guessing "audit" is the kind of reassurance this page
+  // is built to refuse.
+  const mode = pol.enforced === true
+    ? "It is <strong>enforcing</strong>: a resource that does not comply is rejected."
+    : pol.enforced === false
+      ? "It is in <strong>audit</strong> mode, so it records what does not comply and admits the resource anyway \u2014 nothing is blocked."
+      : "Whether it rejects or only reports could not be read on this cluster.";
+  switch (pol.state) {
+    case "not-ready":
+      return "<strong>This policy is installed, but Kyverno is not running it.</strong> It has produced no results, "
+        + "which is why its numbers are zero \u2014 nothing here has been checked against it."
+        + (pol.readyReason ? "<br><br><strong>Kyverno says.</strong> " + clean(pol.readyReason) : "");
+    case "error":
+      return "<strong>This policy is failing at runtime.</strong> It compiled, but errored against "
+        + fmt(pol.errors) + " resource" + (pol.errors === 1 ? "" : "s") + ", which produced no verdict at all. "
+        + "Its pass and fail counts are incomplete by that much."
+        + (pol.errorMessage ? "<br><br><strong>The error.</strong> " + clean(pol.errorMessage) : "");
+    case "no-data":
+      return "<strong>This policy is installed and has evaluated nothing.</strong> "
+        + (pol.scansExisting === false
+            ? "It only sees resources as they are created or changed, so it says nothing about what is already "
+              + "running. Its zero is not a clean result \u2014 it is the absence of one."
+            : "Either nothing on this cluster matches what it looks at, or it has not been scanned yet. "
+              + "Its zero is not a clean result.")
+        + "<br><br>" + mode;
+    case "clean":
+      return "<strong>Every resource it checked satisfies it.</strong> " + mode
+        + (pol.scansExisting === false
+            ? "<br><br><strong>Scope.</strong> It only sees resources as they are created or changed, so this covers "
+              + "what has been deployed since it went in, not everything running."
+            : "");
+    default:
+      return "<strong>This policy is deployed and running.</strong> " + mode
+        + (pol.scansExisting === false
+            ? "<br><br><strong>Scope.</strong> It only sees resources as they are created or changed, so it reports "
+              + "nothing about workloads deployed before it went in."
+            : "")
+        + (pol.message ? "<br><br><strong>What it reports.</strong> " + clean(pol.message) : "");
+  }
+}
+
 function policySheet(name, pol) {
+  const measured = pol.evaluated > 0;
   return {
-    eyebrow: name + " · Kyverno",
-    title: clean(pol.id),
-    lead: "<strong>This policy is deployed and running.</strong> It is in audit mode, so it records what does not "
-      + "comply and admits the resource anyway — nothing is blocked."
-      + (pol.message ? "<br><br><strong>What it reports.</strong> " + clean(pol.message) : ""),
+    eyebrow: name + " \u00b7 Kyverno" + (pol.kind ? " \u00b7 " + pol.kind : ""),
+    title: clean(pol.name || pol.id),
+    lead: policyLead(pol),
     blocks: [
       { heading: "How it is doing",
         maths: [
           ["Resources satisfying it", fmt(pol.passed || 0)],
           ["Resources not satisfying it", fmt(pol.count)],
-          ["Resources evaluated", fmt(pol.evaluated || pol.count)],
+          pol.errors ? ["Resources it errored on", fmt(pol.errors)] : null,
+          ["Resources evaluated", fmt(pol.evaluated || 0)],
           ["Namespaces affected", fmt(pol.namespaceCount ?? 0)],
+          // Never a percentage of nothing. 0 of 0 is not "0% satisfied", and
+          // printing it as one is the exact mistake this page exists to avoid.
           { label: "Share satisfying it",
-            value: (pol.evaluated ? (pol.passed / pol.evaluated * 100).toFixed(1) : "0.0") + "%", total: true },
-        ] },
+            value: measured ? (pol.passed / pol.evaluated * 100).toFixed(1) + "%" : "not measured",
+            total: true },
+        ].filter(Boolean) },
+      { heading: "What this policy is",
+        maths: [
+          ["Kind", pol.kind || "unknown"],
+          ["Mode", pol.enforced === true ? "Enforce \u2014 rejects"
+            : pol.enforced === false ? "Audit \u2014 reports only" : "not read"],
+          ["Covers", pol.scansExisting === false ? "new and changed resources only"
+            : pol.scansExisting === true ? "everything running" : "not read"],
+          ["Installed", pol.installed === false ? "no \u2014 reported but not found" : (pol.installed ? "yes" : "unknown")],
+          pol.category ? ["Category", pol.category] : null,
+        ].filter(Boolean) },
       (pol.workloads || []).length ? { heading: "Resources not satisfying it"
         + ((pol.workloads || []).length < pol.count ? " (first " + pol.workloads.length + " of " + fmt(pol.count) + ")" : ""),
         resources: pol.workloads } : null,
@@ -1178,14 +1243,41 @@ if (!allGaps.length) {
 }
 
 // ---------- finding renderer ----------
+// What each policy state means on the page. The word matters more than the
+// number beside it: a policy showing zero failures may be satisfied, may have
+// matched nothing at all, or may never have run. Those are not the same
+// result and the page must not let them look like one.
+const POLICY_STATE = {
+  failing:     { word: "not satisfied", cls: "st-bad" },
+  error:       { word: "erroring", cls: "st-bad" },
+  "not-ready": { word: "not running", cls: "st-bad" },
+  "no-data":   { word: "nothing evaluated", cls: "st-warn" },
+  clean:       { word: "satisfied", cls: "st-ok" },
+  unknown:     { word: "state unknown", cls: "st-warn" },
+};
+
+function policyCount(f) {
+  switch (f.state) {
+    case "failing": return fmt(f.count) + (f.count === 1 ? " resource" : " resources") + " \u00b7 " + (f.namespaceCount ?? 0) + " ns";
+    case "error": return fmt(f.errors) + (f.errors === 1 ? " error" : " errors");
+    case "not-ready": return "no results";
+    case "no-data": return "0 of 0 evaluated";
+    case "clean": return fmt(f.passed) + " satisfying";
+    default: return fmt(f.count) + " resources";
+  }
+}
+
 function card(f, kind, env) {
   const sev = (f.severity || "?").toLowerCase();
-  const d = el("div", "f " + sev);
+  const st = kind === "ky" ? (POLICY_STATE[f.state] || POLICY_STATE.unknown) : null;
+  const d = el("div", "f " + sev + (st && f.state !== "failing" && f.state !== "error" ? " muted" : ""));
   const h = el("div", "f-head");
   if (f.id && kind === "ks") h.appendChild(el("span", "f-id", f.id));
   h.appendChild(el("span", "f-title", f.name || f.id));
-  h.appendChild(el("span", "f-sev " + sev, sev));
-  h.appendChild(el("span", "f-count", fmt(f.count) + (f.count === 1 ? " workload" : " workloads") + " \u00b7 " + (f.namespaceCount ?? f.namespaces) + " ns"));
+  if (sev && sev !== "?" && sev !== "") h.appendChild(el("span", "f-sev " + sev, sev));
+  if (st) h.appendChild(el("span", "f-state " + st.cls, st.word));
+  h.appendChild(el("span", "f-count", kind === "ky" ? policyCount(f)
+    : fmt(f.count) + (f.count === 1 ? " workload" : " workloads") + " \u00b7 " + (f.namespaceCount ?? f.namespaces) + " ns"));
   // The whole card opens: a finding card is itself a number ("47 workloads")
   // and the same rule applies to it as to every other number here.
   explain(h, () => kind === "ky" ? policySheet(env, f) : controlSheet(env, f.id));
@@ -1233,14 +1325,44 @@ tabbed("tabs-ks", "controls", n => (DATA.clusters[n].kubescape || {}).controls, 
   n => "No configuration findings collected for " + n + " yet.");
 
 tabbed("tabs-ky", "policies", n => (DATA.clusters[n].kyverno || {}).policies, "ky",
-  n => "Kyverno is deployed on " + n + " but has not produced reports yet — this is not a clean result.");
+  n => "No Kyverno policy could be read on " + n + " \u2014 neither the policies nor their reports. "
+     + "This is missing data, not a clean result.");
 
-const live = envNames.filter(n => ((DATA.clusters[n].kyverno || {}).policies || []).length);
-document.getElementById("kyvnote").innerHTML =
-  "Kyverno enforces the <strong>Pod Security Standards (baseline)</strong> in <strong>Audit mode</strong>: every "
-  + "violation below was recorded and the resource admitted anyway. Its webhooks are fail-open, so Kyverno being "
-  + "unavailable cannot stop a deployment. Reporting in " + live.length + " of " + envNames.length
-  + " environments. Click any policy for the services affected and how many resources satisfy it.";
+// Every installed policy is listed, satisfied or not, so this note counts
+// policies rather than failures. A reader has to be able to see at a glance
+// that some are not running at all -- that is the state that otherwise hides,
+// because a policy Kyverno never ran looks identical to one with nothing to
+// report.
+(function policyNote() {
+  const t = n => ((DATA.clusters[n].kyverno || {}).totals || {});
+  const sum = k => envNames.reduce((a, n) => a + (t(n)[k] || 0), 0);
+  const read = envNames.filter(n => (DATA.clusters[n].kyverno || {}).inventoryAvailable);
+  const parts = [];
+  if (sum("failing")) parts.push("<strong>" + fmt(sum("failing")) + " not satisfied</strong>");
+  if (sum("errored")) parts.push("<strong>" + fmt(sum("errored")) + " erroring</strong>");
+  if (sum("notReady")) parts.push("<strong>" + fmt(sum("notReady")) + " installed but not running</strong>");
+  if (sum("noData")) parts.push(fmt(sum("noData")) + " evaluating nothing");
+  if (sum("satisfied")) parts.push(fmt(sum("satisfied")) + " satisfied");
+  const enforced = sum("enforced");
+  document.getElementById("kyvnote").innerHTML =
+    "Every Kyverno policy installed on these clusters is listed here, whether or not it has found anything \u2014 "
+    + "a policy that is present but never ran reports zero exactly like one with nothing to report, so each row "
+    + "carries its state in words. "
+    + (parts.length ? "Across " + envNames.length + " environment" + (envNames.length === 1 ? "" : "s") + ": "
+        + parts.join(", ") + ". " : "")
+    + (enforced
+        ? "<strong>" + fmt(enforced) + "</strong> " + (enforced === 1 ? "policy rejects" : "policies reject")
+          + " non-compliant resources; the rest only report."
+        : "All of them are in <strong>audit</strong> mode: every violation below was recorded and the resource "
+          + "admitted anyway, and Kyverno's webhooks are fail-open, so Kyverno being unavailable cannot stop a "
+          + "deployment.")
+    + (read.length < envNames.length
+        ? " <strong>The policy list could not be read on " + fmt(envNames.length - read.length)
+          + " of " + envNames.length + " environments</strong>, so only policies that produced a report are shown there."
+        : "")
+    + " Click any policy for what it is, how it is doing and the resources affected.";
+})();
+
 // ---------- page routing ----------
 //
 // Four pages in one file. The hash is a bare token because that is all an
@@ -1268,7 +1390,8 @@ function showPage(id) {
   const host = document.getElementById("nav");
   const counts = {
     config: envNames.reduce((a, n) => a + (((KS(n).framework || {}).controls || []).filter(c => c.score < 100).length), 0),
-    policies: envNames.reduce((a, n) => a + (((DATA.clusters[n].kyverno || {}).policies || []).filter(p => p.count).length), 0),
+    policies: envNames.reduce((a, n) => a + (((DATA.clusters[n].kyverno || {}).policies || [])
+      .filter(p => p.state === "failing" || p.state === "error" || p.state === "not-ready").length), 0),
     images: envNames.reduce((a, n) => a + (((KS(n).cveDetail || {}).totalsUnique || (KS(n).cveDetail || {}).totals || {}).critical || 0), 0),
   };
   for (const p of PAGES) {

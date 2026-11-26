@@ -47,6 +47,21 @@ import concurrent.futures as cf
 SA = "/var/run/secrets/kubernetes.io/serviceaccount"
 API = "/apis/spdx.softwarecomposition.kubescape.io/v1beta1"
 KYV = "/apis/wgpolicyk8s.io/v1alpha2"
+
+# Every Kyverno policy kind that can put a result in a PolicyReport. Mutating,
+# generating and deleting policies never appear in one, so they are not listed
+# here: showing them beside findings would imply they are being measured.
+#
+# These are ordinary CRs in etcd, so unlike the Kubescape summaries a LIST
+# returns them fully populated.
+POLICY_KINDS = [
+    ("/apis/policies.kyverno.io/v1", "validatingpolicies", "ValidatingPolicy"),
+    ("/apis/policies.kyverno.io/v1", "namespacedvalidatingpolicies", "NamespacedValidatingPolicy"),
+    ("/apis/policies.kyverno.io/v1", "imagevalidatingpolicies", "ImageValidatingPolicy"),
+    ("/apis/policies.kyverno.io/v1", "namespacedimagevalidatingpolicies", "NamespacedImageValidatingPolicy"),
+    ("/apis/kyverno.io/v1", "clusterpolicies", "ClusterPolicy"),
+    ("/apis/kyverno.io/v1", "policies", "Policy"),
+]
 REGO = "https://github.com/kubescape/regolibrary/releases/latest/download"
 CONTROLS_URL = f"{REGO}/controls"
 
@@ -669,29 +684,137 @@ def cve_detail(c):
     return out
 
 
+def policy_ready(status):
+    """(ready, reason) for a Kyverno policy, or (None, "") when it says nothing.
+
+    Two shapes. The CEL policy types carry it under `conditionStatus`; the
+    legacy kyverno.io types put `ready` at the top of status. A policy that
+    reports neither is left as None rather than guessed at -- an unknown state
+    must not be rendered as a failed one any more than as a healthy one.
+    """
+    st = status or {}
+    cs = st.get("conditionStatus")
+    block = cs if isinstance(cs, dict) else st
+    conds = block.get("conditions") or []
+    bad = [c for c in conds if str(c.get("status")) != "True"]
+    reason = "; ".join(f"{c.get('type')}: {c.get('message') or c.get('reason') or ''}".strip()
+                       for c in bad)[:300]
+    if "ready" in block:
+        return bool(block["ready"]), reason
+    if conds:
+        return not bad, reason
+    return None, ""
+
+
+def policy_inventory(c):
+    """Every policy installed on the cluster, whether or not it has findings.
+
+    The reports alone cannot answer "is this policy there?". A policy that
+    matches nothing, or that Kyverno refused to compile, produces no result at
+    all -- and a dashboard built only from results would show it as absent, or
+    worse, silently as clean. So the policies are enumerated from the API and
+    the findings merged onto them, not the other way round.
+    """
+    out, kinds = {}, []
+    for base, plural, kind in POLICY_KINDS:
+        d = c.try_get(f"{base}/{plural}")
+        if d is None:
+            continue              # kind not installed on this cluster
+        kinds.append(kind)
+        for it in d.get("items", []):
+            m, spec = it.get("metadata") or {}, it.get("spec") or {}
+            ann = m.get("annotations") or {}
+            ready, reason = policy_ready(it.get("status"))
+            actions = spec.get("validationActions")
+            if actions is None and spec.get("validationFailureAction"):
+                actions = [spec["validationFailureAction"]]
+            bg = ((spec.get("evaluation") or {}).get("background") or {}).get("enabled")
+            if bg is None:
+                bg = spec.get("background")
+            # A namespaced policy of the same name in two namespaces collapses
+            # to one row, because a report result names only the policy. The
+            # namespaces are kept so the row can still say where it lives.
+            row = out.setdefault(m.get("name", "?"), {
+                "kind": kind, "ready": ready, "readyReason": reason,
+                "title": ann.get("policies.kyverno.io/title", ""),
+                "category": ann.get("policies.kyverno.io/category", ""),
+                "severity": (ann.get("policies.kyverno.io/severity") or "").lower(),
+                "enforced": bool(actions) and any(str(a).lower() in ("deny", "enforce") for a in actions),
+                # False means the policy only ever sees live admission requests:
+                # it reports what is created or changed from now on and says
+                # nothing about what is already running. On the page that has to
+                # be stated, or its zero reads as "nothing is wrong".
+                "scansExisting": True if bg is None else bool(bg),
+                "namespaces": [],
+            })
+            if m.get("namespace"):
+                row["namespaces"].append(m["namespace"])
+    return out, kinds
+
+
 def kyverno(c):
-    out = {"available": True, "policies": [], "by_namespace": {}, "totals": {"pass": 0, "fail": 0}}
+    """Every installed policy, with its findings merged on.
+
+    Built inventory-first on purpose. A dashboard assembled only from report
+    results cannot distinguish "this policy found nothing" from "this policy
+    was never installed" from "Kyverno refused to compile it" -- and all three
+    render as the same reassuring absence. Here every installed policy gets a
+    row whatever it has produced, and the row carries the state that explains
+    its numbers.
+    """
+    out = {"available": True, "policies": [], "by_namespace": {},
+           "totals": {"pass": 0, "fail": 0}}
+
+    inventory, kinds = policy_inventory(c)
+    out["policyKinds"] = kinds
+    out["inventoryAvailable"] = bool(kinds)
+
     d = c.try_get(f"{KYV}/policyreports")
     if d is None:
+        # No reports at all. If the policies themselves were readable, say so
+        # with the inventory rather than claiming Kyverno is absent.
         out["available"] = False
+        out["reportsAvailable"] = False
+        if inventory:
+            out["policies"] = [blank_policy(n, p) for n, p in sorted(inventory.items())]
+            # The policies are known even though their findings are not. Keep
+            # the tallies populated so the page says "installed, no results"
+            # rather than showing Kyverno as absent entirely.
+            out["totals"]["policies"] = len(out["policies"])
+            for k, st in (("failing", "failing"), ("satisfied", "clean"), ("notReady", "not-ready"),
+                          ("noData", "no-data"), ("errored", "error")):
+                out["totals"][k] = sum(1 for p in out["policies"] if p["state"] == st)
+            out["totals"]["enforced"] = sum(1 for p in out["policies"] if p.get("enforced"))
         return out
-    agg, passes = {}, collections.Counter()
+    out["reportsAvailable"] = True
+
+    agg = {}
+    passes, errors, skips = collections.Counter(), collections.Counter(), collections.Counter()
+    err_msg = {}
     for it in d.get("items", []):
         ns = (it.get("metadata") or {}).get("namespace", "-")
-        s = it.get("summary") or {}
-        out["totals"]["pass"] += s.get("pass", 0) or 0
-        out["totals"]["fail"] += s.get("fail", 0) or 0
+        s_ = it.get("summary") or {}
+        out["totals"]["pass"] += s_.get("pass", 0) or 0
+        out["totals"]["fail"] += s_.get("fail", 0) or 0
         scope = it.get("scope") or {}
         for res in it.get("results") or []:
-            # A policy with passes and no failures is implemented and holding;
-            # one with failures is implemented and not yet satisfied. Both are
-            # "deployed" -- only the counts distinguish them, so count both.
-            if res.get("result") == "pass":
-                passes[res.get("policy", "?")] += 1
-                continue
-            if res.get("result") != "fail":
-                continue
             pol = res.get("policy", "?")
+            kind = res.get("result")
+            if kind == "pass":
+                passes[pol] += 1
+                continue
+            if kind == "error":
+                # The policy compiled but blew up against a real object. It is
+                # producing nothing for those resources, which without this
+                # would look exactly like finding nothing wrong.
+                errors[pol] += 1
+                err_msg.setdefault(pol, (res.get("message") or "")[:300])
+                continue
+            if kind == "skip":
+                skips[pol] += 1
+                continue
+            if kind != "fail":
+                continue
             a = agg.setdefault(pol, {"id": pol, "severity": res.get("severity", "?"),
                                      "category": res.get("category", ""), "message": res.get("message", ""),
                                      "count": 0, "examples": [], "namespaces": set(),
@@ -703,18 +826,90 @@ def kyverno(c):
             if len(a["workloads"]) < DRILL_WORKLOADS:
                 a["workloads"].append({"ns": ns, "kind": scope.get("kind", "?"), "name": scope.get("name", "?")})
             out["by_namespace"].setdefault(ns, {"fail": 0})["fail"] += 1
-    for pol, n in passes.items():
+
+    # Every policy that produced any result, even if only passes or errors.
+    for pol in list(passes) + list(errors) + list(skips):
         agg.setdefault(pol, {"id": pol, "severity": "", "category": "", "message": "",
                              "count": 0, "examples": [], "namespaces": set(), "workloads": []})
+    # ... and every policy that is installed and produced nothing at all.
+    for pol in inventory:
+        agg.setdefault(pol, {"id": pol, "severity": "", "category": "", "message": "",
+                             "count": 0, "examples": [], "namespaces": set(), "workloads": []})
+
     for pol, a in agg.items():
         a["namespaceCount"] = len(a["namespaces"])
         a["namespaces"] = sorted(a["namespaces"])[:40]
         a["passed"] = passes.get(pol, 0)
+        a["errors"] = errors.get(pol, 0)
+        a["skipped"] = skips.get(pol, 0)
         a["evaluated"] = a["passed"] + a["count"]
-    out["policies"] = sorted(agg.values(), key=lambda x: -x["count"])
+        if a["errors"]:
+            a["errorMessage"] = err_msg.get(pol, "")
+        apply_inventory(a, inventory.get(pol), bool(kinds))
+
+    # Failing first, then the states that need attention before the clean ones:
+    # a policy that is installed and reporting nothing is more interesting than
+    # one that is passing, and must not be buried under a hundred clean rows.
+    rank = {"failing": 0, "error": 1, "not-ready": 2, "no-data": 3, "clean": 4, "unknown": 5}
+    out["policies"] = sorted(agg.values(),
+                             key=lambda x: (rank.get(x["state"], 9), -x["count"], x["id"]))
     out["totals"]["policies"] = len(agg)
-    out["totals"]["satisfied"] = sum(1 for a in agg.values() if a["count"] == 0)
+    out["totals"]["satisfied"] = sum(1 for a in agg.values() if a["state"] == "clean")
+    out["totals"]["failing"] = sum(1 for a in agg.values() if a["state"] == "failing")
+    out["totals"]["notReady"] = sum(1 for a in agg.values() if a["state"] == "not-ready")
+    out["totals"]["noData"] = sum(1 for a in agg.values() if a["state"] == "no-data")
+    out["totals"]["errored"] = sum(1 for a in agg.values() if a["state"] == "error")
+    out["totals"]["enforced"] = sum(1 for a in agg.values() if a.get("enforced"))
     return out
+
+
+def blank_policy(name, inv):
+    """An installed policy with no reports to merge onto it."""
+    a = {"id": name, "severity": inv.get("severity", ""), "category": inv.get("category", ""),
+         "message": "", "count": 0, "examples": [], "namespaces": [], "namespaceCount": 0,
+         "workloads": [], "passed": 0, "errors": 0, "skipped": 0, "evaluated": 0}
+    apply_inventory(a, inv, True)
+    return a
+
+
+def apply_inventory(a, inv, inventory_read):
+    """Attach what the policy object itself says, and name the row's state.
+
+    The state is the whole point of this file for policies: it is what stops a
+    row of zeros being read as a clean result. Only `clean` means that.
+    """
+    if inv:
+        a["installed"] = True
+        a["kind"] = inv["kind"]
+        a["ready"] = inv["ready"]
+        a["enforced"] = inv["enforced"]
+        a["scansExisting"] = inv["scansExisting"]
+        if inv.get("readyReason"):
+            a["readyReason"] = inv["readyReason"]
+        if inv.get("title") and not a.get("name"):
+            a["name"] = inv["title"]
+        if inv.get("category") and not a.get("category"):
+            a["category"] = inv["category"]
+        if inv.get("severity") and a.get("severity") in ("", "?", None):
+            a["severity"] = inv["severity"]
+        if inv.get("namespaces"):
+            a["definedIn"] = sorted(set(inv["namespaces"]))[:10]
+    else:
+        # Reports name a policy the API does not list. Either it was deleted
+        # since the last scan, or -- more often -- the collector could not read
+        # that policy kind at all.
+        a["installed"] = False if inventory_read else None
+
+    if a["errors"]:
+        a["state"] = "error"
+    elif a.get("installed") and a.get("ready") is False:
+        a["state"] = "not-ready"
+    elif a["evaluated"] == 0:
+        a["state"] = "no-data"
+    elif a["count"]:
+        a["state"] = "failing"
+    else:
+        a["state"] = "clean"
 
 
 def clusters():

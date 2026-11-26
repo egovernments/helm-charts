@@ -29,6 +29,21 @@ rules:
   - apiGroups: ["wgpolicyk8s.io"]
     resources: ["policyreports", "clusterpolicyreports"]
     verbs: ["get", "list"]
+  # The policies themselves, so the page can list every policy that is
+  # installed rather than only those that happened to produce a result.
+  # Without this the collector gets 403 and a policy that is present but
+  # finding nothing -- or that Kyverno refused to compile -- is indistinguishable
+  # from one that was never deployed.
+  - apiGroups: ["policies.kyverno.io"]
+    resources:
+      - validatingpolicies
+      - namespacedvalidatingpolicies
+      - imagevalidatingpolicies
+      - namespacedimagevalidatingpolicies
+    verbs: ["get", "list"]
+  - apiGroups: ["kyverno.io"]
+    resources: ["clusterpolicies", "policies"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
