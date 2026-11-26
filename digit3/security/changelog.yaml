@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-26"
+    ref: "PR-184"
+    title: "feat(security/kyverno): DIGIT workload policies (resources + deploy provenance), audit-only"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "kyverno"
+        from: "1.0.1"
+        to: "1.1.0"
+  - date: "2026-11-26"
     ref: "PR-183"
     title: "fix(security/dashboard): bound manifest memory; size the collector from measurement"
     author: "SriPadma8997-egov"
