@@ -12,7 +12,8 @@ Wrapper around two upstream charts, pinned together:
 | `kyverno-policies` | 3.10.0 | the Pod Security Standards policy set |
 
 The engine on its own installs cleanly and does nothing. The policies are what
-produce findings.
+produce findings. This chart also carries two policies of its own -- see
+[DIGIT policies](#digit-policies).
 
 ## The two settings that make this safe
 
@@ -61,6 +62,231 @@ Reports cover resources that **already exist**, not just newly admitted ones:
 the policies' `evaluation.background.enabled` defaults to true and the
 reports controller scans the cluster. A fresh install populates on its own
 without anything being deployed.
+
+## DIGIT policies
+
+Two policies DIGIT wrote, on top of the upstream Pod Security set. They are
+rendered from `templates/digit-*.yaml`, and everything about them --
+on/off, Audit vs Enforce, which namespaces -- is configured in the single
+`digitPolicies` block of `values.yaml`. The CEL does not need editing to
+change any of that.
+
+| policy | what it reports | default severity |
+|---|---|---|
+| `digit-require-resources` | a container with no cpu/memory request, or no memory limit (and, by default, no cpu limit) | medium |
+| `digit-workload-source` | a workload created or changed by anyone other than Argo CD, Kargo or the control plane | high |
+
+Both ship as `Audit`. They record findings in the same `PolicyReport`s as
+everything else, so they appear on the security dashboard without any change
+there.
+
+These two are a starting set, not the whole of it. More policies are added in
+values -- for every environment or for one -- without editing this chart; see
+[Adding a policy without touching this chart](#adding-a-policy-without-touching-this-chart).
+Anything that is not a `ValidatingPolicy` at all (a `MutatingPolicy`, an
+`ImageValidatingPolicy`, a legacy `ClusterPolicy`) goes through the upstream
+verbatim hatch, `kyverno-policies.customPolicies`, which renders the object as
+written and gets none of the conventions below.
+
+### The intended rollout
+
+```yaml
+digitPolicies:
+  action: Audit                 # 1. everything audited, everywhere
+  policies:
+    requireResources:
+      action: Enforce           # 3. one policy ...
+      namespaces:
+        include: [playground]   #    ... in one namespace
+```
+
+1. Audit everywhere. Read the findings.
+2. Fix them, or scope out what will not be fixed.
+3. Move one policy to `Enforce` in one namespace, by setting that policy's
+   own `action` and `namespaces.include`.
+4. Add namespaces to that list one at a time.
+5. Drop the per-policy overrides once the whole estate passes.
+
+A policy's `namespaces.include` / `.exclude` **replaces** the global list of
+the same name rather than merging with it, so `include: []` on a policy
+widens it back to every namespace.
+
+`Enforce` renders as `validationActions: [Deny, Audit]` -- the request is
+rejected *and* still recorded, so the dashboard keeps showing what was
+blocked. This is independent of `failurePolicy`, which stays `Ignore`; see
+above for why those are not the same decision.
+
+### Adding a policy without touching this chart
+
+A new policy is a values entry. `digitPolicies.extra` takes a map of policies
+and renders each one as a `ValidatingPolicy` named `digit-<key>`, with the
+same action word, the same namespace scoping, the same labels and the same
+place on the dashboard as the two above.
+
+Only two fields are required: `match` (which resources) and `validations`
+(what must be true of them).
+
+```yaml
+digitPolicies:
+  extra:
+    require-team-label:
+      enabled: true
+      title: Workloads must name an owning team
+      description: >-
+        An unlabelled workload has nobody to ask about it when it starts
+        failing at 2am.
+      severity: low
+      match:
+        - apiGroups: ["apps"]
+          apiVersions: ["v1"]
+          operations: [CREATE, UPDATE]
+          resources: [deployments, statefulsets]
+      validations:
+        - expression: >-
+            has(object.metadata.labels) && 'team' in object.metadata.labels
+          message: Set a `team` label naming who owns this workload.
+```
+
+Optional: `category`, `failurePolicy`, `exclude` (excludeResourceRules),
+`matchConditions` (appended after the namespace scope), `variables`, and
+`background`.
+
+**`background: false` is required for any policy whose CEL reads `request`**
+— the user, the operation, `dryRun`. Those exist only on a live admission
+request; left on, the background scanner errors on every object instead of
+reporting it. `digit-workload-source` is the worked example.
+
+A missing `match` or `validations` fails the render by name rather than
+producing a policy that quietly matches nothing:
+
+```
+Error: digitPolicies.extra.foo needs a `validations:` list
+```
+
+Policies are prefixed `digit-` so nothing here can collide with an upstream
+policy name — two `ValidatingPolicy`s of the same name is a conflict, not a
+warning. A key that already starts with `digit-` is left alone.
+
+### Per environment
+
+`digitPolicies` is ordinary chart values, so an environment file sets any of
+it for that cluster alone. Enforcing in dev while qa and uat stay in audit,
+and adding a policy only dev runs:
+
+```yaml
+# deploy-as-code/helm/environments/unified-dev.yaml
+kyverno:
+  chart-version: '1.1.0'
+  digitPolicies:
+    policies:
+      requireResources:
+        action: Enforce
+        namespaces: {include: [playground]}
+    extra:
+      require-team-label:
+        enabled: true
+        match: [...]
+        validations: [...]
+```
+
+Keep a policy in this chart's `values.yaml` when every environment should
+have it, and in an environment file when only that cluster should.
+
+### Checking CEL before it reaches a cluster
+
+Kyverno compiles the CEL in its controller, so a bad expression shows up as a
+policy that is never `READY` — after the chart has been released and synced.
+The Kubernetes API server compiles the same CEL, and will do it on a dry run,
+which brings the error forward to before the PR:
+
+```sh
+helm template kyverno charts/digit3/security/kyverno > /tmp/rendered.yaml
+
+# turn each ValidatingPolicy into the Kubernetes policy of the same shape
+python3 - <<'PY' > /tmp/celcheck.yaml
+import yaml
+out = []
+for d in yaml.safe_load_all(open('/tmp/rendered.yaml')):
+    if not d or d.get('kind') != 'ValidatingPolicy': continue
+    s = d['spec']
+    out.append({'apiVersion': 'admissionregistration.k8s.io/v1',
+                'kind': 'ValidatingAdmissionPolicy',
+                'metadata': {'name': 'celcheck-' + d['metadata']['name']},
+                'spec': {'failurePolicy': 'Ignore',
+                         'matchConstraints': s['matchConstraints'],
+                         'matchConditions': s.get('matchConditions', []),
+                         'variables': s.get('variables', []),
+                         'validations': s['validations']}})
+yaml.safe_dump_all(out, __import__('sys').stdout, sort_keys=False)
+PY
+
+kubectl apply --dry-run=server -f /tmp/celcheck.yaml
+```
+
+Nothing is created. A typo comes back as
+
+```
+compilation failed: ERROR: <input>:1:15: undefined field 'noRequestsTYPO'
+```
+
+Kyverno's CEL environment is a superset of the API server's, so this proves an
+expression compiles, not that every Kyverno-specific function exists. It
+catches the mistakes people actually make.
+
+### `digit-require-resources`
+
+Reports one finding per object a human can actually edit. A Pod owned by a
+ReplicaSet and a Job owned by a CronJob are skipped, because the fix belongs
+on the controller, which the policy also matches -- otherwise the same
+missing field is reported two or three times and churns every time a pod is
+replaced. The test is on the *owner's kind*, not on having an owner at all,
+so a Deployment created by an operator keeps its finding.
+
+Init containers are included. A sidecar declared as a `restartPolicy: Always`
+init container runs for the life of the pod, and an init container with no
+memory limit can OOM a node as well as any app container.
+
+The failure message names the containers, not just the object:
+
+```
+no cpu/memory request: istio-proxy, egov-service
+```
+
+`requireCpuLimit` is worth a deliberate decision. A CPU limit does not
+protect the node the way a memory limit does -- the kernel throttles the
+container rather than killing it -- so a limit set too low becomes latency
+nobody can explain, and the common advice is to set CPU requests and skip CPU
+limits. It defaults to `true` here because it was asked for; set it to
+`false` to report only requests and the memory limit.
+
+### `digit-workload-source`
+
+**This policy reports what is created or changed from now on, not what is
+already running.** It reads `request.userInfo`, which exists only on a live
+admission request, so its `evaluation.background.enabled` is `false` and the
+background scanner never evaluates it. Workloads already on the cluster
+produce no findings until something touches them.
+
+To audit what is already there, compare field managers instead:
+
+```sh
+kubectl get deploy -A --show-managed-fields -o json | \
+  jq -r '.items[].metadata.managedFields[].manager' | sort | uniq -c | sort -rn
+```
+
+On unified-dev that currently reads 234 of 245 Deployments applied by
+`argocd-controller`, the rest by `helm`, `kubectl-client-side-apply` and
+`eno` -- which is roughly what the policy will report once those objects are
+next touched.
+
+`allowedUsers` and `allowedPrefixes` are the whole definition of "comes from
+Argo CD or Kargo". The control-plane identities (`system:kube-controller-manager`,
+`system:apiserver`, the `kube-system` service accounts) are allowed because
+they write to these objects as part of running Kubernetes -- adopting a
+resource, creating a Job from a CronJob -- and are not deployments.
+
+Note that `UPDATE` is matched as well as `CREATE`: a `kubectl rollout
+restart` is a change that did not come from git, and is reported as one.
 
 ## Going from Audit to Enforce
 

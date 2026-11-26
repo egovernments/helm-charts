@@ -1,0 +1,106 @@
+{{- $p := (.Values.digitPolicies.policies | default dict).requireResources | default dict }}
+{{- if and .Values.digitPolicies.enabled $p.enabled }}
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  name: digit-require-resources
+  annotations:
+    policies.kyverno.io/title: Require CPU and memory requests and limits
+    policies.kyverno.io/category: DIGIT Workload Hygiene
+    policies.kyverno.io/severity: {{ $p.severity | default "medium" | quote }}
+    policies.kyverno.io/subject: Pod,Deployment,StatefulSet,DaemonSet,Job,CronJob
+    policies.kyverno.io/description: >-
+      A container with no resource requests is scheduled as if it were free: the
+      scheduler cannot reserve anything for it, it is the first thing evicted
+      when a node runs short, and its usage is invisible in capacity planning. A
+      container with no memory limit can take a node down with it. Every
+      container -- including init and sidecar containers -- must declare what it
+      needs and, for memory, what it may not exceed.
+  labels: {{- include "digitPolicies.labels" . | nindent 4 }}
+spec:
+  failurePolicy: {{ .Values.digitPolicies.failurePolicy }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [cronjobs, jobs]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchConditions:
+    {{- with (include "digitPolicies.scope" (dict "policy" $p "root" $) | trim) }}
+    {{- . | nindent 4 }}
+    {{- end }}
+    # One finding per thing a human can edit.
+    #
+    # A Pod from a ReplicaSet, or a Job from a CronJob, is not something anyone
+    # fixes directly -- the fix belongs on the controller, which this policy
+    # also matches. Reporting both would say the same thing two or three times
+    # and would churn every time a pod is replaced.
+    #
+    # The test is deliberately on the OWNER's kind rather than on "has an owner
+    # at all": a Deployment created by an operator (ClickHouse, Strimzi) keeps
+    # its finding, because there the Deployment really is where the resource
+    # fields are missing.
+    - name: digit-not-a-managed-replica
+      expression: >-
+        !has(object.metadata.ownerReferences) ||
+        !object.metadata.ownerReferences.exists(o,
+          o.kind in ['ReplicaSet', 'Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob'])
+  variables:
+    # The same check has to read three different shapes: a bare Pod carries the
+    # pod spec at spec, a CronJob two levels down, everything else at
+    # spec.template.spec.
+    - name: podSpec
+      expression: >-
+        has(object.spec.jobTemplate)
+          ? object.spec.jobTemplate.spec.template.spec
+          : (has(object.spec.template) ? object.spec.template.spec : object.spec)
+    # Init containers count. A sidecar declared as a restartPolicy:Always init
+    # container runs for the life of the pod, and an init container with no
+    # memory limit can OOM the node just as well as an app container.
+    - name: containers
+      expression: >-
+        variables.podSpec.containers +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers : [])
+    - name: noRequests
+      expression: >-
+        variables.containers.filter(c,
+          !has(c.resources) || !has(c.resources.requests) ||
+          !('cpu' in c.resources.requests) || !('memory' in c.resources.requests))
+    - name: noMemoryLimit
+      expression: >-
+        variables.containers.filter(c,
+          !has(c.resources) || !has(c.resources.limits) || !('memory' in c.resources.limits))
+    {{- if $p.requireCpuLimit }}
+    - name: noCpuLimit
+      expression: >-
+        variables.containers.filter(c,
+          !has(c.resources) || !has(c.resources.limits) || !('cpu' in c.resources.limits))
+    {{- end }}
+  validations:
+    - expression: size(variables.noRequests) == 0
+      message: >-
+        Every container must set resources.requests.cpu and resources.requests.memory.
+      messageExpression: >-
+        'no cpu/memory request: ' + variables.noRequests.map(c, c.name).join(', ')
+    - expression: size(variables.noMemoryLimit) == 0
+      message: >-
+        Every container must set resources.limits.memory.
+      messageExpression: >-
+        'no memory limit: ' + variables.noMemoryLimit.map(c, c.name).join(', ')
+    {{- if $p.requireCpuLimit }}
+    - expression: size(variables.noCpuLimit) == 0
+      message: >-
+        Every container must set resources.limits.cpu.
+      messageExpression: >-
+        'no cpu limit: ' + variables.noCpuLimit.map(c, c.name).join(', ')
+    {{- end }}
+  validationActions: {{ include "digitPolicies.validationActions" (dict "policy" $p "root" $) }}
+{{- end }}
