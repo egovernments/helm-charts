@@ -64,6 +64,8 @@ spec:
                   value: {{ .Values.collector.apiWaitInterval | quote }}
                 - name: CVE_IMAGES
                   value: {{ .Values.collector.cve.images | quote }}
+                - name: CVE_FETCH_CONCURRENCY
+                  value: {{ .Values.collector.cve.fetchConcurrency | quote }}
                 - name: CVE_PER_IMAGE
                   value: {{ .Values.collector.cve.perImage | quote }}
                 - name: CVE_TOP_IMAGES
