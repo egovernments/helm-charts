@@ -425,14 +425,35 @@ const envWrap = document.getElementById("envs");
 for (const name of envNames) {
   const c = DATA.clusters[name] || {};
   const ks = c.kubescape || {}, ky = c.kyverno || {};
+  // A figure that was not collected must not render as 0. On these clusters
+  // the collector can run while Kubescape's aggregated API is still starting,
+  // and "0 high findings" reads as a clean cluster -- the one thing this page
+  // exists to never say. Kyverno is unaffected: its reports are ordinary CRs.
+  const ksUp = ks.available !== false;
+  const ksGap = () => ({
+    eyebrow: name, title: "Kubescape data was not collected",
+    lead: "<strong>This is not a clean result \u2014 it is an absence of data.</strong> The "
+      + "collector could not read Kubescape's findings on its last run, so configuration and "
+      + "vulnerability figures are unavailable for this environment. Kyverno policy numbers are "
+      + "unaffected, because those are ordinary cluster resources rather than an aggregated API.",
+    blocks: [
+      ks.reason ? { heading: "What the collector reported", fix: ks.reason } : null,
+      { heading: "Most likely cause",
+        text: "These clusters are stopped overnight and started on a schedule. If the collector "
+          + "runs before Kubescape's <code>storage</code> pod is serving, every read fails. The "
+          + "next scheduled collection usually resolves it; the findings themselves are not lost." },
+    ] });
+
   const card = el("div", "env");
   const head = el("div", "env-name");
   head.appendChild(el("span", null, name));
 
   const nUnscanned = (ks.unscanned || []).length;
   const kyOn = (ky.policies || []).length > 0;
-  const pill = el("span", "pill " + (nUnscanned ? "warn" : kyOn ? "ok" : "off"),
-    nUnscanned ? nUnscanned + " unscanned" : kyOn ? "reporting" : "policy pending");
+  const pill = !ksUp
+    ? explain(el("span", "pill warn", "data missing"), ksGap)
+    : el("span", "pill " + (nUnscanned ? "warn" : kyOn ? "ok" : "off"),
+         nUnscanned ? nUnscanned + " unscanned" : kyOn ? "reporting" : "policy pending");
   head.appendChild(pill);
   card.appendChild(head);
 
@@ -442,7 +463,7 @@ for (const name of envNames) {
   }
   const sc = (ks.score || {});
   const fwl = ks.framework && ks.framework.workload;
-  const headline = fwl && typeof fwl.score === "number"
+  const headline = !ksUp ? null : fwl && typeof fwl.score === "number"
     ? { v: fwl.score, label: "CIS policies" }
     : (typeof sc.compliance === "number" ? { v: sc.compliance, label: "compliance" } : null);
   if (headline) {
@@ -459,15 +480,15 @@ for (const name of envNames) {
   const dl = document.createElement("dl");
   dl.style.margin = "0";
   const rows = [
-    ["Config findings (high)", fmt(sum(ks.posture, "high")), () => nsTableSheet({
+    ["Config findings (high)", ksUp ? fmt(sum(ks.posture, "high")) : "not collected", ksUp ? () => nsTableSheet({
       env: name, title: "High-severity configuration findings", unit: "High findings", data: ks.posture,
       pick: v => v.high,
       lead: "A <strong>finding</strong> is one check failing on one workload, so a single Deployment that breaks "
         + "four rules contributes four. These are counts of problems, not of workloads, and they are not the "
         + "score — the score weights every check equally no matter how many workloads it touched.",
       note: "Namespaces run by the platform (kube-system and friends) legitimately need privileges that would be "
-        + "wrong in an application namespace." })],
-    ["Image CVEs (critical)", fmt(((ks.cveDetail || {}).totalsUnique || (ks.cveDetail || {}).totals || {}).critical ?? sum(ks.cve, "critical")), () => {
+        + "wrong in an application namespace." }) : ksGap],
+    ["Image CVEs (critical)", ksUp ? fmt(((ks.cveDetail || {}).totalsUnique || (ks.cveDetail || {}).totals || {}).critical ?? sum(ks.cve, "critical")) : "not collected", !ksUp ? ksGap : () => {
       const cd = ks.cveDetail || {};
       return {
         eyebrow: name, title: "Critical vulnerabilities in container images",
@@ -688,8 +709,19 @@ function controlSheet(name, cid) {
   };
 }
 
+// These three only render when a framework was collected, and the page does
+// not offer them otherwise -- but they are reachable by name, and a sheet
+// that throws leaves the reader staring at a dead control.
+function noFramework(env) {
+  return { eyebrow: env, title: "No benchmark score for this collection",
+    lead: "Kubescape's findings could not be read when this page was last built, so there is no CIS "
+      + "score to break down. <strong>This is missing data, not a clean result.</strong>" };
+}
+
 function cisScoreSheet(name) {
-  const fw = KS(name).framework, w = fw.workload;
+  const fw = KS(name).framework;
+  if (!fw) return noFramework(name);
+  const w = fw.workload;
   const rows = (fw.controls || []).map(c => ({
     cells: [clean(c.name), c.score.toFixed(0) + "%", (c.score / w.covered).toFixed(2)],
     onOpen: () => controlSheet(name, c.id),
@@ -725,6 +757,7 @@ function cisScoreSheet(name) {
 
 function infraSheet(name) {
   const fw = KS(name).framework;
+  if (!fw) return noFramework(name);
   const un = (KS(name).detail || {}).unassessed || {};
   const secs = fw.sections.filter(s => s.scope === "infrastructure");
   const rows = [];
@@ -753,7 +786,7 @@ function infraSheet(name) {
 }
 
 function scopeSheet(name) {
-  const ks = KS(name), fw = ks.framework, all = ks.score;
+  const ks = KS(name), fw = ks.framework, all = ks.score || {};
   if (!fw || typeof all.compliance !== "number") return null;
   return {
     eyebrow: name,
@@ -824,8 +857,11 @@ document.getElementById("fwnote").innerHTML = anyFw
   ? "Scored against the <strong>generic</strong> CIS Kubernetes Benchmark, whose controls are plain "
     + "Kubernetes objects &mdash; so the same score means the same thing on AKS, EKS, GKE or bare metal. "
     + "Sections are CIS&rsquo;s own, and the two halves are reported separately rather than blended."
-  : "The CIS framework definition could not be downloaded on the last collection, so no benchmark score "
-    + "is shown. The findings below are unaffected.";
+  : (envNames.every(n => KS(n).available === false)
+      ? "Kubescape's findings could not be read on the last collection, so there is no benchmark score. "
+        + "<strong>This is missing data, not a clean result.</strong> See the environment cards above."
+      : "The CIS framework definition could not be downloaded on the last collection, so no benchmark "
+        + "score is shown. The findings themselves are unaffected.");
 
 function fwDelta(name) {
   const s = HISTORY.map(h => h.clusters[name])

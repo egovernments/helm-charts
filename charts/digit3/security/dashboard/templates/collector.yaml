@@ -58,6 +58,10 @@ spec:
                   value: {{ .Values.collector.drillWorkloads | quote }}
                 - name: MAX_PAGE_BYTES
                   value: {{ .Values.collector.maxPageBytes | quote }}
+                - name: API_WAIT_SECONDS
+                  value: {{ .Values.collector.apiWaitSeconds | quote }}
+                - name: API_WAIT_INTERVAL
+                  value: {{ .Values.collector.apiWaitInterval | quote }}
                 - name: CVE_IMAGES
                   value: {{ .Values.collector.cve.images | quote }}
                 - name: CVE_PER_IMAGE
