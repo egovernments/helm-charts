@@ -1,0 +1,35 @@
+{{- if .Values.collector.refreshOnSync }}
+# Refresh the page on every Argo CD sync.
+#
+# The scheduled CronJob answers "is this still true?"; this answers "did my
+# change land?". Without it, a policy added or a chart value changed does not
+# appear until the next scheduled collection, which is the wrong feedback loop
+# for the thing people actually do -- change something, then look.
+#
+# Two annotations, and the second one matters more than it looks.
+#
+#   hook: PostSync              run after the sync has applied everything.
+#   hook-delete-policy:         delete the PREVIOUS hook Job before creating
+#     BeforeHookCreation        this one.
+#
+# A Job's spec is immutable. Without the delete policy the second sync tries
+# to recreate a Job that already exists and fails -- which is exactly how
+# upstream Kyverno's CRD-migration hook breaks the sync after the one that
+# installed it. BeforeHookCreation is what makes a hook Job re-runnable.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dashboard.name" . }}-refresh
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "dashboard.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  # Clean the pod up on its own, so a failed refresh leaves its logs for a
+  # while and a successful one does not accumulate.
+  ttlSecondsAfterFinished: {{ .Values.collector.refreshTtlSeconds }}
+  template:
+{{- include "dashboard.collectorPod" . | nindent 4 }}
+{{- end }}

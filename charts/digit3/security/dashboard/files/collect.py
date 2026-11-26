@@ -41,7 +41,7 @@ person who reads this.
    history ConfigMap and reads the whole series back, which is the only reason
    the page can say a score moved rather than just what it is now.
 """
-import gc, json, os, ssl, sys, time, datetime, collections, urllib.request, urllib.error
+import gc, json, os, socket, ssl, sys, time, datetime, collections, urllib.parse, urllib.request, urllib.error
 import concurrent.futures as cf
 
 SA = "/var/run/secrets/kubernetes.io/serviceaccount"
@@ -112,6 +112,12 @@ DRILL_WORKLOADS = int(os.environ.get("DRILL_WORKLOADS", "25"))
 # cluster is not.
 API_WAIT_SECONDS = int(os.environ.get("API_WAIT_SECONDS", "600"))
 API_WAIT_INTERVAL = int(os.environ.get("API_WAIT_INTERVAL", "20"))
+
+# How long a cluster may be unreachable before it is reported unreachable,
+# rather than waited on. Separate from API_WAIT_SECONDS because the two answer
+# different questions: that one is "is Kubescape ready yet", this one is "is
+# the cluster there at all". A name that does not resolve skips even this.
+CLUSTER_GRACE_SECONDS = int(os.environ.get("CLUSTER_GRACE_SECONDS", "60"))
 
 CVE_IMAGES = int(os.environ.get("CVE_IMAGES", "10"))
 # How many per-image manifests may be resident at once. These are by far the
@@ -333,6 +339,34 @@ def framework_score(scores, meta, sections, names):
             "controls": detail}
 
 
+def cluster_down(c):
+    """Why this cluster cannot be reached at all, or None if it can.
+
+    This exists to tell two situations apart that the aggregated API cannot:
+
+      the cluster is RUNNING and Kubescape is not ready yet  -> worth waiting
+      the cluster is STOPPED                                 -> waiting is futile
+
+    A stopped AKS cluster's API FQDN stops resolving entirely, so an NXDOMAIN
+    is a definite answer and there is nothing to wait for. A name that resolves
+    but refuses the connection is ambiguous -- a restarting API server looks
+    the same for a few seconds -- so that one is reported and left to the
+    caller's grace window rather than treated as fatal.
+    """
+    host = urllib.parse.urlsplit(c.base).hostname or ""
+    port = urllib.parse.urlsplit(c.base).port or 443
+    try:
+        socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        return (f"{host} does not resolve, so the cluster's API server is not there. "
+                f"A stopped AKS cluster looks exactly like this; so does a deleted one.")
+    except Exception:
+        return None
+    if c.try_get("/version", timeout=10) is None:
+        return f"{host} resolves but its API server did not answer."
+    return None
+
+
 def kubescape(c, lib, fw):
     out = {"available": True, "posture": {}, "cve": {}, "unscanned": [], "controls": []}
 
@@ -341,12 +375,34 @@ def kubescape(c, lib, fw):
     # whole API server goes away at once -- it is one pod -- so there is no
     # case where one succeeds and the other needs waiting for.
     deadline = time.time() + API_WAIT_SECONDS
+    down_deadline = time.time() + CLUSTER_GRACE_SECONDS
     waited = False
     while True:
         idx = c.try_get(f"{API}/configurationscansummaries")
         vdx = c.try_get(f"{API}/vulnerabilitysummaries")
         if idx is not None or vdx is not None:
             break
+
+        # Do not spend the full API wait on a cluster that is not running. The
+        # wait is there for the storage pod starting up; against a stopped
+        # cluster it is ten minutes of sleeping before reaching the conclusion
+        # DNS already gave us, and with three clusters that is most of the run.
+        down = cluster_down(c)
+        if down and "does not resolve" in down:
+            out["available"] = False
+            out["reason"] = f"Cluster unreachable: {down}"
+            log(f"  SKIPPED: {down}")
+            return out
+        if down and time.time() >= down_deadline:
+            out["available"] = False
+            out["reason"] = f"Cluster unreachable: {down}"
+            log(f"  SKIPPED after {CLUSTER_GRACE_SECONDS}s: {down}")
+            return out
+        if not down:
+            # The cluster is up, so this really is Kubescape starting. Reset
+            # the grace window; only the aggregated API deadline applies now.
+            down_deadline = time.time() + CLUSTER_GRACE_SECONDS
+
         if time.time() >= deadline:
             out["available"] = False
             out["reason"] = (f"Kubescape's aggregated API did not respond within "

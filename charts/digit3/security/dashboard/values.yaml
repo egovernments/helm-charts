@@ -23,9 +23,18 @@ ingress:
     signin: https://$host/oauth2/start?rd=$escaped_request_uri
 
 collector:
-  # The cluster scans themselves run nightly, so refreshing more often than
-  # this mostly re-reads identical data.
-  schedule: "17 */6 * * *"
+  # Hourly. The underlying cluster scans run nightly, so most of these re-read
+  # identical data -- but a collection costs about a minute, and the cost of
+  # being stale is someone changing a policy and not seeing it. The PostSync
+  # hook below covers the change-then-look case; this covers everything else.
+  schedule: "17 * * * *"
+
+  # Re-collect on every Argo CD sync of this chart, as a PostSync hook, so a
+  # change lands on the page in about a minute rather than at the next
+  # scheduled run. See templates/refresh-hook.yaml for why its delete policy
+  # is the part that matters.
+  refreshOnSync: true
+  refreshTtlSeconds: 1800
   image:
     repository: python
     tag: "3.12-slim"
@@ -120,8 +129,24 @@ collector:
   # nothing wrong with it -- so the collector waits rather than recording an
   # empty cluster. A dashboard a few minutes late is fine; one that reports a
   # clean cluster because it could not read anything is not.
-  apiWaitSeconds: 600
+  apiWaitSeconds: 300
   apiWaitInterval: 20
+
+  # How long a cluster may be unreachable before it is reported unreachable
+  # rather than waited on.
+  #
+  # A different question from apiWaitSeconds, which asks "is Kubescape ready
+  # yet". This asks "is the cluster there at all", and a cluster that is not
+  # there will never become ready inside that wait. Before this existed, a
+  # roll-up run while qa and uat were stopped overnight spent 600s asleep on
+  # each of them: 21 minutes to collect three clusters, 20 of them futile.
+  #
+  # A stopped AKS cluster's API FQDN stops resolving, and an NXDOMAIN is a
+  # definite answer, so that case skips even this grace window and gives up at
+  # once. The window is for the ambiguous case -- a name that resolves but
+  # refuses the connection, which is also what a restarting API server looks
+  # like for a few seconds.
+  clusterGraceSeconds: 60
 
   # Image vulnerabilities.
   #
