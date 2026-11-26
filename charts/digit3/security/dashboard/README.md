@@ -142,6 +142,31 @@ it, Argo CD would see drift and self-heal the page back to its placeholder on
 every sync. nginx mounts it with `optional: true` and falls back to a
 placeholder until the first collection.
 
+## Start-up races, and why the collector waits
+
+These clusters are stopped overnight and started on a schedule. On start-up
+the collector can beat Kubescape's `storage` pod, which serves the aggregated
+API every configuration and vulnerability figure comes from. A read that fails
+then is **indistinguishable, in the data, from a cluster with nothing wrong
+with it**.
+
+So the collector waits for that API (`collector.apiWaitSeconds`, default 600,
+polled every `apiWaitInterval`) before concluding anything. A dashboard a few
+minutes late is fine; a dashboard that records an empty cluster is not.
+
+If it still cannot read after the wait, `kubescape.available` is `false` with a
+`reason`, and the page says so everywhere the figures would otherwise appear:
+the environment card reads **"not collected"** rather than `0`, its pill reads
+**"data missing"**, and the headline score is omitted rather than shown as
+absent-and-therefore-fine. Kyverno numbers are unaffected -- PolicyReports are
+ordinary cluster resources, not an aggregated API, so they survive a storage
+outage.
+
+This was not hypothetical: 1.2.1 rendered `Config findings (high) 0` and
+`Image CVEs (critical) 0` on all three environments after an overnight
+restart, which reads as a clean cluster. That is the single thing this page
+exists not to say.
+
 ## The compliance score, and why this chart computes it
 
 Nothing in the cluster stores a compliance score. The Kubescape operator writes

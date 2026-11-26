@@ -4,8 +4,8 @@ description: Internal security dashboard - Kubescape findings and Kyverno policy
 type: application
 # No upstream dependency: this chart is the dashboard. appVersion tracks the
 # collector/template in files/.
-version: 1.2.1
-appVersion: "1.2.1"
+version: 1.2.2
+appVersion: "1.2.2"
 keywords:
   - security
   - dashboard

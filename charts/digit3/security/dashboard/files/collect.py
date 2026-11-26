@@ -87,6 +87,17 @@ DRILL_WORKLOADS = int(os.environ.get("DRILL_WORKLOADS", "25"))
 # The summaries give every image its counts cheaply; only the worst few need
 # their CVEs enumerated, because those are the only ones anyone is going to
 # work through.
+# How long to wait for Kubescape's aggregated API to start serving.
+#
+# These clusters are stopped overnight and started on a schedule. On start-up
+# the collector can easily win the race against the `storage` pod, and a
+# Kubescape read that fails then is indistinguishable, in the data, from a
+# cluster with nothing wrong with it. Waiting is the correct answer: a
+# dashboard a few minutes late is fine, a dashboard that records an empty
+# cluster is not.
+API_WAIT_SECONDS = int(os.environ.get("API_WAIT_SECONDS", "600"))
+API_WAIT_INTERVAL = int(os.environ.get("API_WAIT_INTERVAL", "20"))
+
 CVE_IMAGES = int(os.environ.get("CVE_IMAGES", "10"))
 CVE_PER_IMAGE = int(os.environ.get("CVE_PER_IMAGE", "30"))
 # Tables are capped at what a person would ever scroll. The totals above them
@@ -306,11 +317,32 @@ def framework_score(scores, meta, sections, names):
 
 def kubescape(c, lib, fw):
     out = {"available": True, "posture": {}, "cve": {}, "unscanned": [], "controls": []}
-    idx = c.try_get(f"{API}/configurationscansummaries")
-    vdx = c.try_get(f"{API}/vulnerabilitysummaries")
-    if idx is None and vdx is None:
-        out["available"] = False
-        return out
+
+    # Wait for the aggregated API rather than recording an empty cluster. See
+    # API_WAIT_SECONDS. Both index reads are retried together because the
+    # whole API server goes away at once -- it is one pod -- so there is no
+    # case where one succeeds and the other needs waiting for.
+    deadline = time.time() + API_WAIT_SECONDS
+    waited = False
+    while True:
+        idx = c.try_get(f"{API}/configurationscansummaries")
+        vdx = c.try_get(f"{API}/vulnerabilitysummaries")
+        if idx is not None or vdx is not None:
+            break
+        if time.time() >= deadline:
+            out["available"] = False
+            out["reason"] = (f"Kubescape's aggregated API did not respond within "
+                             f"{API_WAIT_SECONDS}s. The storage pod serves it; check that it is "
+                             f"running and that the APIService is Available.")
+            log(f"  ERROR: {out['reason']}")
+            return out
+        if not waited:
+            log(f"  Kubescape's aggregated API is not responding; waiting up to "
+                f"{API_WAIT_SECONDS}s for it (the storage pod may still be starting)")
+            waited = True
+        time.sleep(API_WAIT_INTERVAL)
+    if waited:
+        log("  aggregated API is responding; continuing")
 
     def posture_one(it):
         n = it["metadata"]["name"]

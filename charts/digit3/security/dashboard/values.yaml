@@ -99,6 +99,17 @@ collector:
   # lists; the headline figures are unaffected either way.
   maxPageBytes: 819200
 
+  # How long to wait for Kubescape's aggregated API before giving up.
+  #
+  # These clusters are stopped overnight and started on a schedule, so the
+  # collector can easily beat the `storage` pod that serves that API. A read
+  # that fails then is indistinguishable, in the data, from a cluster with
+  # nothing wrong with it -- so the collector waits rather than recording an
+  # empty cluster. A dashboard a few minutes late is fine; one that reports a
+  # clean cluster because it could not read anything is not.
+  apiWaitSeconds: 600
+  apiWaitInterval: 20
+
   # Image vulnerabilities.
   #
   # Counts for EVERY image come from the per-workload summaries and are cheap.
