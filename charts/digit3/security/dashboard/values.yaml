@@ -33,12 +33,25 @@ collector:
   resources:
     requests:
       cpu: 50m
-      memory: 192Mi
-    limits:
-      # Raised for the CVE pass: a handful of multi-megabyte vulnerability
-      # manifests are parsed concurrently, and a collector killed halfway
-      # leaves the page showing the previous run with no indication why.
+      # Close to the measured peak, so the scheduler places this somewhere it
+      # can actually run. The pod only exists while the job runs, so this
+      # reserves nothing between collections.
       memory: 768Mi
+    limits:
+      # Sized for the CVE pass, which parses multi-megabyte vulnerability
+      # manifests -- by far the largest objects this collector touches.
+      #
+      # MEASURED, not guessed. A three-cluster roll-up with the batching fix
+      # peaks at 875 MiB resident; 768Mi OOM-killed it on the second cluster.
+      # This leaves roughly 2.3x the observed peak.
+      #
+      # Deliberately generous. The job runs for about two minutes every six
+      # hours on nodes with ~13.5 GiB allocatable, and a collector killed
+      # halfway leaves the page serving the previous run with no indication
+      # anything failed -- a far worse outcome than an over-provisioned
+      # CronJob. Scale this up, not the sampling down, if more clusters or
+      # more images are added.
+      memory: 2Gi
 
   # Other clusters to include, beyond the one this runs in.
   #
@@ -121,6 +134,10 @@ collector:
   cve:
     # Images whose full CVE list is fetched, worst-by-critical first.
     images: 10
+    # How many of those manifests may be in memory at once. Raising this
+    # speeds collection and costs memory directly -- each one is tens of MB
+    # once parsed.
+    fetchConcurrency: 2
     # CVEs listed per sampled image, fixable first, then worst first.
     perImage: 30
     # Rows in the two tables. The totals above them are computed over

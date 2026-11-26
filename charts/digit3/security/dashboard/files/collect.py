@@ -41,7 +41,7 @@ person who reads this.
    history ConfigMap and reads the whole series back, which is the only reason
    the page can say a score moved rather than just what it is now.
 """
-import json, os, ssl, sys, time, datetime, collections, urllib.request, urllib.error
+import gc, json, os, ssl, sys, time, datetime, collections, urllib.request, urllib.error
 import concurrent.futures as cf
 
 SA = "/var/run/secrets/kubernetes.io/serviceaccount"
@@ -99,6 +99,9 @@ API_WAIT_SECONDS = int(os.environ.get("API_WAIT_SECONDS", "600"))
 API_WAIT_INTERVAL = int(os.environ.get("API_WAIT_INTERVAL", "20"))
 
 CVE_IMAGES = int(os.environ.get("CVE_IMAGES", "10"))
+# How many per-image manifests may be resident at once. These are by far the
+# largest objects here; see the batching comment in cve_detail().
+CVE_FETCH_CONCURRENCY = int(os.environ.get("CVE_FETCH_CONCURRENCY", "2"))
 CVE_PER_IMAGE = int(os.environ.get("CVE_PER_IMAGE", "30"))
 # Tables are capped at what a person would ever scroll. The totals above them
 # are computed over EVERYTHING, so a cap shortens the list without making any
@@ -618,8 +621,22 @@ def cve_detail(c):
         return img, c.try_get(f"{API}/namespaces/{ns}/vulnerabilitymanifests/{nm}", timeout=120)
 
     rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    with cf.ThreadPoolExecutor(max_workers=4) as ex:
-        for img, d in ex.map(manifest, worst):
+
+    # Fetched in small batches, NOT with one ex.map over the whole list.
+    #
+    # ThreadPoolExecutor.map submits every task immediately and holds each
+    # result until the consuming loop reaches it. These are the largest
+    # objects this collector ever touches -- a manifest is a couple of MB of
+    # JSON that parses into tens of MB of Python -- so mapping over ten images
+    # keeps all ten resident at once. That OOM-killed the collector the first
+    # time it ran across three clusters. Batching bounds what is live to
+    # CVE_FETCH_CONCURRENCY manifests, and each batch is dropped before the
+    # next is submitted.
+    for start in range(0, len(worst), CVE_FETCH_CONCURRENCY):
+        batch = worst[start:start + CVE_FETCH_CONCURRENCY]
+        with cf.ThreadPoolExecutor(max_workers=len(batch)) as ex:
+            fetched = list(ex.map(manifest, batch))
+        for img, d in fetched:
             if not d:
                 continue
             out["sampled"] += 1
@@ -647,6 +664,8 @@ def cve_detail(c):
                 "total": len(rows),
                 "rows": rows[:CVE_PER_IMAGE],
             }
+        del fetched
+        gc.collect()
     return out
 
 
