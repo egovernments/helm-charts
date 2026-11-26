@@ -1,0 +1,68 @@
+{{/*
+Policies defined in values, not in this chart.
+
+Everything here comes from `digitPolicies.extra`, which an environment file can
+set on its own. A new policy is a values entry -- no template, no Go templating,
+no chart release -- and it gets the same conventions as the two policies this
+chart ships: the same Audit/Warn/Enforce word, the same namespace scoping, the
+same labels and the same place in the dashboard.
+
+A policy that does not fit this shape (a MutatingPolicy, an
+ImageValidatingPolicy, a legacy ClusterPolicy) goes through the upstream
+verbatim hatch instead -- `kyverno-policies.customPolicies` -- which is rendered
+as written. See the README.
+*/}}
+{{- range $name, $p := (.Values.digitPolicies.extra | default dict) }}
+{{- if and $.Values.digitPolicies.enabled $p.enabled }}
+---
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  # Prefixed so that nothing here can collide with an upstream policy name --
+  # two ValidatingPolicies of the same name is a render-time conflict, not a
+  # warning. Already-prefixed keys are left alone rather than doubled.
+  name: {{ $name | trimPrefix "digit-" | printf "digit-%s" }}
+  annotations:
+    policies.kyverno.io/title: {{ $p.title | default ($name | trimPrefix "digit-") | quote }}
+    policies.kyverno.io/category: {{ $p.category | default "DIGIT Custom" | quote }}
+    policies.kyverno.io/severity: {{ $p.severity | default "medium" | quote }}
+    {{- with $p.description }}
+    policies.kyverno.io/description: >-{{ . | trim | nindent 6 }}
+    {{- end }}
+  labels: {{- include "digitPolicies.labels" $ | nindent 4 }}
+spec:
+  failurePolicy: {{ $p.failurePolicy | default $.Values.digitPolicies.failurePolicy }}
+  {{- if hasKey $p "background" }}
+  evaluation:
+    background:
+      # Set this false for any policy whose CEL reads `request` -- user,
+      # operation, dry-run. Those exist only on a live admission request, and a
+      # background scan would error on every object instead of reporting it.
+      enabled: {{ $p.background }}
+  {{- end }}
+  matchConstraints:
+    resourceRules:
+      {{- $p.match | required (printf "digitPolicies.extra.%s needs a `match:` list of resourceRules" $name) | toYaml | nindent 6 }}
+    {{- with $p.exclude }}
+    excludeResourceRules:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- $scope := include "digitPolicies.scope" (dict "policy" $p "root" $) | trim }}
+  {{- if or $scope $p.matchConditions }}
+  matchConditions:
+    {{- with $scope }}
+    {{- . | nindent 4 }}
+    {{- end }}
+    {{- with $p.matchConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- with $p.variables }}
+  variables:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  validations:
+    {{- $p.validations | required (printf "digitPolicies.extra.%s needs a `validations:` list" $name) | toYaml | nindent 4 }}
+  validationActions: {{ include "digitPolicies.validationActions" (dict "policy" $p "root" $) }}
+{{- end }}
+{{- end }}

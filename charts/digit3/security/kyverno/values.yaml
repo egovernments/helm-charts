@@ -229,3 +229,48 @@ digitPolicies:
         - "system:serviceaccount:kargo:"
         - "system:serviceaccount:kube-system:"
         - "system:serviceaccount:kyverno:"
+
+  # -------------------------------------------------------------------------
+  # Policies that are not in this chart
+  # -------------------------------------------------------------------------
+  # A new policy does not need a chart change. Add an entry here -- in this
+  # file for every environment, or in one environment's own values for just
+  # that cluster -- and it is rendered as a ValidatingPolicy named
+  # `digit-<key>`, with the same action and namespace conventions as the two
+  # policies above.
+  #
+  # The only required fields are `match` (which resources) and `validations`
+  # (what must be true of them). Everything else inherits.
+  #
+  #   extra:
+  #     require-team-label:
+  #       enabled: true
+  #       title: Workloads must name an owning team
+  #       description: >-
+  #         An unlabelled workload has nobody to ask about it when it starts
+  #         failing at 2am.
+  #       severity: low
+  #       # action: Enforce
+  #       # namespaces:
+  #       #   include: [egov]
+  #       match:
+  #         - apiGroups: ["apps"]
+  #           apiVersions: ["v1"]
+  #           operations: [CREATE, UPDATE]
+  #           resources: [deployments, statefulsets]
+  #       validations:
+  #         - expression: >-
+  #             has(object.metadata.labels) && 'team' in object.metadata.labels
+  #           message: >-
+  #             Set a `team` label naming who owns this workload.
+  #
+  # Optional keys: `category`, `failurePolicy`, `exclude` (excludeResourceRules),
+  # `matchConditions` (appended after the namespace scope), `variables`, and
+  # `background: false` -- which is REQUIRED for any policy whose CEL reads
+  # `request` (the user, the operation, dry-run). Those exist only on a live
+  # admission request; left on, a background scan errors on every object.
+  #
+  # A policy that is not a ValidatingPolicy at all -- a MutatingPolicy, an
+  # ImageValidatingPolicy, a legacy ClusterPolicy -- goes through the upstream
+  # verbatim hatch instead, `kyverno-policies.customPolicies`. See the README.
+  extra: {}

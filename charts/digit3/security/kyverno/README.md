@@ -80,6 +80,14 @@ Both ship as `Audit`. They record findings in the same `PolicyReport`s as
 everything else, so they appear on the security dashboard without any change
 there.
 
+These two are a starting set, not the whole of it. More policies are added in
+values -- for every environment or for one -- without editing this chart; see
+[Adding a policy without touching this chart](#adding-a-policy-without-touching-this-chart).
+Anything that is not a `ValidatingPolicy` at all (a `MutatingPolicy`, an
+`ImageValidatingPolicy`, a legacy `ClusterPolicy`) goes through the upstream
+verbatim hatch, `kyverno-policies.customPolicies`, which renders the object as
+written and gets none of the conventions below.
+
 ### The intended rollout
 
 ```yaml
@@ -107,6 +115,123 @@ widens it back to every namespace.
 rejected *and* still recorded, so the dashboard keeps showing what was
 blocked. This is independent of `failurePolicy`, which stays `Ignore`; see
 above for why those are not the same decision.
+
+### Adding a policy without touching this chart
+
+A new policy is a values entry. `digitPolicies.extra` takes a map of policies
+and renders each one as a `ValidatingPolicy` named `digit-<key>`, with the
+same action word, the same namespace scoping, the same labels and the same
+place on the dashboard as the two above.
+
+Only two fields are required: `match` (which resources) and `validations`
+(what must be true of them).
+
+```yaml
+digitPolicies:
+  extra:
+    require-team-label:
+      enabled: true
+      title: Workloads must name an owning team
+      description: >-
+        An unlabelled workload has nobody to ask about it when it starts
+        failing at 2am.
+      severity: low
+      match:
+        - apiGroups: ["apps"]
+          apiVersions: ["v1"]
+          operations: [CREATE, UPDATE]
+          resources: [deployments, statefulsets]
+      validations:
+        - expression: >-
+            has(object.metadata.labels) && 'team' in object.metadata.labels
+          message: Set a `team` label naming who owns this workload.
+```
+
+Optional: `category`, `failurePolicy`, `exclude` (excludeResourceRules),
+`matchConditions` (appended after the namespace scope), `variables`, and
+`background`.
+
+**`background: false` is required for any policy whose CEL reads `request`**
+— the user, the operation, `dryRun`. Those exist only on a live admission
+request; left on, the background scanner errors on every object instead of
+reporting it. `digit-workload-source` is the worked example.
+
+A missing `match` or `validations` fails the render by name rather than
+producing a policy that quietly matches nothing:
+
+```
+Error: digitPolicies.extra.foo needs a `validations:` list
+```
+
+Policies are prefixed `digit-` so nothing here can collide with an upstream
+policy name — two `ValidatingPolicy`s of the same name is a conflict, not a
+warning. A key that already starts with `digit-` is left alone.
+
+### Per environment
+
+`digitPolicies` is ordinary chart values, so an environment file sets any of
+it for that cluster alone. Enforcing in dev while qa and uat stay in audit,
+and adding a policy only dev runs:
+
+```yaml
+# deploy-as-code/helm/environments/unified-dev.yaml
+kyverno:
+  chart-version: '1.1.0'
+  digitPolicies:
+    policies:
+      requireResources:
+        action: Enforce
+        namespaces: {include: [playground]}
+    extra:
+      require-team-label:
+        enabled: true
+        match: [...]
+        validations: [...]
+```
+
+Keep a policy in this chart's `values.yaml` when every environment should
+have it, and in an environment file when only that cluster should.
+
+### Checking CEL before it reaches a cluster
+
+Kyverno compiles the CEL in its controller, so a bad expression shows up as a
+policy that is never `READY` — after the chart has been released and synced.
+The Kubernetes API server compiles the same CEL, and will do it on a dry run,
+which brings the error forward to before the PR:
+
+```sh
+helm template kyverno charts/digit3/security/kyverno > /tmp/rendered.yaml
+
+# turn each ValidatingPolicy into the Kubernetes policy of the same shape
+python3 - <<'PY' > /tmp/celcheck.yaml
+import yaml
+out = []
+for d in yaml.safe_load_all(open('/tmp/rendered.yaml')):
+    if not d or d.get('kind') != 'ValidatingPolicy': continue
+    s = d['spec']
+    out.append({'apiVersion': 'admissionregistration.k8s.io/v1',
+                'kind': 'ValidatingAdmissionPolicy',
+                'metadata': {'name': 'celcheck-' + d['metadata']['name']},
+                'spec': {'failurePolicy': 'Ignore',
+                         'matchConstraints': s['matchConstraints'],
+                         'matchConditions': s.get('matchConditions', []),
+                         'variables': s.get('variables', []),
+                         'validations': s['validations']}})
+yaml.safe_dump_all(out, __import__('sys').stdout, sort_keys=False)
+PY
+
+kubectl apply --dry-run=server -f /tmp/celcheck.yaml
+```
+
+Nothing is created. A typo comes back as
+
+```
+compilation failed: ERROR: <input>:1:15: undefined field 'noRequestsTYPO'
+```
+
+Kyverno's CEL environment is a superset of the API server's, so this proves an
+expression compiles, not that every Kyverno-specific function exists. It
+catches the mistakes people actually make.
 
 ### `digit-require-resources`
 
