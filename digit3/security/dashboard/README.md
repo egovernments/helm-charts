@@ -142,6 +142,29 @@ it, Argo CD would see drift and self-heal the page back to its placeholder on
 every sync. nginx mounts it with `optional: true` and falls back to a
 placeholder until the first collection.
 
+## Memory, and why the manifests are fetched in batches
+
+The per-image vulnerability manifests are by far the largest objects this
+collector touches: a couple of MB of JSON each, tens of MB once parsed.
+
+The first version mapped a thread pool over the whole list. `ThreadPoolExecutor.map`
+**submits every task immediately** and holds each result until the consuming
+loop reaches it, so all ten manifests were resident at peak. A single-cluster
+run survived that; the first three-cluster roll-up was OOM-killed on the
+second cluster.
+
+They are now fetched in batches of `collector.cve.fetchConcurrency` (2), each
+batch dropped before the next is submitted, so what is live no longer scales
+with `collector.cve.images`.
+
+Measured after the fix: a three-cluster roll-up peaks at **875 MiB** resident.
+The limit is **2Gi** — roughly 2.3x that — and the request is 768Mi so the
+scheduler places the pod somewhere it can actually run. Both are deliberately
+generous: the job runs for about two minutes every six hours, and a collector
+killed halfway leaves the page serving the previous run **with no indication
+anything failed**. If more clusters or more images are added, raise the limit
+rather than reducing what is sampled.
+
 ## Start-up races, and why the collector waits
 
 These clusters are stopped overnight and started on a schedule. On start-up

@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-26"
+    ref: "PR-183"
+    title: "fix(security/dashboard): bound manifest memory; size the collector from measurement"
+    author: "SriPadma8997-egov"
+    release_type: "patch"
+    charts:
+      - name: "dashboard"
+        from: "1.2.2"
+        to: "1.2.3"
+  - date: "2026-11-26"
     ref: "PR-182"
     title: "fix(security/dashboard): never render uncollected Kubescape data as zero"
     author: "SriPadma8997-egov"
