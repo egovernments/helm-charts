@@ -1,5 +1,14 @@
 releases:
   - date: "2026-11-26"
+    ref: "PR-185"
+    title: "feat(security/dashboard): every installed policy on the page, with the state that explains its zero"
+    author: "SriPadma8997-egov"
+    release_type: "minor"
+    charts:
+      - name: "dashboard"
+        from: "1.2.3"
+        to: "1.3.0"
+  - date: "2026-11-26"
     ref: "PR-184"
     title: "feat(security/kyverno): DIGIT workload policies (resources + deploy provenance), audit-only"
     author: "SriPadma8997-egov"
