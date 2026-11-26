@@ -233,6 +233,69 @@ before it is explained.
 **Configuration**, **Policies** and **Image CVEs** are the technical views. The
 drill-down rule holds on all of them.
 
+## Every policy, not only the ones with findings
+
+The Policies page is built **inventory first**: the collector lists the policy
+objects from the Kyverno API and merges the report results onto them, rather
+than deriving the list from the reports.
+
+That ordering is the whole point. A page built from reports alone cannot tell
+these three apart:
+
+| | what the reports say |
+|---|---|
+| the policy is satisfied | nothing |
+| the policy matches nothing on this cluster | nothing |
+| Kyverno refused to compile the policy and never ran it | nothing |
+
+All three are an absence, and an absence rendered as `0` reads as good news.
+Only the first is. So every installed policy gets a row whatever it has
+produced, and each row carries a **state in words** beside the number:
+
+| state | means |
+|---|---|
+| `not satisfied` | resources were checked and some failed |
+| `erroring` | the policy ran and threw against some resources, so its counts are incomplete |
+| `not running` | installed, but Kyverno reports it as not ready — nothing has been checked against it |
+| `nothing evaluated` | installed and running, and no resource matched it |
+| `satisfied` | resources were checked and all passed — the only one of these that is good news |
+
+`not running` is the state that matters most and the one nothing else surfaces.
+A policy whose CEL does not compile is accepted by the API server, appears in
+`kubectl get vpol`, and reports nothing forever. `kubectl get vpol` shows it:
+
+```sh
+kubectl get vpol                       # the READY column
+kubectl get vpol <name> -o yaml | yq .status.conditionStatus
+```
+
+Note that the field is `.status.conditionStatus.ready`, not `.status.ready` —
+the obvious jsonpath returns empty and looks like a broken policy.
+
+Policy kinds collected: `ValidatingPolicy`, `NamespacedValidatingPolicy`,
+`ImageValidatingPolicy`, `NamespacedImageValidatingPolicy` and the legacy
+`ClusterPolicy` / `Policy`. Mutating, generating and deleting policies are
+deliberately **not** listed: they never produce a `PolicyReport` result, so
+showing them beside findings would imply they are being measured.
+
+### Two things the page refuses to guess
+
+**A policy that only sees new resources.** A policy with background scanning
+off — any policy whose CEL reads `request`, such as `digit-workload-source` —
+evaluates admission requests only. Its zero means "nothing has been deployed
+by hand *since the policy went in*", not "nothing was deployed by hand". The
+row says so rather than letting the zero speak.
+
+**A policy list that could not be read.** If the collector gets 403 on the
+policy objects, the findings are still true but the policy's mode and scope
+are not known. Those fields render as `not read`, never as a guessed "Audit".
+The page note also says on how many environments the list was unreadable.
+
+This needs `policies.kyverno.io` and `kyverno.io` read in the ClusterRole. It
+is the same RBAC trap that shipped broken in 1.2.0 — a local harness using an
+admin kubeconfig cannot see it, because the collector runs as its
+ServiceAccount and nothing else does.
+
 ## Image vulnerabilities, and the two ways to count them
 
 The same vulnerability can be counted twice over and both answers are honest:
