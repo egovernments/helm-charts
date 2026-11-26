@@ -2,8 +2,24 @@ apiVersion: v1
 entries:
   dashboard:
     - apiVersion: v2
+      appVersion: 1.2.2
+      created: "2026-11-26T04:46:44.356126458Z"
+      description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
+      digest: c912ff65f29cef18a97a6777006d951079a3ef4bd9ce59c360a15761e3e5d228
+      keywords:
+        - security
+        - dashboard
+        - reporting
+      name: dashboard
+      sources:
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/security/dashboard/dashboard-1.2.2.tgz
+      version: 1.2.2
+    - apiVersion: v2
       appVersion: 1.2.1
-      created: "2026-11-25T19:42:57.459403272Z"
+      created: "2026-11-26T04:46:44.353925313Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: 8440ebf5c9562b87f161b636d8677ac1c1d5409a6aaf4f66a374e9d27238b11b
       keywords:
@@ -19,7 +35,7 @@ entries:
       version: 1.2.1
     - apiVersion: v2
       appVersion: 1.2.0
-      created: "2026-11-25T19:42:57.457612465Z"
+      created: "2026-11-26T04:46:44.352515344Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: 888b147d501af7c01053854696b0bc90288a2246c282434b3ca8c693be73e9d3
       keywords:
@@ -35,7 +51,7 @@ entries:
       version: 1.2.0
     - apiVersion: v2
       appVersion: 1.1.0
-      created: "2026-11-25T19:42:57.456157557Z"
+      created: "2026-11-26T04:46:44.351130923Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: d7c33eb796fe70aed7aeac636dfd7fa065f29c33099db70cb9765421704cd7a8
       keywords:
@@ -51,7 +67,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.0.0
-      created: "2026-11-25T19:42:57.45503376Z"
+      created: "2026-11-26T04:46:44.349904596Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: c5c6c94d153956030fc8032b6bc33f7a6bb841da198673b44d3295c7c10b86ef
       keywords:
@@ -68,7 +84,7 @@ entries:
   kubescape:
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-25T19:42:57.477881611Z"
+      created: "2026-11-26T04:46:44.374930611Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -92,7 +108,7 @@ entries:
       version: 1.1.1
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-25T19:42:57.472239573Z"
+      created: "2026-11-26T04:46:44.368401587Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -116,7 +132,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-25T19:42:57.465845484Z"
+      created: "2026-11-26T04:46:44.361952702Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -141,7 +157,7 @@ entries:
   kyverno:
     - apiVersion: v2
       appVersion: v1.20.0
-      created: "2026-11-25T19:42:57.547670914Z"
+      created: "2026-11-26T04:46:44.439569314Z"
       dependencies:
         - name: kyverno
           repository: https://kyverno.github.io/kyverno/
@@ -168,7 +184,7 @@ entries:
       version: 1.0.1
     - apiVersion: v2
       appVersion: v1.20.0
-      created: "2026-11-25T19:42:57.511755647Z"
+      created: "2026-11-26T04:46:44.408495868Z"
       dependencies:
         - name: kyverno
           repository: https://kyverno.github.io/kyverno/
@@ -193,4 +209,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/security/kyverno/kyverno-1.0.0.tgz
       version: 1.0.0
-generated: "2026-11-25T19:42:57.454267594Z"
+generated: "2026-11-26T04:46:44.34911821Z"
