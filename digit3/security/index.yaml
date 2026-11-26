@@ -2,8 +2,24 @@ apiVersion: v1
 entries:
   dashboard:
     - apiVersion: v2
+      appVersion: 1.2.3
+      created: "2026-11-26T05:11:41.450217819Z"
+      description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
+      digest: 714dc3766fa52b4bdc865bae2b594e99dd2dc6ee0e1bd1e95337013939c8b983
+      keywords:
+        - security
+        - dashboard
+        - reporting
+      name: dashboard
+      sources:
+        - https://github.com/egovernments/helm-charts
+      type: application
+      urls:
+        - https://helm.digit.org/digit3/security/dashboard/dashboard-1.2.3.tgz
+      version: 1.2.3
+    - apiVersion: v2
       appVersion: 1.2.2
-      created: "2026-11-26T04:46:44.356126458Z"
+      created: "2026-11-26T05:11:41.448742021Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: c912ff65f29cef18a97a6777006d951079a3ef4bd9ce59c360a15761e3e5d228
       keywords:
@@ -19,7 +35,7 @@ entries:
       version: 1.2.2
     - apiVersion: v2
       appVersion: 1.2.1
-      created: "2026-11-26T04:46:44.353925313Z"
+      created: "2026-11-26T05:11:41.447251826Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: 8440ebf5c9562b87f161b636d8677ac1c1d5409a6aaf4f66a374e9d27238b11b
       keywords:
@@ -35,7 +51,7 @@ entries:
       version: 1.2.1
     - apiVersion: v2
       appVersion: 1.2.0
-      created: "2026-11-26T04:46:44.352515344Z"
+      created: "2026-11-26T05:11:41.445955864Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: 888b147d501af7c01053854696b0bc90288a2246c282434b3ca8c693be73e9d3
       keywords:
@@ -51,7 +67,7 @@ entries:
       version: 1.2.0
     - apiVersion: v2
       appVersion: 1.1.0
-      created: "2026-11-26T04:46:44.351130923Z"
+      created: "2026-11-26T05:11:41.444579332Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: d7c33eb796fe70aed7aeac636dfd7fa065f29c33099db70cb9765421704cd7a8
       keywords:
@@ -67,7 +83,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.0.0
-      created: "2026-11-26T04:46:44.349904596Z"
+      created: "2026-11-26T05:11:41.442562402Z"
       description: Internal security dashboard - Kubescape findings and Kyverno policy violations across the unified environments, served behind oauth2-proxy
       digest: c5c6c94d153956030fc8032b6bc33f7a6bb841da198673b44d3295c7c10b86ef
       keywords:
@@ -84,7 +100,7 @@ entries:
   kubescape:
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-26T04:46:44.374930611Z"
+      created: "2026-11-26T05:11:41.473387807Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -108,7 +124,7 @@ entries:
       version: 1.1.1
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-26T04:46:44.368401587Z"
+      created: "2026-11-26T05:11:41.462810843Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -132,7 +148,7 @@ entries:
       version: 1.1.0
     - apiVersion: v2
       appVersion: 1.42.0
-      created: "2026-11-26T04:46:44.361952702Z"
+      created: "2026-11-26T05:11:41.456560154Z"
       dependencies:
         - name: kubescape-operator
           repository: https://kubescape.github.io/helm-charts/
@@ -157,7 +173,7 @@ entries:
   kyverno:
     - apiVersion: v2
       appVersion: v1.20.0
-      created: "2026-11-26T04:46:44.439569314Z"
+      created: "2026-11-26T05:11:41.53804835Z"
       dependencies:
         - name: kyverno
           repository: https://kyverno.github.io/kyverno/
@@ -184,7 +200,7 @@ entries:
       version: 1.0.1
     - apiVersion: v2
       appVersion: v1.20.0
-      created: "2026-11-26T04:46:44.408495868Z"
+      created: "2026-11-26T05:11:41.507818943Z"
       dependencies:
         - name: kyverno
           repository: https://kyverno.github.io/kyverno/
@@ -209,4 +225,4 @@ entries:
       urls:
         - https://helm.digit.org/digit3/security/kyverno/kyverno-1.0.0.tgz
       version: 1.0.0
-generated: "2026-11-26T04:46:44.34911821Z"
+generated: "2026-11-26T05:11:41.441709589Z"
