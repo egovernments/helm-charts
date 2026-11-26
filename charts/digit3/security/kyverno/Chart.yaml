@@ -1,10 +1,10 @@
 apiVersion: v2
 name: kyverno
-description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, Audit only, fail-open webhooks)
+description: Kyverno policy engine with DIGIT defaults (Pod Security baseline, DIGIT workload policies, Audit only, fail-open webhooks)
 type: application
 # Chart version. appVersion tracks the upstream Kyverno release that this chart
 # wraps -- keep both dependency versions below in step with it.
-version: 1.0.1
+version: 1.1.0
 appVersion: "v1.20.0"
 keywords:
   - security

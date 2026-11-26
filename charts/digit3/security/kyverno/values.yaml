@@ -121,3 +121,111 @@ kyverno:
   # with delete permissions on the cluster.
   cleanupController:
     enabled: false
+
+# ---------------------------------------------------------------------------
+# DIGIT policies
+# ---------------------------------------------------------------------------
+# Everything above this line configures the two upstream charts. This block is
+# ours: policies DIGIT wrote, rendered from templates/digit-*.yaml.
+#
+# THIS IS THE ONE PLACE TO CHANGE THEM. Turning a policy on or off, moving it
+# from Audit to Enforce, and choosing which namespaces it covers are all edits
+# here -- the CEL in the templates does not change.
+#
+# The intended rollout, in order:
+#   1. every policy Audit, every namespace      <- where this starts
+#   2. read the findings, fix or accept them
+#   3. one policy Enforce in one namespace      (policies.<name>.namespaces.include)
+#   4. widen that namespace list, one at a time
+#   5. Enforce globally once the list is the whole estate
+#
+# Findings land in PolicyReports and on the security dashboard alongside the
+# Pod Security ones, so step 2 needs no extra tooling.
+digitPolicies:
+  # Master switch. `false` renders none of the policies below.
+  enabled: true
+
+  # Default for every policy that does not set its own `action`.
+  #
+  #   Audit    record the violation in a PolicyReport; admit the resource.
+  #   Warn     also return it to kubectl as a warning; still admit it.
+  #   Enforce  REJECT the request, and still record it.
+  action: Audit
+
+  # Read the `failurePolicy` section of the README before changing this. It is
+  # not about what a policy does when it finds something -- it is about what
+  # the API server does when Kyverno cannot be reached at all. `Ignore` lets
+  # admission proceed unevaluated; `Fail` rejects every matching request in the
+  # cluster for as long as Kyverno is down, including the deploy that fixes it.
+  failurePolicy: Ignore
+
+  # Default namespace scope. A policy may replace either list; see the comment
+  # on `digitPolicies.scope` in templates/_helpers.tpl.
+  namespaces:
+    # Empty = every namespace. Put names here to narrow the whole set at once.
+    include: []
+    # The cluster's own machinery. These namespaces are installed by Helm, by
+    # the cloud provider or by Argo CD itself, their resource shapes are not
+    # ours to change, and `digit-workload-source` would report every one of
+    # them as "not deployed by Argo CD" -- which is true and useless.
+    exclude:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - kyverno
+      - argocd
+      - argo-rollouts
+      - kargo
+      - kargo-system-resources
+
+  policies:
+    # Every container declares what it needs (cpu + memory requests) and what
+    # it may not exceed (memory limit).
+    requireResources:
+      enabled: true
+      # action: Enforce
+      # namespaces:
+      #   include: [playground]
+      severity: medium
+
+      # Also require a CPU limit.
+      #
+      # Worth a deliberate decision rather than a default. A CPU limit does not
+      # protect the node the way a memory limit does -- the kernel throttles
+      # the container instead of killing it -- so a limit set too low shows up
+      # as latency nobody can explain, and the usual advice is to set CPU
+      # requests and skip CPU limits. It is on here because it was asked for;
+      # set it to false to report only cpu/memory requests and the memory limit.
+      requireCpuLimit: true
+
+    # Workloads come from git, through Kargo and Argo CD. Anything else is drift.
+    workloadSource:
+      enabled: true
+      # action: Enforce
+      # namespaces:
+      #   include: [playground]
+      severity: high
+
+      # Exact usernames allowed to write workloads.
+      #
+      # `argocd-application-controller` is the sync itself and accounts for
+      # effectively all of it; `argocd-server` is what a sync or a rollback
+      # started from the UI or the CLI comes through as. The two control-plane
+      # identities are here because they also write to these objects (adopting
+      # a resource, updating a Job from a CronJob) and are not "deployments".
+      allowedUsers:
+        - "system:serviceaccount:argocd:argocd-application-controller"
+        - "system:serviceaccount:argocd:argocd-server"
+        - "system:serviceaccount:argocd:argocd-applicationset-controller"
+        - "system:kube-controller-manager"
+        - "system:apiserver"
+
+      # Prefix matches, for identities whose exact name is not fixed.
+      # Everything under the kargo namespace, and the in-cluster controllers
+      # that create Jobs and workloads as part of running Kubernetes itself.
+      allowedPrefixes:
+        # Quoted: a bare scalar ending in a colon is a YAML mapping key.
+        - "system:serviceaccount:kargo:"
+        - "system:serviceaccount:kube-system:"
+        - "system:serviceaccount:kyverno:"

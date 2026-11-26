@@ -12,7 +12,8 @@ Wrapper around two upstream charts, pinned together:
 | `kyverno-policies` | 3.10.0 | the Pod Security Standards policy set |
 
 The engine on its own installs cleanly and does nothing. The policies are what
-produce findings.
+produce findings. This chart also carries two policies of its own -- see
+[DIGIT policies](#digit-policies).
 
 ## The two settings that make this safe
 
@@ -61,6 +62,106 @@ Reports cover resources that **already exist**, not just newly admitted ones:
 the policies' `evaluation.background.enabled` defaults to true and the
 reports controller scans the cluster. A fresh install populates on its own
 without anything being deployed.
+
+## DIGIT policies
+
+Two policies DIGIT wrote, on top of the upstream Pod Security set. They are
+rendered from `templates/digit-*.yaml`, and everything about them --
+on/off, Audit vs Enforce, which namespaces -- is configured in the single
+`digitPolicies` block of `values.yaml`. The CEL does not need editing to
+change any of that.
+
+| policy | what it reports | default severity |
+|---|---|---|
+| `digit-require-resources` | a container with no cpu/memory request, or no memory limit (and, by default, no cpu limit) | medium |
+| `digit-workload-source` | a workload created or changed by anyone other than Argo CD, Kargo or the control plane | high |
+
+Both ship as `Audit`. They record findings in the same `PolicyReport`s as
+everything else, so they appear on the security dashboard without any change
+there.
+
+### The intended rollout
+
+```yaml
+digitPolicies:
+  action: Audit                 # 1. everything audited, everywhere
+  policies:
+    requireResources:
+      action: Enforce           # 3. one policy ...
+      namespaces:
+        include: [playground]   #    ... in one namespace
+```
+
+1. Audit everywhere. Read the findings.
+2. Fix them, or scope out what will not be fixed.
+3. Move one policy to `Enforce` in one namespace, by setting that policy's
+   own `action` and `namespaces.include`.
+4. Add namespaces to that list one at a time.
+5. Drop the per-policy overrides once the whole estate passes.
+
+A policy's `namespaces.include` / `.exclude` **replaces** the global list of
+the same name rather than merging with it, so `include: []` on a policy
+widens it back to every namespace.
+
+`Enforce` renders as `validationActions: [Deny, Audit]` -- the request is
+rejected *and* still recorded, so the dashboard keeps showing what was
+blocked. This is independent of `failurePolicy`, which stays `Ignore`; see
+above for why those are not the same decision.
+
+### `digit-require-resources`
+
+Reports one finding per object a human can actually edit. A Pod owned by a
+ReplicaSet and a Job owned by a CronJob are skipped, because the fix belongs
+on the controller, which the policy also matches -- otherwise the same
+missing field is reported two or three times and churns every time a pod is
+replaced. The test is on the *owner's kind*, not on having an owner at all,
+so a Deployment created by an operator keeps its finding.
+
+Init containers are included. A sidecar declared as a `restartPolicy: Always`
+init container runs for the life of the pod, and an init container with no
+memory limit can OOM a node as well as any app container.
+
+The failure message names the containers, not just the object:
+
+```
+no cpu/memory request: istio-proxy, egov-service
+```
+
+`requireCpuLimit` is worth a deliberate decision. A CPU limit does not
+protect the node the way a memory limit does -- the kernel throttles the
+container rather than killing it -- so a limit set too low becomes latency
+nobody can explain, and the common advice is to set CPU requests and skip CPU
+limits. It defaults to `true` here because it was asked for; set it to
+`false` to report only requests and the memory limit.
+
+### `digit-workload-source`
+
+**This policy reports what is created or changed from now on, not what is
+already running.** It reads `request.userInfo`, which exists only on a live
+admission request, so its `evaluation.background.enabled` is `false` and the
+background scanner never evaluates it. Workloads already on the cluster
+produce no findings until something touches them.
+
+To audit what is already there, compare field managers instead:
+
+```sh
+kubectl get deploy -A --show-managed-fields -o json | \
+  jq -r '.items[].metadata.managedFields[].manager' | sort | uniq -c | sort -rn
+```
+
+On unified-dev that currently reads 234 of 245 Deployments applied by
+`argocd-controller`, the rest by `helm`, `kubectl-client-side-apply` and
+`eno` -- which is roughly what the policy will report once those objects are
+next touched.
+
+`allowedUsers` and `allowedPrefixes` are the whole definition of "comes from
+Argo CD or Kargo". The control-plane identities (`system:kube-controller-manager`,
+`system:apiserver`, the `kube-system` service accounts) are allowed because
+they write to these objects as part of running Kubernetes -- adopting a
+resource, creating a Job from a CronJob -- and are not deployments.
+
+Note that `UPDATE` is matched as well as `CREATE`: a `kubectl rollout
+restart` is a change that did not come from git, and is reported as one.
 
 ## Going from Audit to Enforce
 

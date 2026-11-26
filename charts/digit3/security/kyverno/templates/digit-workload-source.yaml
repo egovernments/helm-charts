@@ -1,0 +1,69 @@
+{{- $p := (.Values.digitPolicies.policies | default dict).workloadSource | default dict }}
+{{- if and .Values.digitPolicies.enabled $p.enabled }}
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  name: digit-workload-source
+  annotations:
+    policies.kyverno.io/title: Workloads must be deployed by Argo CD or Kargo
+    policies.kyverno.io/category: DIGIT Delivery Provenance
+    policies.kyverno.io/severity: {{ $p.severity | default "high" | quote }}
+    policies.kyverno.io/subject: Deployment,StatefulSet,DaemonSet,Job,CronJob,Rollout
+    policies.kyverno.io/description: >-
+      Every workload in these clusters is supposed to come from git, through
+      Kargo's promotion and Argo CD's sync. A workload created or changed by
+      anyone else -- a kubectl apply, a direct helm install, a CI job with a
+      kubeconfig -- is drift: Argo CD will either revert it at the next sync or,
+      if it is not in git at all, leave it running with nothing describing it.
+      This policy names who is allowed to write workloads and reports everyone
+      else.
+  labels: {{- include "digitPolicies.labels" . | nindent 4 }}
+spec:
+  failurePolicy: {{ .Values.digitPolicies.failurePolicy }}
+  evaluation:
+    background:
+      # MUST stay false. The check reads request.userInfo, which exists only on
+      # a live admission request; a background scan has no user to attribute a
+      # resource to and the expression would error on every object.
+      #
+      # The consequence is worth stating plainly: this policy reports what is
+      # CREATED OR CHANGED from now on, not what is already running. The 245
+      # Deployments already on a cluster produce no findings until something
+      # touches them. To audit what is already there, compare field managers:
+      #
+      #   kubectl get deploy -A --show-managed-fields -o json | \
+      #     jq -r '.items[].metadata.managedFields[].manager' | sort | uniq -c
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [cronjobs, jobs]
+      - apiGroups: ["argoproj.io"]
+        apiVersions: ["v1alpha1"]
+        operations: [CREATE, UPDATE]
+        resources: [rollouts]
+  matchConditions:
+    {{- with (include "digitPolicies.scope" (dict "policy" $p "root" $) | trim) }}
+    {{- . | nindent 4 }}
+    {{- end }}
+    - name: digit-has-user
+      expression: has(request.userInfo)
+  variables:
+    - name: user
+      expression: request.userInfo.username
+  validations:
+    - expression: >-
+        variables.user in {{ toJson ($p.allowedUsers | default list) }} ||
+        {{ toJson ($p.allowedPrefixes | default list) }}.exists(p, variables.user.startsWith(p))
+      message: >-
+        Workloads must be deployed through Argo CD or Kargo, not applied directly.
+      messageExpression: >-
+        'deployed by ' + variables.user + ', which is not Argo CD or Kargo'
+  validationActions: {{ include "digitPolicies.validationActions" (dict "policy" $p "root" $) }}
+{{- end }}
