@@ -30,8 +30,9 @@ jobs:
         run: |
           curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
           sudo mv linux-amd64/helm /usr/local/bin/helm
-          curl -fsSL https://github.com/helmfile/helmfile/releases/download/v0.171.0/helmfile_0.171.0_linux_amd64.tar.gz | tar xz helmfile
-          sudo mv helmfile /usr/local/bin/helmfile
+          # extract outside the checkout: it has a helmfile/ folder
+          curl -fsSL https://github.com/helmfile/helmfile/releases/download/v0.171.0/helmfile_0.171.0_linux_amd64.tar.gz | tar xz -C "$RUNNER_TEMP" helmfile
+          sudo mv "$RUNNER_TEMP/helmfile" /usr/local/bin/helmfile
 
       - name: Product helmfiles
         run: helmfile/products/check.sh "${{ github.event.pull_request.base.sha }}"
