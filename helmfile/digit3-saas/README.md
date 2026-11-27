@@ -50,10 +50,58 @@ Order: **backbone**, **core**, then the other products by name. Values per relea
 - `global` goes to every product;
 - secrets: the same layout in the secrets file (`products.<product>.values.<chart>...`).
 
+## Vault (production setup)
+
+The backbone product installs Vault but never initialises it or keeps its keys in the cluster.
+Once per environment:
+
+1. **Auto-unseal** with the cloud's KMS, in the environment file (chart README "Auto-unseal"):
+   ```yaml
+   products:
+     backbone:
+       values:
+         vault:
+           server:
+             seal:
+               type: azurekeyvault            # or awskms / gcpckms / transit
+               azurekeyvault: {tenantId: ..., vaultName: ..., keyName: ...}
+   ```
+   Bind the Vault service account to a cloud identity with unwrap/decrypt rights on that key.
+2. **Initialise** after the first deploy. The recovery keys and root token go to the operators
+   (a password manager), never to the cluster or Git:
+   ```bash
+   kubectl -n vault exec -it vault-0 -- vault operator init -recovery-shares=5 -recovery-threshold=3
+   ```
+3. **AppRole for the DIGIT services** (otp and individual use Vault transit), logged in with the
+   root token:
+   ```bash
+   vault secrets enable transit
+   vault auth enable approle
+   vault policy write digit-transit - <<'EOF'
+   path "transit/encrypt/*"     { capabilities = ["create","update"] }
+   path "transit/decrypt/*"     { capabilities = ["update"] }
+   path "transit/sign/*"        { capabilities = ["create","update"] }
+   path "transit/verify/*"      { capabilities = ["create","update"] }
+   path "transit/keys/*"        { capabilities = ["create","read","update","list","delete"] }
+   path "auth/token/renew-self" { capabilities = ["update"] }
+   EOF
+   vault write auth/approle/role/digit-services token_policies=digit-transit token_ttl=720h token_max_ttl=2160h
+   vault read -field=role_id auth/approle/role/digit-services/role-id
+   vault write -f -field=secret_id auth/approle/role/digit-services/secret-id
+   ```
+   Put both into the **secrets file**; cluster-configs creates the `egov/vault-approle` Secret:
+   ```yaml
+   products:
+     backbone:
+       values:
+         cluster-configs:
+           secrets:
+             vault-approle: {role-id: ..., secret-id: ...}
+   ```
+   Then revoke the root token (`vault token revoke <root-token>`).
+
 ## Not covered yet
 
-- Argo CD: the one-click Argo CD plugin (`../digit3-one-click/scripts/argocd-plugin.sh`) renders
-  the one-click layers; rendering this master helmfile with it is the next step. The releases
-  already carry the `wave` labels it uses.
-- Monitoring (kube-prometheus-stack, Loki, Grafana, ...): upstream charts, not a product here yet.
-- backbone uses the one-click Vault bootstrap script (`../digit3-one-click/scripts/vault-bootstrap.sh`).
+- Argo CD: an Application per product rendering this master helmfile. The releases already carry
+  the `product` and `wave` labels for it.
+- Monitoring (Prometheus, Loki, Grafana, ...): upstream charts, not a product here yet.

@@ -19,9 +19,7 @@
        (gets global + namespace). Argo CD starts a wave only when the previous one is healthy:
        - elasticsearch-data shares the masters' wave: masters turn Ready only once data nodes join.
        - a release with an Ingress is never before ingress-nginx (an Ingress stays Progressing
-         until it has an address): minio has the console Ingress.
-       createonly: Secrets the chart generates once with lookup, which helm template (Argo CD)
-       cannot do. */}}
+         until it has an address): minio has the console Ingress. */}}
 {{- $known := dict
       "cluster-configs"      (dict "ns" "egov"     "wave" "0")
       "cert-manager"         (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs")
@@ -29,7 +27,7 @@
       "redis"                (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs" "common" true)
       "kafka-kraft"          (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs")
       "minio"                (dict "ns" "backbone" "wave" "2" "needs" "egov/cluster-configs" "common" true)
-      "elasticsearch-master" (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs" "createonly" "elasticsearch-master-certs")
+      "elasticsearch-master" (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs")
       "elasticsearch-data"   (dict "ns" "backbone" "wave" "1" "needs" "backbone/elasticsearch-master")
       "kibana"               (dict "ns" "backbone" "wave" "3" "needs" "backbone/elasticsearch-data" "common" true)
       "pgadmin"              (dict "ns" "backbone" "wave" "3" "needs" "egov/cluster-configs" "common" true)
@@ -55,19 +53,14 @@ releases:
     chart: {{ if eq $c "cluster-configs" }}digit3-cluster-configs{{ else }}digit3-backbone{{ end }}/{{ $c }}
     version: {{ index $charts $c | quote }}
     installed: {{ and $on ($v | get (printf "%s.enabled" $c) true) }}
-    labels: {product: backbone, wave: "{{ $o.wave }}"{{ with $o | get "createonly" "" }}, createonly: {{ . }}{{ end }}}
+    labels: {product: backbone, wave: "{{ $o.wave }}"}
 {{- with $o | get "needs" "" }}{{ if hasKey $charts (base .) }}
     needs: [{{ . }}]
 {{- end }}{{ end }}
 {{- if eq $c "vault" }}
-    # Vault starts sealed and empty: the postsync hook initialises/unseals it and writes the
-    # AppRole the core services (otp, individual) log in with. Idempotent.
+    # A new Vault is not Ready until it is initialised once (README "Vault"); after that it
+    # unseals itself (vault.server.seal, cloud KMS). Don't block the rest of backbone on it.
     wait: false
-    hooks:
-      - events: ["postsync"]
-        showlogs: true
-        command: bash
-        args: [../../../digit3-one-click/scripts/vault-bootstrap.sh, vault, egov]
 {{- end }}
     values:
 {{- if eq $c "cluster-configs" }}

@@ -25,8 +25,7 @@ helmfile/products/
 | cms, studio, crest, health | `digit3/<product>` | egov, or `namespace` from the environment |
 | analytics | `digit3/analytics` (ClickHouse operator, ClickHouse, Superset) | analytics, clickhouse-operator |
 
-All products start at **3.0.0**. backbone and core 3.0.0 pin the chart versions of the DIGIT
-one-click install (tested together); the others pin the latest published charts.
+All products start at **3.0.0**, pinning chart versions published on helm.digit.org.
 
 ## Versions kept
 
