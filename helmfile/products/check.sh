@@ -82,7 +82,7 @@ if [ -n "${1:-}" ]; then
          [ -d "../../$d" ] && err "$f: a published release cannot be deleted (only a whole old major)";;
       *) err "$f: a published release cannot be changed - add the next patch release instead";;
     esac
-  done < <(cd ../.. && git diff --name-status --no-renames "$1" HEAD -- 'helmfile/products/*/v*/releases/*.yaml')
+  done < <(cd ../.. && git diff --name-status --no-renames "$1" -- 'helmfile/products/*/v*/releases/*.yaml')
 fi
 
 [ "$errors" -eq 0 ] && echo "product helmfiles OK" || { echo "$errors error(s)"; exit 1; }
