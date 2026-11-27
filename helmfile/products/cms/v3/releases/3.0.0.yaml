@@ -1,0 +1,12 @@
+# cms 3.0.0 - chart versions (helm.digit.org/digit3/cms). A published release is never
+# changed: add a new file (3.0.1, 3.1.0, ...) instead.
+charts:
+  configurator: 3.0.1
+  digit-config-service: 3.0.1
+  digit-ui: 3.0.1
+  digit-user-preferences-service: 3.0.1
+  identity-bff: 3.0.1
+  identity-bootstrap: 3.0.0
+  novu-bridge: 3.0.1
+  pgr-services: 3.0.1
+  xstate-chatbot: 3.0.1

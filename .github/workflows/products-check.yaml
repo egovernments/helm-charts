@@ -1,0 +1,41 @@
+name: Product helmfiles check
+
+# On every PR that touches the product helmfiles or the SaaS master helmfile:
+# helmfile/products/check.sh (layout, last 3 majors, published chart versions, renders,
+# published releases unchanged) and a render of the master helmfile's example environment.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - master
+    paths:
+      - helmfile/products/**
+      - helmfile/digit3-saas/**
+      - .github/workflows/products-check.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install helm and helmfile
+        run: |
+          curl -fsSL https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          curl -fsSL https://github.com/helmfile/helmfile/releases/download/v0.171.0/helmfile_0.171.0_linux_amd64.tar.gz | tar xz helmfile
+          sudo mv helmfile /usr/local/bin/helmfile
+
+      - name: Product helmfiles
+        run: helmfile/products/check.sh "${{ github.event.pull_request.base.sha }}"
+
+      - name: Master helmfile (example environment)
+        working-directory: helmfile/digit3-saas
+        run: DIGIT_ENV_FILE=$PWD/example-env.yaml helmfile list

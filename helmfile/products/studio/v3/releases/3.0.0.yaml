@@ -1,0 +1,13 @@
+# studio 3.0.0 - chart versions (helm.digit.org/digit3/studio). A published release is never
+# changed: add a new file (3.0.1, 3.1.0, ...) instead.
+charts:
+  digit-studio: 3.0.2
+  public-service: 3.0.3
+  public-service-init: 3.0.2
+  studio-calculator-service: 3.0.1
+  studio-hrms: 3.0.1
+  studio-individual: 3.0.1
+  studio-pdf: 3.0.2
+  studio-pdf-helper-service: 3.0.2
+  studio-service-request: 3.0.2
+  studio-user-otp: 3.0.1

@@ -1,0 +1,32 @@
+# Example SaaS environment file for helmfile.yaml.gotmpl (DIGIT_ENV_FILE).
+# Passwords and keys go in the secrets file (DIGIT_SECRETS_FILE, SOPS), same layout.
+
+# helm-charts tag or full commit SHA the product helmfiles come from. Pin it: a branch makes
+# deploys unrepeatable. "local" = this checkout (testing inside helm-charts only).
+helm-charts-ref: local
+
+global:
+  domain: saas.example.digit.org
+
+products:
+  # product name: {version, namespace (optional), enabled (optional), values}
+  # version = a release of that product: helmfile/products/<product>/v<major>/releases/<version>.yaml
+  backbone:
+    version: 3.0.0
+    values:
+      # one block per chart of the release, merged over the chart's defaults
+      cluster-configs:
+        namespaces: {create: true, values: [egov, backbone, vault]}
+      pgadmin: {enabled: false}      # leave one chart of the release out
+  core:
+    version: 3.0.0
+    values:
+      kong:
+        replicaCount: 2
+  studio:
+    version: 3.0.0
+    namespace: studio                # default egov; cluster-configs prepares any other namespace
+    values: {}
+  health:
+    version: 3.0.0
+    enabled: false                   # false = uninstall the product

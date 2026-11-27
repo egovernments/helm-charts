@@ -1,0 +1,105 @@
+# Product "backbone", major 3: cluster-configs (helm.digit.org/digit3/cluster-configs) and the
+# backbone services (helm.digit.org/digit3/backbone). Always the first product.
+# Deployed by a master helmfile (helmfile/digit3-saas), never edited per environment.
+#
+# .Values (from the master helmfile):
+#   product.version     the release to deploy, 3.x.y = releases/<version>.yaml (chart versions)
+#   product.enabled     false = uninstall every release of the product
+#   product.namespaces  namespaces of the other products besides egov: cluster-configs creates
+#                       them and copies the egov-config ConfigMap and the db Secret into them
+#   global              environment-wide values (domain, ...)
+#   <chart>             values for that chart; <chart>.enabled: false leaves it out
+{{- $v := .Values }}
+{{- $p := $v.product }}
+{{- $ver := $p.version | toString }}
+{{- if not (regexMatch "^3\\.[0-9]+\\.[0-9]+$" $ver) }}{{ fail (printf "backbone v3: version %q is not 3.x.y" $ver) }}{{ end }}
+{{- $charts := (readFile (printf "releases/%s.yaml" $ver) | fromYaml).charts }}
+{{- $on := $p | get "enabled" true }}
+{{- /* ns, wave = Argo CD sync wave (helmfile orders by needs), common = DIGIT common-based chart
+       (gets global + namespace). Argo CD starts a wave only when the previous one is healthy:
+       - elasticsearch-data shares the masters' wave: masters turn Ready only once data nodes join.
+       - a release with an Ingress is never before ingress-nginx (an Ingress stays Progressing
+         until it has an address): minio has the console Ingress.
+       createonly: Secrets the chart generates once with lookup, which helm template (Argo CD)
+       cannot do. */}}
+{{- $known := dict
+      "cluster-configs"      (dict "ns" "egov"     "wave" "0")
+      "cert-manager"         (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs")
+      "ingress-nginx"        (dict "ns" "backbone" "wave" "2" "needs" "backbone/cert-manager")
+      "redis"                (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs" "common" true)
+      "kafka-kraft"          (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs")
+      "minio"                (dict "ns" "backbone" "wave" "2" "needs" "egov/cluster-configs" "common" true)
+      "elasticsearch-master" (dict "ns" "backbone" "wave" "1" "needs" "egov/cluster-configs" "createonly" "elasticsearch-master-certs")
+      "elasticsearch-data"   (dict "ns" "backbone" "wave" "1" "needs" "backbone/elasticsearch-master")
+      "kibana"               (dict "ns" "backbone" "wave" "3" "needs" "backbone/elasticsearch-data" "common" true)
+      "pgadmin"              (dict "ns" "backbone" "wave" "3" "needs" "egov/cluster-configs" "common" true)
+      "vault"                (dict "ns" "vault"    "wave" "1" "needs" "egov/cluster-configs") }}
+repositories:
+  - name: digit3-backbone
+    url: https://helm.digit.org/digit3/backbone
+  - name: digit3-cluster-configs
+    url: https://helm.digit.org/digit3/cluster-configs
+
+helmDefaults:
+  createNamespace: true
+  wait: true
+  waitForJobs: true
+  timeout: 900
+
+releases:
+{{- range $c := keys $charts | sortAlpha }}
+{{- $o := required (printf "backbone v3 has no release %q (releases/%s.yaml)" $c $ver) ($known | get $c nil) }}
+{{- $b := omit ($v | get $c dict) "enabled" }}
+  - name: {{ $c }}
+    namespace: {{ $o.ns }}
+    chart: {{ if eq $c "cluster-configs" }}digit3-cluster-configs{{ else }}digit3-backbone{{ end }}/{{ $c }}
+    version: {{ index $charts $c | quote }}
+    installed: {{ and $on ($v | get (printf "%s.enabled" $c) true) }}
+    labels: {product: backbone, wave: "{{ $o.wave }}"{{ with $o | get "createonly" "" }}, createonly: {{ . }}{{ end }}}
+{{- with $o | get "needs" "" }}{{ if hasKey $charts (base .) }}
+    needs: [{{ . }}]
+{{- end }}{{ end }}
+{{- if eq $c "vault" }}
+    # Vault starts sealed and empty: the postsync hook initialises/unseals it and writes the
+    # AppRole the core services (otp, individual) log in with. Idempotent.
+    wait: false
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: bash
+        args: [../../../digit3-one-click/scripts/vault-bootstrap.sh, vault, egov]
+{{- end }}
+    values:
+{{- if eq $c "cluster-configs" }}
+      - {{ dict "cluster-configs" $b | toJson }}
+{{- /* the other products' namespaces get the shared egov-config ConfigMap and db Secret */}}
+{{- with without ($p | get "namespaces" list) "egov" | uniq }}
+      - cluster-configs:
+          namespaces:
+            create: true
+            values: {{ concat ($b | get "namespaces.values" list) . | uniq | toJson }}
+          configmaps:
+            egov-config:
+              namespace: {{ concat ($b | get "configmaps.egov-config.namespace" (list "egov")) . | uniq | toJson }}
+          secrets:
+            db:
+              namespace: {{ concat ($b | get "secrets.db.namespace" (list "egov")) . | uniq | toJson }}
+{{- end }}
+{{- else }}
+{{- if eq $c "cert-manager" }}
+      # AKS's admissions enforcer appends the last two rules to every webhook after it is created.
+      # Render them too, or Argo CD shows cert-manager OutOfSync forever (harmless elsewhere).
+      - webhook:
+          validatingWebhookConfiguration:
+            namespaceSelector:
+              matchExpressions:
+                - {key: cert-manager.io/disable-validation, operator: NotIn, values: ["true"]}
+                - {key: control-plane, operator: NotIn, values: ["true"]}
+                - {key: kubernetes.azure.com/managedby, operator: NotIn, values: [aks]}
+{{- end }}
+{{- if hasKey $o "common" }}
+      - {global: {{ merge (dict "namespace" $o.ns) ($v | get "global" dict) | toJson }}, namespace: {{ $o.ns }}}
+{{- end }}
+      - {{ $b | toJson }}
+{{- end }}
+{{- end }}

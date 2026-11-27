@@ -1,0 +1,64 @@
+# DIGIT SaaS master helmfile: deploys the products an environment asks for, each at a released
+# version, from the product helmfiles in egovernments/helm-charts (helmfile/products/).
+#
+# Use it from here, or copy this file unchanged into any other repo: the product helmfiles always
+# come from helm-charts. An environment names a product and a version, never a path.
+#
+# Inputs (environment files, kept with the environment, e.g. in DIGIT-DevOps):
+#   DIGIT_ENV_FILE       plain YAML, see example-env.yaml
+#   DIGIT_SECRETS_FILE   optional, SOPS-encrypted (helm-secrets), same layout
+#
+#   helm-charts-ref: v3.1.0     # helm-charts tag or full commit SHA the product helmfiles come from;
+#                               # "local" = this checkout (only when this file is in helm-charts)
+#   global: {domain: ...}       # handed to every product
+#   products:
+#     backbone: {version: 3.0.0, values: {...}}
+#     core:     {version: 3.0.0, values: {...}}
+#     studio:   {version: 3.1.2, namespace: studio, enabled: true, values: {...}}
+#
+# Order: backbone, core, then the other products by name (helmfile runs them one after another).
+environments:
+  default:
+    values:
+      - {{ requiredEnv "DIGIT_ENV_FILE" }}
+{{- with env "DIGIT_SECRETS_FILE" }}
+    secrets:
+      - {{ . }}
+{{- end }}
+---
+{{- $repo := "https://github.com/egovernments/helm-charts.git" }}
+{{- $v := .Values }}
+{{- $ref := $v | get "helm-charts-ref" "" | toString }}
+{{- if not $ref }}{{ fail "helm-charts-ref is missing: a helm-charts tag or full commit SHA (or \"local\")" }}{{ end }}
+{{- $products := $v | get "products" dict }}
+{{- $rest := list }}
+{{- range $name := keys $products | sortAlpha }}
+{{- if not (has $name (list "backbone" "core")) }}{{ $rest = append $rest $name }}{{ end }}
+{{- end }}
+{{- /* namespaces of the products besides egov: backbone's cluster-configs prepares them */}}
+{{- $namespaces := list }}
+{{- range $name, $p := $products }}
+{{- if and ($p | get "enabled" true) (hasKey $p "namespace") }}{{ $namespaces = append $namespaces $p.namespace }}{{ end }}
+{{- end }}
+{{- if $products }}
+helmfiles:
+{{- range $name := concat (list "backbone" "core") $rest }}
+{{- if hasKey $products $name }}
+{{- $p := index $products $name }}
+{{- if not (regexMatch "^[a-z][a-z0-9-]*$" $name) }}{{ fail (printf "products: bad product name %q" $name) }}{{ end }}
+{{- $ver := required (printf "products.%s.version is missing" $name) ($p | get "version" "") | toString }}
+{{- if not (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+$" $ver) }}{{ fail (printf "products.%s.version %q is not x.y.z" $name $ver) }}{{ end }}
+{{- $dir := printf "helmfile/products/%s/v%s/helmfile.yaml.gotmpl" $name (index (splitList "." $ver) 0) }}
+{{- $product := dict "name" $name "version" $ver "enabled" ($p | get "enabled" true) }}
+{{- with $p | get "namespace" "" }}{{ $_ := set $product "namespace" . }}{{ end }}
+{{- if eq $name "backbone" }}{{ $_ := set $product "namespaces" ($namespaces | uniq | sortAlpha) }}{{ end }}
+  - path: {{ if eq $ref "local" }}{{ printf "../../%s" $dir | quote }}{{ else }}{{ printf "git::%s@%s?ref=%s" $repo $dir $ref | quote }}{{ end }}
+    values:
+      - product: {{ $product | toJson }}
+        global: {{ $v | get "global" dict | toJson }}
+      - {{ $p | get "values" dict | toJson }}
+{{- end }}
+{{- end }}
+{{- else }}
+releases: []
+{{- end }}

@@ -1,0 +1,39 @@
+# Product "crest", major 3 (helm.digit.org/digit3/crest).
+# Deployed by a master helmfile (helmfile/digit3-saas), never edited per environment.
+#
+# .Values (from the master helmfile):
+#   product.version    the release to deploy, 3.x.y = releases/<version>.yaml (chart versions)
+#   product.namespace  default egov (it shares egov-config and the db Secret there)
+#   product.enabled    false = uninstall every release of the product
+#   global             environment-wide values (domain, ...)
+#   <chart>            values for that chart; <chart>.enabled: false leaves it out
+# Runs after backbone and core (the master helmfile's order).
+{{- $v := .Values }}
+{{- $p := $v.product }}
+{{- $ver := $p.version | toString }}
+{{- if not (regexMatch "^3\\.[0-9]+\\.[0-9]+$" $ver) }}{{ fail (printf "crest v3: version %q is not 3.x.y" $ver) }}{{ end }}
+{{- $charts := (readFile (printf "releases/%s.yaml" $ver) | fromYaml).charts }}
+{{- $ns := $p | get "namespace" "egov" }}
+{{- $global := merge (dict "namespace" $ns) ($v | get "global" dict) }}
+repositories:
+  - name: digit3-crest
+    url: https://helm.digit.org/digit3/crest
+
+helmDefaults:
+  createNamespace: true
+  wait: true
+  waitForJobs: true
+  timeout: 900
+
+releases:
+{{- range $c := keys $charts | sortAlpha }}
+  - name: {{ $c }}
+    namespace: {{ $ns }}
+    chart: digit3-crest/{{ $c }}
+    version: {{ index $charts $c | quote }}
+    installed: {{ and ($p | get "enabled" true) ($v | get (printf "%s.enabled" $c) true) }}
+    labels: {product: crest, wave: "10"}
+    values:
+      - {global: {{ $global | toJson }}, namespace: {{ $ns }}}
+      - {{ omit ($v | get $c dict) "enabled" | toJson }}
+{{- end }}

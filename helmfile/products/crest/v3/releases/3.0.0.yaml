@@ -1,0 +1,5 @@
+# crest 3.0.0 - chart versions (helm.digit.org/digit3/crest). A published release is never
+# changed: add a new file (3.0.1, 3.1.0, ...) instead.
+charts:
+  crest: 3.0.2
+  crest-ui: 3.0.1
