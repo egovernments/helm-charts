@@ -1,0 +1,50 @@
+# Product "analytics", major 3 (helm.digit.org/digit3/analytics): the ClickHouse operator,
+# a ClickHouse cluster (run by the operator) and Superset.
+# Deployed by a master helmfile (helmfile/digit3-saas), never edited per environment.
+#
+# .Values (from the master helmfile):
+#   product.version    the release to deploy, 3.x.y = releases/<version>.yaml (chart versions)
+#   product.namespace  ClickHouse + Superset, default analytics (the operator: clickhouse-operator)
+#   product.enabled    false = uninstall every release of the product
+#   global             environment-wide values (domain, ...)
+#   <chart>            values for that chart; <chart>.enabled: false leaves it out
+# Order: operator (its CRDs and webhook; needs cert-manager from backbone), then ClickHouse,
+# then Superset. Analytics keeps its own Secrets (charts' `secrets`); it needs no egov-config.
+{{- $v := .Values }}
+{{- $p := $v.product }}
+{{- $ver := $p.version | toString }}
+{{- if not (regexMatch "^3\\.[0-9]+\\.[0-9]+$" $ver) }}{{ fail (printf "analytics v3: version %q is not 3.x.y" $ver) }}{{ end }}
+{{- $charts := (readFile (printf "releases/%s.yaml" $ver) | fromYaml).charts }}
+{{- $ns := $p | get "namespace" "analytics" }}
+{{- $order := dict
+      "clickhouse-operator" (dict "ns" "clickhouse-operator" "wave" "10")
+      "clickhouse"          (dict "ns" $ns "wave" "11" "needs" "clickhouse-operator/clickhouse-operator")
+      "superset"            (dict "ns" $ns "wave" "12") }}
+repositories:
+  - name: digit3-analytics
+    url: https://helm.digit.org/digit3/analytics
+
+helmDefaults:
+  createNamespace: true
+  wait: true
+  waitForJobs: true
+  timeout: 900
+
+releases:
+{{- range $c := keys $charts | sortAlpha }}
+{{- $o := required (printf "analytics v3 has no release %q (releases/%s.yaml)" $c $ver) ($order | get $c nil) }}
+  - name: {{ $c }}
+    namespace: {{ $o.ns }}
+    chart: digit3-analytics/{{ $c }}
+    version: {{ index $charts $c | quote }}
+    installed: {{ and ($p | get "enabled" true) ($v | get (printf "%s.enabled" $c) true) }}
+    labels: {product: analytics, wave: "{{ $o.wave }}"}
+{{- with $o | get "needs" "" }}{{ if hasKey $charts "clickhouse-operator" }}
+    needs: [{{ . }}]
+{{- end }}{{ end }}
+    values:
+{{- if ne $c "clickhouse-operator" }}
+      - {namespace: {{ $ns }}}
+{{- end }}
+      - {{ omit ($v | get $c dict) "enabled" | toJson }}
+{{- end }}

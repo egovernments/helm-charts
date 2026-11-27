@@ -1,0 +1,26 @@
+# core 3.0.0 - chart versions (helm.digit.org/digit3/core). A published release is never
+# changed: add a new file (3.0.1, 3.1.0, ...) instead.
+charts:
+  keycloak: 3.1.0
+  kong: 3.1.2
+  account: 3.1.2
+  apportion: 3.1.3
+  billing: 3.1.2
+  boundary: 3.1.2
+  boundary-management: 3.1.2
+  employee: 3.1.2
+  employee-onboarding: 3.1.0
+  filestore: 3.1.2
+  idgen: 3.1.2
+  individual: 3.1.2
+  localization: 3.1.2
+  localization-management: 3.1.0
+  mdms-v2: 3.1.2
+  notification: 3.1.2
+  notify: 3.1.2
+  otp: 3.2.0
+  pg-service: 3.1.2
+  registry: 3.1.2
+  template-config: 3.1.2
+  url-shortener: 3.1.2
+  workflow: 3.1.2
